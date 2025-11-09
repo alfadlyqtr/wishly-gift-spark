@@ -16,6 +16,7 @@ const Signup = () => {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [fullName, setFullName] = useState("");
+  const [dob, setDob] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -41,6 +42,7 @@ const Signup = () => {
         data: {
           username: username,
           full_name: fullName,
+          dob: dob,
         }
       },
     });
@@ -89,6 +91,16 @@ const Signup = () => {
                 placeholder="John Doe"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dob">{t('auth.dob')}</Label>
+              <Input
+                id="dob"
+                type="date"
+                value={dob}
+                onChange={(e) => setDob(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
               />
             </div>
             <div className="space-y-2">

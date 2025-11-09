@@ -25,6 +25,7 @@
     "signup_subtitle": "Join Wishly and start creating wishlists",
     "username": "Username",
     "full_name": "Full Name",
+    "dob": "Date of Birth",
     "email": "Email",
     "password": "Password",
     "login_button": "Sign In",
