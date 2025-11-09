@@ -23,6 +23,8 @@
     "login_subtitle": "Sign in to access your wishlists",
     "signup_title": "Create Account",
     "signup_subtitle": "Join Wishly and start creating wishlists",
+    "username": "Username",
+    "full_name": "Full Name",
     "email": "Email",
     "password": "Password",
     "login_button": "Sign In",

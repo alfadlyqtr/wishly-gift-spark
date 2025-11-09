@@ -14,6 +14,8 @@ const Signup = () => {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -47,6 +49,10 @@ const Signup = () => {
       password,
       options: {
         emailRedirectTo: redirectUrl,
+        data: {
+          username: username,
+          full_name: fullName,
+        }
       },
     });
 
@@ -75,6 +81,28 @@ const Signup = () => {
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="username">{t('auth.username')}</Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="johndoe"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                minLength={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fullName">{t('auth.full_name')}</Label>
+              <Input
+                id="fullName"
+                type="text"
+                placeholder="John Doe"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="email">{t('auth.email')}</Label>
               <Input
                 id="email"
@@ -100,7 +128,7 @@ const Signup = () => {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full bg-gradient-to-r from-brand-warm-start to-brand-warm-end text-white hover:opacity-90" disabled={loading}>
               {loading ? t('auth.signup_button') + "..." : t('auth.signup_button')}
             </Button>
             <p className="text-center text-sm text-muted-foreground">

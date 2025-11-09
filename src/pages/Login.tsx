@@ -93,7 +93,7 @@ const Login = () => {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full bg-gradient-to-r from-brand-warm-start to-brand-warm-end text-white hover:opacity-90" disabled={loading}>
               {loading ? t('auth.login_button') + "..." : t('auth.login_button')}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
