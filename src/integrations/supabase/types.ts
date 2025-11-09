@@ -14,7 +14,216 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      activities: {
+        Row: {
+          activity_type: string
+          created_at: string | null
+          id: string
+          target_id: string | null
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string | null
+          id?: string
+          target_id?: string | null
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string | null
+          id?: string
+          target_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activities_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      followers: {
+        Row: {
+          created_at: string | null
+          following_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          following_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          following_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "followers_following_id_fkey"
+            columns: ["following_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "followers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      wishlist_items: {
+        Row: {
+          added_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          item_url: string | null
+          price: number | null
+          status: string | null
+          title: string
+          wishlist_id: string
+        }
+        Insert: {
+          added_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          item_url?: string | null
+          price?: number | null
+          status?: string | null
+          title: string
+          wishlist_id: string
+        }
+        Update: {
+          added_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          item_url?: string | null
+          price?: number | null
+          status?: string | null
+          title?: string
+          wishlist_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_items_wishlist_id_fkey"
+            columns: ["wishlist_id"]
+            isOneToOne: false
+            referencedRelation: "wishlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wishlist_reservations: {
+        Row: {
+          created_at: string | null
+          id: string
+          item_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          item_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_reservations_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: true
+            referencedRelation: "wishlist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_reservations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wishlists: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          event_date: string | null
+          id: string
+          privacy_level: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          privacy_level?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          privacy_level?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
