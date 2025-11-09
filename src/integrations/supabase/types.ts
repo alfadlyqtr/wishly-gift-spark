@@ -46,6 +46,178 @@ export type Database = {
           },
         ]
       }
+      ai_logs: {
+        Row: {
+          created_at: string | null
+          function_name: string | null
+          id: string
+          prompt: string | null
+          response: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          function_name?: string | null
+          id?: string
+          prompt?: string | null
+          response?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          function_name?: string | null
+          id?: string
+          prompt?: string | null
+          response?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_recommendations: {
+        Row: {
+          budget_max: number | null
+          created_at: string | null
+          id: string
+          keywords: string | null
+          recommendation_data: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          budget_max?: number | null
+          created_at?: string | null
+          id?: string
+          keywords?: string | null
+          recommendation_data?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          budget_max?: number | null
+          created_at?: string | null
+          id?: string
+          keywords?: string | null
+          recommendation_data?: Json | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_recommendations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          start_date: string | null
+          store_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          start_date?: string | null
+          store_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          start_date?: string | null
+          store_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comments: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          target_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          target_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          target_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string | null
+          event_date: string
+          id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_date: string
+          id?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_date?: string
+          id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       followers: {
         Row: {
           created_at: string | null
@@ -81,6 +253,568 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      gift_circle_members: {
+        Row: {
+          circle_id: string
+          id: string
+          joined_at: string | null
+          user_id: string
+        }
+        Insert: {
+          circle_id: string
+          id?: string
+          joined_at?: string | null
+          user_id: string
+        }
+        Update: {
+          circle_id?: string
+          id?: string
+          joined_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_circle_members_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "gift_circles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_circle_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gift_circle_wishlists: {
+        Row: {
+          added_at: string | null
+          circle_id: string
+          id: string
+          wishlist_id: string
+        }
+        Insert: {
+          added_at?: string | null
+          circle_id: string
+          id?: string
+          wishlist_id: string
+        }
+        Update: {
+          added_at?: string | null
+          circle_id?: string
+          id?: string
+          wishlist_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_circle_wishlists_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "gift_circles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_circle_wishlists_wishlist_id_fkey"
+            columns: ["wishlist_id"]
+            isOneToOne: false
+            referencedRelation: "wishlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gift_circles: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          id?: string
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_circles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gift_registry_log: {
+        Row: {
+          created_at: string | null
+          event_date: string | null
+          id: string
+          item_description: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_date?: string | null
+          id?: string
+          item_description: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_date?: string | null
+          id?: string
+          item_description?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_registry_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      giver_stats: {
+        Row: {
+          events_participated_in: number | null
+          gifts_given_count: number | null
+          last_gift_given_at: string | null
+          user_id: string
+        }
+        Insert: {
+          events_participated_in?: number | null
+          gifts_given_count?: number | null
+          last_gift_given_at?: string | null
+          user_id: string
+        }
+        Update: {
+          events_participated_in?: number | null
+          gifts_given_count?: number | null
+          last_gift_given_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "giver_stats_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invitations: {
+        Row: {
+          created_at: string | null
+          id: string
+          invite_code: string
+          invited_email: string | null
+          invited_user_id: string | null
+          inviting_user_id: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          invite_code: string
+          invited_email?: string | null
+          invited_user_id?: string | null
+          inviting_user_id: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          invite_code?: string
+          invited_email?: string | null
+          invited_user_id?: string | null
+          inviting_user_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_invited_user_id_fkey"
+            columns: ["invited_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitations_inviting_user_id_fkey"
+            columns: ["inviting_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leaderboards: {
+        Row: {
+          id: string
+          metric: string
+          period: string
+          score: number
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          metric: string
+          period: string
+          score: number
+          user_id: string
+        }
+        Update: {
+          id?: string
+          metric?: string
+          period?: string
+          score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaderboards_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memory_board: {
+        Row: {
+          giver_id: string | null
+          id: string
+          item_id: string | null
+          item_image_url: string | null
+          item_title: string
+          received_at: string | null
+          user_id: string
+        }
+        Insert: {
+          giver_id?: string | null
+          id?: string
+          item_id?: string | null
+          item_image_url?: string | null
+          item_title: string
+          received_at?: string | null
+          user_id: string
+        }
+        Update: {
+          giver_id?: string | null
+          id?: string
+          item_id?: string | null
+          item_image_url?: string | null
+          item_title?: string
+          received_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memory_board_giver_id_fkey"
+            columns: ["giver_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memory_board_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "wishlist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memory_board_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reactions: {
+        Row: {
+          created_at: string | null
+          id: string
+          reaction_type: string
+          target_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          reaction_type: string
+          target_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          reaction_type?: string
+          target_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_analytics: {
+        Row: {
+          count: number | null
+          id: string
+          logged_at: string | null
+          metric_type: string
+          store_id: string
+        }
+        Insert: {
+          count?: number | null
+          id?: string
+          logged_at?: string | null
+          metric_type: string
+          store_id: string
+        }
+        Update: {
+          count?: number | null
+          id?: string
+          logged_at?: string | null
+          metric_type?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_analytics_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_items: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          price: number | null
+          store_id: string
+          store_url: string | null
+          tags: string[] | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          price?: number | null
+          store_id: string
+          store_url?: string | null
+          tags?: string[] | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          price?: number | null
+          store_id?: string
+          store_url?: string | null
+          tags?: string[] | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_items_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stores: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_verified: boolean | null
+          logo_url: string | null
+          owner_id: string
+          store_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_verified?: boolean | null
+          logo_url?: string | null
+          owner_id: string
+          store_name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_verified?: boolean | null
+          logo_url?: string | null
+          owner_id?: string
+          store_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stores_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thank_you_cards: {
+        Row: {
+          created_at: string | null
+          id: string
+          memory_board_id: string
+          thank_you_note: string | null
+          thank_you_video_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          memory_board_id: string
+          thank_you_note?: string | null
+          thank_you_video_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          memory_board_id?: string
+          thank_you_note?: string | null
+          thank_you_video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thank_you_cards_memory_board_id_fkey"
+            columns: ["memory_board_id"]
+            isOneToOne: false
+            referencedRelation: "memory_board"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thread_participants: {
+        Row: {
+          id: string
+          joined_at: string | null
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string | null
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string | null
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_participants_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thread_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      threads: {
+        Row: {
+          created_at: string | null
+          id: string
+          title: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          title?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          title?: string | null
+        }
+        Relationships: []
       }
       user_profiles: {
         Row: {
@@ -194,6 +928,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           event_date: string | null
+          event_id: string | null
           id: string
           privacy_level: string | null
           title: string
@@ -203,6 +938,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           event_date?: string | null
+          event_id?: string | null
           id?: string
           privacy_level?: string | null
           title: string
@@ -212,12 +948,20 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           event_date?: string | null
+          event_id?: string | null
           id?: string
           privacy_level?: string | null
           title?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "wishlists_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "wishlists_user_id_fkey"
             columns: ["user_id"]
