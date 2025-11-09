@@ -1,0 +1,35 @@
+{
+  "hero": {
+    "title": "Stop Guessing. Start Wishing.",
+    "subtitle": "The social wishlist app that makes every occasion special. Create, share, and celebrate.",
+    "cta_signup": "Create Your First Wishlist",
+    "cta_login": "Already have an account?"
+  },
+  "how_it_works": {
+    "title": "How it Works",
+    "step1_title": "Add a Wish",
+    "step1_desc": "Snap a photo, paste a link, or just type. Our AI does the rest.",
+    "step2_title": "Share with Friends",
+    "step2_desc": "Control your privacy. Share with everyone, just friends, or keep it private.",
+    "step3_title": "Get it Right",
+    "step3_desc": "Friends can anonymously reserve gifts, so there are no duplicates."
+  },
+  "final_cta": {
+    "title": "Ready to celebrate?",
+    "button": "Get Started Free"
+  },
+  "auth": {
+    "login_title": "Welcome Back",
+    "login_subtitle": "Sign in to access your wishlists",
+    "signup_title": "Create Account",
+    "signup_subtitle": "Join Wishly and start creating wishlists",
+    "email": "Email",
+    "password": "Password",
+    "login_button": "Sign In",
+    "signup_button": "Sign Up",
+    "no_account": "Don't have an account?",
+    "have_account": "Already have an account?",
+    "sign_up": "Sign up",
+    "sign_in": "Sign in"
+  }
+}
