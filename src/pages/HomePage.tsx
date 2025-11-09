@@ -52,7 +52,7 @@ const HomePage = () => {
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center">
-        <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+        <h1 className="text-5xl md:text-6xl font-bold mb-6 text-primary">
           {t('hero.title')}
         </h1>
         <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
@@ -62,7 +62,7 @@ const HomePage = () => {
           <Button
             size="lg"
             onClick={() => navigate('/signup')}
-            className="text-lg px-8"
+            className="text-lg px-8 bg-gradient-to-r from-brand-warm-start to-brand-warm-end text-white hover:opacity-90"
           >
             {t('hero.cta_signup')}
           </Button>
@@ -78,15 +78,15 @@ const HomePage = () => {
 
       {/* How It Works Section */}
       <section className="container mx-auto px-4 py-20">
-        <h2 className="text-4xl font-bold text-center mb-12">
+        <h2 className="text-4xl font-bold text-center mb-12 text-primary">
           {t('how_it_works.title')}
         </h2>
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {steps.map((step, index) => (
-            <Card key={index} className="border-2 hover:border-primary/50 transition-colors">
+            <Card key={index} className="border-2 hover:border-primary/50 transition-colors bg-muted shadow-md">
               <CardContent className="pt-6 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                  <step.icon className="w-8 h-8 text-primary" />
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-accent/10 flex items-center justify-center">
+                  <step.icon className="w-8 h-8 text-accent" />
                 </div>
                 <h3 className="text-xl font-semibold mb-3">{step.title}</h3>
                 <p className="text-muted-foreground">{step.description}</p>
@@ -98,11 +98,11 @@ const HomePage = () => {
 
       {/* Final CTA Section */}
       <section className="container mx-auto px-4 py-20 text-center">
-        <h2 className="text-4xl font-bold mb-6">{t('final_cta.title')}</h2>
+        <h2 className="text-4xl font-bold mb-6 text-primary">{t('final_cta.title')}</h2>
         <Button
           size="lg"
           onClick={() => navigate('/signup')}
-          className="text-lg px-12"
+          className="text-lg px-12 bg-gradient-to-r from-brand-warm-start to-brand-warm-end text-white hover:opacity-90"
         >
           {t('final_cta.button')}
         </Button>
