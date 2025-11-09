@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,11 +18,6 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!supabase) {
-      navigate("/");
-      return;
-    }
-    
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         navigate("/dashboard");
@@ -32,12 +27,6 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!supabase) {
-      toast.error("Backend not configured. Please enable Lovable Cloud.");
-      return;
-    }
-    
     setLoading(true);
 
     const { error } = await supabase.auth.signInWithPassword({
