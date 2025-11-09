@@ -12,6 +12,12 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Skip auth check if Supabase isn't configured
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
@@ -32,6 +38,11 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
+  }
+
+  // Allow access if Supabase isn't configured (demo mode)
+  if (!supabase) {
+    return <>{children}</>;
   }
 
   if (!session) {

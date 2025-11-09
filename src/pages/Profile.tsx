@@ -10,6 +10,11 @@ const Profile = () => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    if (!supabase) {
+      toast.error("Backend not configured");
+      return;
+    }
+    
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast.error("Error signing out");

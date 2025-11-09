@@ -15,6 +15,11 @@ const Signup = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!supabase) {
+      navigate("/");
+      return;
+    }
+    
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         navigate("/");
@@ -24,6 +29,12 @@ const Signup = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!supabase) {
+      toast.error("Backend not configured. Please enable Lovable Cloud.");
+      return;
+    }
+    
     setLoading(true);
 
     const redirectUrl = `${window.location.origin}/`;
