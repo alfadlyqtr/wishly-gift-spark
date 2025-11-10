@@ -44,6 +44,13 @@ export type Database = {
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "activities_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_logs: {
@@ -79,6 +86,13 @@ export type Database = {
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_recommendations: {
@@ -112,6 +126,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_recommendations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
             referencedColumns: ["id"]
           },
         ]
@@ -152,6 +173,13 @@ export type Database = {
             referencedRelation: "stores"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "campaigns_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["store_id"]
+          },
         ]
       }
       comments: {
@@ -184,6 +212,13 @@ export type Database = {
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["id"]
+          },
         ]
       }
       events: {
@@ -214,6 +249,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
             referencedColumns: ["id"]
           },
         ]
@@ -249,10 +291,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "followers_following_id_fkey"
+            columns: ["following_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "followers_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "followers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
             referencedColumns: ["id"]
           },
         ]
@@ -289,6 +345,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_circle_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
             referencedColumns: ["id"]
           },
         ]
@@ -356,6 +419,13 @@ export type Database = {
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "gift_circles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["id"]
+          },
         ]
       }
       gift_exchange_participants: {
@@ -389,6 +459,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "gift_exchange_participants_assigned_giftee_id_fkey"
+            columns: ["assigned_giftee_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "gift_exchange_participants_exchange_id_fkey"
             columns: ["exchange_id"]
             isOneToOne: false
@@ -400,6 +477,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_exchange_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
             referencedColumns: ["id"]
           },
         ]
@@ -438,6 +522,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_exchanges_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
             referencedColumns: ["id"]
           },
         ]
@@ -482,6 +573,13 @@ export type Database = {
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "gift_ratings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["id"]
+          },
         ]
       }
       gift_registry_log: {
@@ -514,6 +612,13 @@ export type Database = {
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "gift_registry_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["id"]
+          },
         ]
       }
       giver_stats: {
@@ -541,6 +646,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "giver_stats_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "verified_brands"
             referencedColumns: ["id"]
           },
         ]
@@ -582,10 +694,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invitations_invited_user_id_fkey"
+            columns: ["invited_user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "invitations_inviting_user_id_fkey"
             columns: ["inviting_user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitations_inviting_user_id_fkey"
+            columns: ["inviting_user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
             referencedColumns: ["id"]
           },
         ]
@@ -618,6 +744,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leaderboards_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
             referencedColumns: ["id"]
           },
         ]
@@ -659,6 +792,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "memory_board_giver_id_fkey"
+            columns: ["giver_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "memory_board_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
@@ -670,6 +810,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memory_board_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
             referencedColumns: ["id"]
           },
         ]
@@ -711,6 +858,13 @@ export type Database = {
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["id"]
+          },
         ]
       }
       reactions: {
@@ -741,6 +895,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
             referencedColumns: ["id"]
           },
         ]
@@ -774,6 +935,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "stores"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_analytics_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["store_id"]
           },
         ]
       }
@@ -819,6 +987,13 @@ export type Database = {
             referencedRelation: "stores"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "store_items_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["store_id"]
+          },
         ]
       }
       stores: {
@@ -855,6 +1030,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stores_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
             referencedColumns: ["id"]
           },
         ]
@@ -925,6 +1107,13 @@ export type Database = {
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "thread_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["id"]
+          },
         ]
       }
       threads: {
@@ -952,6 +1141,7 @@ export type Database = {
           dob: string | null
           full_name: string | null
           id: string
+          is_brand: boolean | null
           username: string
         }
         Insert: {
@@ -960,6 +1150,7 @@ export type Database = {
           dob?: string | null
           full_name?: string | null
           id: string
+          is_brand?: boolean | null
           username: string
         }
         Update: {
@@ -968,6 +1159,7 @@ export type Database = {
           dob?: string | null
           full_name?: string | null
           id?: string
+          is_brand?: boolean | null
           username?: string
         }
         Relationships: []
@@ -994,6 +1186,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
             referencedColumns: ["id"]
           },
         ]
@@ -1046,20 +1245,23 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          is_anonymous: boolean | null
           item_id: string
-          user_id: string
+          reserved_by_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
+          is_anonymous?: boolean | null
           item_id: string
-          user_id: string
+          reserved_by_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
+          is_anonymous?: boolean | null
           item_id?: string
-          user_id?: string
+          reserved_by_id?: string
         }
         Relationships: [
           {
@@ -1071,9 +1273,16 @@ export type Database = {
           },
           {
             foreignKeyName: "wishlist_reservations_user_id_fkey"
-            columns: ["user_id"]
+            columns: ["reserved_by_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_reservations_user_id_fkey"
+            columns: ["reserved_by_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
             referencedColumns: ["id"]
           },
         ]
@@ -1124,11 +1333,32 @@ export type Database = {
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "wishlists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      verified_brands: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string | null
+          is_brand: boolean | null
+          store_id: string | null
+          store_logo: string | null
+          store_name: string | null
+          store_verified: boolean | null
+          username: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
