@@ -2,6 +2,12 @@ import { motion, useMotionValue, useTransform } from 'motion/react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './WishlistStack.css';
+import { Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export type WishlistCard = { id: string; title: string };
 
@@ -70,6 +76,9 @@ export default function WishlistStack({
 }: WishlistStackProps) {
   const [stack, setStack] = useState(cards);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [target, setTarget] = useState<{ id: string; title: string } | null>(null);
 
   const sendToBack = (id: string) => {
     setStack((prev) => {
@@ -124,11 +133,62 @@ export default function WishlistStack({
                 >
                   Open
                 </button>
+                {card.title !== 'My Birthday Wishlist' && (
+                  <button
+                    type="button"
+                    className="wl-delete-btn"
+                    aria-label="Delete wishlist"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (card.title === 'My Birthday Wishlist') {
+                        toast.error('Birthday wishlist cannot be deleted');
+                        return;
+                      }
+                      setTarget({ id: card.id, title: card.title });
+                      setDeleteOpen(true);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </motion.div>
           </CardRotate>
         );
       })}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Wishlist?</DialogTitle>
+          </DialogHeader>
+          <p>Are you sure you want to delete “{target?.title}”?</p>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!target) return;
+                try {
+                  const { error } = await supabase.from('wishlists').delete().eq('id', target.id);
+                  if (error) throw error;
+                  toast.success('Wishlist deleted');
+                  setStack((prev) => prev.filter((c) => c.id !== target.id));
+                  setDeleteOpen(false);
+                  setTarget(null);
+                  await queryClient.invalidateQueries({ queryKey: ['wishlists'] });
+                  await queryClient.invalidateQueries({
+                    predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'events'
+                  });
+                } catch (e: any) {
+                  toast.error(e?.message || 'Failed to delete');
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
