@@ -11,7 +11,7 @@ import { MapPin } from "phosphor-react";
 import ReactCountryFlag from "react-country-flag";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useProfileData } from "@/hooks/use-profile";
 import CreateWishlistModal from "@/components/wishes/CreateWishlistModal";
 import { useWishlists } from "@/hooks/use-wishlists";
@@ -28,6 +28,35 @@ const Profile = () => {
   const { data, isLoading } = useProfileData();
   const { data: wishlists, isLoading: isWishlistsLoading } = useWishlists();
   const { t } = useTranslation();
+
+  const followersFollowing = useQuery({
+    queryKey: ["profile", "social"],
+    queryFn: async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) return { followers: 0, following: 0 };
+      try {
+        const [r1, r2] = await Promise.all([
+          supabase
+            .from("followers")
+            .select("id", { count: "exact", head: true })
+            .eq("following_id", uid)
+            .eq("status", "accepted"),
+          supabase
+            .from("followers")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", uid)
+            .eq("status", "accepted"),
+        ]);
+        return {
+          followers: (r1.count as number | null) ?? 0,
+          following: (r2.count as number | null) ?? 0,
+        };
+      } catch {
+        return { followers: 0, following: 0 };
+      }
+    },
+  });
 
   const zodiacKey = useMemo(() => {
     const dobStr = data?.profile?.dob;
@@ -162,7 +191,7 @@ const Profile = () => {
         <div className="space-y-6 pt-0">
           <Card className="overflow-hidden rounded-2xl shadow-xl">
             {/* Gradient mesh header with avatar */}
-            <div className="relative min-h-80 md:h-56 w-full overflow-hidden pb-3">
+            <div className="relative min-h-[28rem] md:h-[22rem] w-full overflow-hidden pb-5">
               {/* Radial mesh background (brand colors) */}
               <div
                 className="absolute inset-0"
@@ -251,6 +280,19 @@ const Profile = () => {
                       if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
                       return `${age}y`;
                     })()}
+                  </div>
+                </div>
+              </div>
+              {/* Followers/Following glass bar at bottom of header */}
+              <div className="absolute left-3 right-3 bottom-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl bg-black/15 text-white ring-1 ring-white/70 shadow-[0_8px_24px_rgba(0,0,0,0.22)] px-4 py-2 text-center">
+                    <div className="text-2xl font-extrabold drop-shadow-[0_3px_6px_rgba(0,0,0,0.7)]">{followersFollowing.data?.followers ?? 0}</div>
+                    <div className="text-[11px] tracking-wide opacity-95">Followers</div>
+                  </div>
+                  <div className="rounded-2xl bg-black/15 text-white ring-1 ring-white/70 shadow-[0_8px_24px_rgba(0,0,0,0.22)] px-4 py-2 text-center">
+                    <div className="text-2xl font-extrabold drop-shadow-[0_3px_6px_rgba(0,0,0,0.7)]">{followersFollowing.data?.following ?? 0}</div>
+                    <div className="text-[11px] tracking-wide opacity-95">Following</div>
                   </div>
                 </div>
               </div>

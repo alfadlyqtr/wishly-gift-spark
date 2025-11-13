@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import BackButton from "@/components/BackButton";
 import { Bell } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { acceptFollowRequest, declineFollowRequest } from "@/lib/follow";
 
 const Notifications = () => {
   const [uid, setUid] = useState<string | null>(null);
@@ -29,6 +31,36 @@ const Notifications = () => {
     },
   });
 
+  const queryClient = useQueryClient();
+  const pendingFollows = useQuery({
+    queryKey: ["notifications", "pending_follows", uid],
+    enabled: !!supabase && !!uid,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("followers")
+        .select("user_id, created_at, user_profiles!followers_user_id_fkey(id, username, full_name, avatar_url)")
+        .eq("following_id", uid as string)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const approve = useMutation({
+    mutationFn: (fromUserId: string) => acceptFollowRequest(fromUserId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications", "pending_follows"] });
+      queryClient.invalidateQueries({ queryKey: ["profile", "social"] });
+    },
+  });
+  const decline = useMutation({
+    mutationFn: (fromUserId: string) => declineFollowRequest(fromUserId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications", "pending_follows"] });
+    },
+  });
+
   return (
     <div className="container max-w-2xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
@@ -45,7 +77,36 @@ const Notifications = () => {
         <BackButton onClick={() => navigate('/dashboard')}>Back</BackButton>
       </div>
 
+      {/* Approvals Section */}
       <div className="space-y-2">
+        <div className="rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-3">
+          <div className="font-bold mb-2">Follow Requests</div>
+          {pendingFollows.isLoading ? (
+            <div className="text-sm text-muted-foreground">Loading...</div>
+          ) : (pendingFollows.data as any[]).length === 0 ? (
+            <div className="text-xs text-muted-foreground">No pending requests</div>
+          ) : (
+            (pendingFollows.data as any[]).map((r: any) => (
+              <div key={`${r.user_id}-${r.created_at}`} className="flex items-center justify-between rounded-xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-2 mb-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="relative flex shrink-0 overflow-hidden rounded-full h-9 w-9 ring-2 ring-white/80">
+                    <img className="h-full w-full object-cover" src={r.user_profiles?.avatar_url || "/avatar.svg"} alt={r.user_profiles?.full_name || r.user_profiles?.username || "user"} />
+                  </span>
+                  <div className="leading-tight min-w-0">
+                    <div className="font-semibold truncate max-w-[160px]">{r.user_profiles?.full_name || r.user_profiles?.username || r.user_id}</div>
+                    <div className="text-xs text-muted-foreground truncate max-w-[200px]">Requested to follow you</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="gradient" onClick={() => approve.mutate(r.user_id)} disabled={approve.isPending}>Approve</Button>
+                  <Button size="sm" variant="ghost" onClick={() => decline.mutate(r.user_id)} disabled={decline.isPending}>Decline</Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Activity Feed */}
         {isLoading ? (
           <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 text-sm text-muted-foreground">Loading...</div>
         ) : (data as any[]).length === 0 ? (

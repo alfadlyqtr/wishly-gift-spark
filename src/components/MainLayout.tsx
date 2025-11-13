@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { Home, Store, Calendar, User, Plus, Bell, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,30 @@ import { toast } from "sonner";
 export const MainLayout = () => {
   const location = useLocation();
   const [addOpen, setAddOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState<number>(0);
   const { data: wishlistsData } = useWishlists();
 
   const isActive = (path: string) => location.pathname === path;
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const uid = user?.id;
+        if (!uid) return;
+        const { count } = await supabase
+          .from("followers")
+          .select("id", { count: "exact", head: true })
+          .eq("following_id", uid)
+          .eq("status", "pending");
+        if (mounted) setPendingCount((count as number | null) ?? 0);
+      } catch {
+        if (mounted) setPendingCount(0);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -27,7 +48,13 @@ export const MainLayout = () => {
           <Link to="/notifications">
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
-              <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-secondary" />
+              {pendingCount > 0 ? (
+                <span className="absolute -right-1 -top-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-[10px] leading-[18px] text-white text-center ring-1 ring-white/70 shadow-[0_6px_14px_rgba(0,0,0,0.15)]">
+                  {Math.min(pendingCount, 9)}{pendingCount > 9 ? "+" : ""}
+                </span>
+              ) : (
+                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-secondary" />
+              )}
             </Button>
           </Link>
           <Link to="/messages">
