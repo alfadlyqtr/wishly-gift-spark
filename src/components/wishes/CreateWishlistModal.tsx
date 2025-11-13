@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -68,6 +68,9 @@ const CreateWishlistModal: React.FC<CreateWishlistModalProps> = ({ children, def
 
       toast.success("Wishlist created");
       await queryClient.invalidateQueries({ queryKey: ["wishlists"] });
+      await queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'events'
+      });
       setOpen(false);
       setTitle("");
       setDescription("");
@@ -84,58 +87,67 @@ const CreateWishlistModal: React.FC<CreateWishlistModalProps> = ({ children, def
   };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>{children}</SheetTrigger>
-      <SheetContent side="bottom" className="max-w-full sm:max-w-md mx-auto w-full rounded-t-xl bottom-6 sm:bottom-8">
-        <SheetHeader>
-          <SheetTitle>{t('wishlist.create_title', 'Create Wishlist')}</SheetTitle>
-          <SheetDescription>{t('wishlist.create_hint', 'Start with a title and optional details. You can customize more later.')}</SheetDescription>
-        </SheetHeader>
+    <>
+      {/* Wrap children to avoid ref warnings */}
+      <span role="button" onClick={() => setOpen(true)} style={{ display: 'inline-flex' }}>
+        {children}
+      </span>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('wishlist.create_title', 'Create Wishlist')}</DialogTitle>
+            <DialogDescription>{t('wishlist.create_hint', 'Start with a title and optional details. You can customize more later.')}</DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="wl-title">{t('common.title', 'Title')}</Label>
-            <Input
-              id="wl-title"
-              placeholder="Birthday 2026"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-            />
+          <div className="mx-auto w-full max-w-2xl rounded-2xl p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
+            <div className="rounded-2xl bg-white/90 backdrop-blur p-5 ring-1 ring-white/70 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="wl-title">{t('common.title', 'Title')}</Label>
+                <Input
+                  id="wl-title"
+                  placeholder="Birthday 2026"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="wl-description">{t('common.description_optional', 'Description (optional)')}</Label>
+                <Textarea
+                  id="wl-description"
+                  placeholder="A few words about this wishlist"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="wl-event-date">{t('wishlist.event_date', 'Event Date')}</Label>
+                <Input
+                  id="wl-event-date"
+                  type="date"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                />
+              </div>
+
+              <DialogFooter>
+                <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+                  <Button variant="secondary" onClick={() => setOpen(false)} disabled={saving}>
+                    {t('common.cancel', 'Cancel')}
+                  </Button>
+                  <Button onClick={handleCreate} disabled={saving || !title.trim()}>
+                    {saving ? t('common.creating', 'Creating...') : t('common.create', 'Create')}
+                  </Button>
+                </div>
+              </DialogFooter>
+            </div>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="wl-description">{t('common.description_optional', 'Description (optional)')}</Label>
-            <Textarea
-              id="wl-description"
-              placeholder="A few words about this wishlist"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="wl-event-date">{t('wishlist.event_date', 'Event Date')}</Label>
-            <Input
-              id="wl-event-date"
-              type="date"
-              value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <SheetFooter>
-          <Button variant="secondary" onClick={() => setOpen(false)} disabled={saving}>
-            {t('common.cancel', 'Cancel')}
-          </Button>
-          <Button onClick={handleCreate} disabled={saving || !title.trim()}>
-            {saving ? t('common.creating', 'Creating...') : t('common.create', 'Create')}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

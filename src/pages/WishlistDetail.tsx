@@ -1,12 +1,15 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import BackButton from "@/components/BackButton";
 import WishAddDialog from "@/components/wishes/WishAddDialog";
 import { useWishlists } from "@/hooks/use-wishlists";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTranslation } from "react-i18next";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -21,6 +24,11 @@ const WishlistDetail = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<WishlistItem | null>(null);
   const { data: wishlistsData } = useWishlists();
+  const queryClient = useQueryClient();
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["wishlist-detail", id],
@@ -38,6 +46,8 @@ const WishlistDetail = () => {
       return { wishlist: wl as Wishlist, items: (items as WishlistItem[]) ?? [] };
     },
   });
+
+  const isBirthdayWishlist = (data?.wishlist?.title || "") === "My Birthday Wishlist";
 
   const items = useMemo(() => data?.items ?? [], [data]);
   const wishlistsOptions = useMemo(
@@ -79,7 +89,70 @@ const WishlistDetail = () => {
         <div className="wl-card" style={{ width: 420 }}>
           <div className="wl-card-surface p-5 text-white" style={{ alignItems: 'flex-start', justifyContent: 'flex-start' }}>
             <div className="w-full">
-              <h2 className="text-2xl font-extrabold wl-card-title" style={{ textAlign: 'left' }}>{data?.wishlist?.title || "Wishlist"}</h2>
+              <div className="flex items-center gap-2">
+                {!isEditingTitle || isBirthdayWishlist ? (
+                  <>
+                    <h2 className="text-2xl font-extrabold wl-card-title" style={{ textAlign: 'left' }}>{data?.wishlist?.title || "Wishlist"}</h2>
+                    {!isBirthdayWishlist && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center rounded-md p-1.5 text-white/90 hover:text-white hover:bg-white/10 transition"
+                        aria-label="Edit title"
+                        onClick={() => {
+                          setTitleDraft(data?.wishlist?.title || "");
+                          setIsEditingTitle(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={titleDraft}
+                      onChange={(e) => setTitleDraft(e.target.value)}
+                      className="h-9 w-64 text-black"
+                      autoFocus
+                    />
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          if (!id) return;
+                          const newTitle = titleDraft.trim();
+                          if (!newTitle) return;
+                          const { error } = await supabase
+                            .from("wishlists")
+                            .update({ title: newTitle })
+                            .eq("id", id);
+                          if (error) throw error;
+                          setIsEditingTitle(false);
+                          await refetch();
+                          await queryClient.invalidateQueries({ queryKey: ["wishlists"] });
+                          await queryClient.invalidateQueries({
+                            predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'events'
+                          });
+                          toast.success("Title updated");
+                        } catch (e: any) {
+                          toast.error(e?.message || "Failed to update title");
+                        }
+                      }}
+                      aria-label="Save title"
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setIsEditingTitle(false)}
+                      aria-label="Cancel editing"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
               <p className="mt-0.5 text-xs opacity-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">This wishlist contains ({items.length}/10)</p>
               {data?.wishlist?.description && (
                 <p className="mt-1 text-sm opacity-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{data.wishlist.description}</p>
@@ -96,12 +169,22 @@ const WishlistDetail = () => {
                       <div key={it.id} className="py-3">
                         <div className="flex items-start gap-3">
                           {it.image_url ? (
-                            <img
-                              src={it.image_url}
-                              alt={it.title}
-                              className="h-16 w-16 flex-none rounded-md object-cover ring-1 ring-white/30 shadow-sm"
-                              loading="lazy"
-                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPreviewSrc(it.image_url!);
+                                setPreviewOpen(true);
+                              }}
+                              className="focus:outline-none"
+                              aria-label="Preview image"
+                            >
+                              <img
+                                src={it.image_url}
+                                alt={it.title || 'Preview'}
+                                className="h-16 w-16 flex-none rounded-md object-cover ring-1 ring-white/30 shadow-sm"
+                                loading="lazy"
+                              />
+                            </button>
                           ) : null}
                           <div className="flex min-w-0 flex-1 flex-col">
                             <div className="flex items-center gap-2">
@@ -274,6 +357,18 @@ const WishlistDetail = () => {
           </div>
         </div>
       </div>
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Preview</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center">
+            {previewSrc ? (
+              <img src={previewSrc} alt="Preview" className="max-h-[75vh] max-w-full object-contain rounded-md" />
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

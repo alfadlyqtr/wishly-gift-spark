@@ -114,29 +114,20 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent className="sm:max-w-md bg-transparent shadow-none p-4 w-full">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle className="sr-only">{itemId ? "Edit Wish" : "Add Wish"}</DialogTitle>
         </DialogHeader>
-        <div
-          className="mx-auto w-full shadow-[0_25px_50px_rgba(0,0,0,0.35)] p-6 text-black transition-all duration-500"
-          style={{
-            borderTopLeftRadius: "2rem",
-            borderBottomRightRadius: "2rem",
-            minHeight: "28rem",
-            backgroundColor: "#4158D0",
-            backgroundImage: "linear-gradient(43deg, #4158D0 0%, #C850C0 46%, #FFCC70 100%)",
-          }}
-        >
-          <h3 className="heading text-center font-semibold text-lg text-white">{itemId ? "Edit Wish" : "Add Wish"}</h3>
+        <div className="mx-auto w-full max-w-3xl rounded-2xl p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
+          <div className="rounded-2xl bg-white/90 backdrop-blur p-6 ring-1 ring-white/70">
+            <h3 className="heading text-center font-semibold text-lg text-foreground">{itemId ? "Edit Wish" : "Create Wishlist Item"}</h3>
 
-          <div className="mt-2 space-y-3 overflow-y-auto pr-1">
-            {/* Wishlist */}
+            <div className="mt-2 space-y-3 overflow-y-auto pr-1">
             <div className="input-div flex flex-col">
-              <Label className="text-white/95 mb-1">Wishlist</Label>
+              <Label className="mb-1">Wishlist</Label>
               <Select value={wishlistId} onValueChange={setWishlistId}>
-                <SelectTrigger disabled={!!fixedWishlistId} className="h-11 text-[15px] px-3 rounded-xl border border-white/90 bg-white/10 backdrop-blur-[1px] focus:ring-0 focus:outline-none focus:border-white hover:border-white text-white disabled:opacity-80 disabled:cursor-not-allowed">
-                  <SelectValue placeholder="Tap to choose a wishlist" className="text-white/85" />
+                <SelectTrigger disabled={!!fixedWishlistId} className="h-11 text-[15px] px-3 rounded-xl">
+                  <SelectValue placeholder="Tap to choose a wishlist" />
                 </SelectTrigger>
                 <SelectContent>
                   {wishlists.map((w) => (
@@ -151,11 +142,9 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
 
             {/* Upload (animated folder with sliding preview) */}
             <div className="input-div flex flex-col">
-              <Label className="text-white/95 mb-1">Upload Image</Label>
+              <Label className="mb-1">Upload Image</Label>
               {/* Inline keyframes for float */}
-              <style>{`
-                @keyframes folder-float {0%{transform:translateY(0)}50%{transform:translateY(-10px)}100%{transform:translateY(0)}}
-              `}</style>
+              <style>{`@keyframes folder-float {0%{transform:translateY(0)}50%{transform:translateY(-10px)}100%{transform:translateY(0)}}`}</style>
               <div
                 className="group relative w-full rounded-[20px] px-4 pt-16 pb-4 mx-auto"
                 style={{
@@ -202,25 +191,30 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                 </button>
                 <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
               </div>
+              {imageUrl ? (
+                <div className="mt-2">
+                  <Button type="button" variant="ghost" onClick={handleClearImage}>Clear Image</Button>
+                </div>
+              ) : null}
             </div>
 
             {/* Fields */}
             <div className="input-div flex flex-col">
-              <Label className="text-white/95 mb-1" htmlFor="title">Item Name</Label>
-              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Apple AirPods Pro (2nd gen)" className="h-11 text-[15px] px-3 rounded-xl border border-white/90 bg-white/10 backdrop-blur-[1px] focus:ring-0 focus:outline-none focus:border-white hover:border-white text-white placeholder:text-white/80" />
+              <Label className="mb-1" htmlFor="title">Item Name</Label>
+              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Apple AirPods Pro (2nd gen)" className="h-11 text-[15px] px-3 rounded-xl" />
             </div>
             <div className="input-div flex flex-col">
-              <Label className="text-white/95 mb-1" htmlFor="brand">Brand</Label>
-              <Input id="brand" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="e.g., Apple" className="h-11 text-[15px] px-3 rounded-xl border border-white/90 bg-white/10 backdrop-blur-[1px] focus:ring-0 focus:outline-none focus:border-white hover:border-white text-white placeholder:text-white/80" />
+              <Label className="mb-1" htmlFor="brand">Brand</Label>
+              <Input id="brand" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="e.g., Apple" className="h-11 text-[15px] px-3 rounded-xl" />
             </div>
             <div className="input-div flex flex-col">
-              <Label className="text-white/95 mb-1" htmlFor="desc">Description</Label>
-              <Textarea id="desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add size, color, or why you want it…" className="min-h-[84px] text-[15px] px-3 rounded-xl border border-white/90 bg-white/10 backdrop-blur-[1px] focus:ring-0 focus:outline-none focus:border-white hover:border-white text-white placeholder:text-white/80" />
+              <Label className="mb-1" htmlFor="desc">Description</Label>
+              <Textarea id="desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add size, color, or why you want it…" className="min-h-[84px] text-[15px] px-3 rounded-xl" />
             </div>
 
             {/* Ambivalence slider (0-4) with emojis */}
             <div className="input-div flex flex-col">
-              <Label className="text-white/95 mb-2">How badly do you want it?</Label>
+              <Label className="mb-2">How badly do you want it?</Label>
               <div className="flex w-full flex-col gap-2">
                 {/* Emoji rail */}
                 <div className="flex w-full items-center justify-between px-1 text-xl select-none">
@@ -241,11 +235,10 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
             {/* Actions */}
             <div className="button-div flex items-center justify-center gap-3 pt-2">
               <Button type="button" variant="secondary" onClick={() => onOpenChange?.(false)} className="px-6">Cancel</Button>
-              <Button type="button" disabled={!canSubmit} onClick={handleSubmit} className="submit bg-black text-white px-8 py-2"
-                style={{ borderTopLeftRadius: "1rem", borderBottomRightRadius: "1rem" }}
-              >{itemId ? "Update Wish" : "Save to Wishlist"}</Button>
+              <Button type="button" disabled={!canSubmit} onClick={handleSubmit} className="px-8 py-2 bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white rounded-xl">{itemId ? "Update Wish" : "Save to Wishlist"}</Button>
             </div>
           </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

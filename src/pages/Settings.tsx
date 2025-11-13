@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Shield, Trash2, Smartphone, Globe2, Bell } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { toast } from "sonner";
 
 const Settings = () => {
@@ -21,7 +22,10 @@ const Settings = () => {
   const [changingEmail, setChangingEmail] = useState(false);
 
   const [notifications, setNotifications] = useState<boolean>(true);
+  const [visibility, setVisibility] = useState<"public" | "private">("public");
+  const [loadingVisibility, setLoadingVisibility] = useState<boolean>(false);
   const [savingPrefs, setSavingPrefs] = useState(false);
+  const [visibilitySupported, setVisibilitySupported] = useState<boolean>(true);
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +45,57 @@ const Settings = () => {
       setChangingPassword(false);
     }
   };
+
+  // Load initial visibility from profile
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoadingVisibility(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data, error } = await (supabase as any)
+          .from("user_profiles")
+          .select("is_searchable")
+          .eq("id", user.id)
+          .single();
+        if (!error && data) {
+          setVisibility(data.is_searchable ? "public" : "private");
+          setVisibilitySupported(true);
+        } else if (error) {
+          setVisibilitySupported(false);
+        }
+      } finally {
+        setLoadingVisibility(false);
+      }
+    })();
+  }, []);
+
+  // Persist visibility on change
+  const saveVisibility = async (next: "public" | "private") => {
+    try {
+      setVisibility(next);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const { error } = await (supabase as any)
+        .from("user_profiles")
+        .update({ is_searchable: next === "public" })
+        .eq("id", user.id);
+      if (error) throw error;
+      toast.success(next === "public" ? t("settings.profile_public", "Profile set to public") : t("settings.profile_private", "Profile set to private"));
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to save visibility (ask to add column is_searchable:boolean)");
+      setVisibilitySupported(false);
+    }
+  };
+
+  // Keep dir attribute in sync with language
+  useEffect(() => {
+    const dir = i18n.language === "ar" ? "rtl" : "ltr";
+    document.documentElement.setAttribute("dir", dir);
+  }, [i18n.language]);
 
   const handleChangeEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,9 +175,7 @@ const Settings = () => {
     <div className="container max-w-2xl mx-auto px-4 py-6 space-y-6">
       {/* Header with Back and Page Title */}
       <div className="flex items-center justify-start">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> {t("settings.title", "Settings")}
-        </Button>
+        <BackButton onClick={() => navigate(-1)}>{t("settings.title", "Settings")}</BackButton>
       </div>
 
       {/* Account Security */}
@@ -183,21 +236,30 @@ const Settings = () => {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label className="flex items-center gap-2"><Globe2 className="h-4 w-4" /> {t("settings.language", "Language")}</Label>
-            <div className="flex items-center gap-2 rounded-md border p-2">
-              <Button
-                variant={i18n.language === "ar" ? "default" : "outline"}
-                size="sm"
-                onClick={() => i18n.changeLanguage("ar")}
-              >
-                العربية
-              </Button>
-              <Button
-                variant={i18n.language === "en" ? "default" : "outline"}
-                size="sm"
-                onClick={() => i18n.changeLanguage("en")}
-              >
-                English
-              </Button>
+            {/* Segmented control like Explore */}
+            <div className="relative rounded-full p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] w-full max-w-md" dir="ltr">
+              <div className="relative flex items-center rounded-full bg-white/70 backdrop-blur px-1 py-1 ring-1 ring-white/70 overflow-hidden" dir="ltr">
+                <span
+                  className="pointer-events-none absolute top-1 bottom-1 w-1/2 rounded-full p-[1px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))]/40 via-[hsl(var(--brand-cool-end))]/35 to-[hsl(var(--brand-warm-end))]/40 transition-all duration-300 ease-out"
+                  style={{ left: i18n.language === 'ar' ? '0px' : 'calc(50% + 0px)' }}
+                >
+                  <span className="relative block h-full w-full rounded-full bg-white/20 backdrop-blur-[2px]" />
+                </span>
+                <button
+                  type="button"
+                  onClick={() => i18n.changeLanguage("ar")}
+                  className={`relative z-10 flex-1 rounded-full px-4 py-2 text-xs font-semibold ${i18n.language === 'ar' ? 'text-foreground' : 'text-muted-foreground'}`}
+                >
+                  العربية
+                </button>
+                <button
+                  type="button"
+                  onClick={() => i18n.changeLanguage("en")}
+                  className={`relative z-10 flex-1 rounded-full px-4 py-2 text-xs font-semibold ${i18n.language === 'en' ? 'text-foreground' : 'text-muted-foreground'}`}
+                >
+                  English
+                </button>
+              </div>
             </div>
           </div>
           <div className="space-y-2">
@@ -209,6 +271,39 @@ const Settings = () => {
             <div className="pt-2">
               <Button onClick={savePreferences} disabled={savingPrefs}>{savingPrefs ? t("common.saving", "Saving...") : t("common.save", "Save")}</Button>
             </div>
+          </div>
+
+          {/* Profile visibility */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2"><Shield className="h-4 w-4" /> {t("settings.profile_visibility", "Profile Visibility")}</Label>
+            <p className="text-xs text-muted-foreground">{t("settings.profile_visibility_desc", "If public, people can find your profile in Explore search.")}</p>
+            <div className="relative rounded-full p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] w-full max-w-md">
+              <div className="relative flex items-center rounded-full bg-white/70 backdrop-blur px-1 py-1 ring-1 ring-white/70 overflow-hidden">
+                <span
+                  className="pointer-events-none absolute top-1 bottom-1 w-1/2 rounded-full p-[1px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))]/40 via-[hsl(var(--brand-cool-end))]/35 to-[hsl(var(--brand-warm-end))]/40 transition-all duration-300 ease-out"
+                  style={{ left: visibility === 'private' ? '0px' : 'calc(50% + 0px)' }}
+                >
+                  <span className="relative block h-full w-full rounded-full bg-white/20 backdrop-blur-[2px]" />
+                </span>
+                <button
+                  type="button"
+                  onClick={() => visibilitySupported && saveVisibility("private")}
+                  disabled={loadingVisibility || !visibilitySupported}
+                  className={`relative z-10 flex-1 rounded-full px-4 py-2 text-xs font-semibold ${visibility === 'private' ? 'text-foreground' : 'text-muted-foreground'}`}
+                >
+                  {t("settings.private", "Private")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => visibilitySupported && saveVisibility("public")}
+                  disabled={loadingVisibility || !visibilitySupported}
+                  className={`relative z-10 flex-1 rounded-full px-4 py-2 text-xs font-semibold ${visibility === 'public' ? 'text-foreground' : 'text-muted-foreground'}`}
+                >
+                  {t("settings.public", "Public")}
+                </button>
+              </div>
+            </div>
+            
           </div>
         </CardContent>
       </Card>

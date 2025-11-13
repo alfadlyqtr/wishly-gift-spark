@@ -42,16 +42,16 @@ export const MainLayout = () => {
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card shadow-lg">
         <div className="flex items-center justify-around px-2 py-2">
-          <Link to="/">
+          <Link to="/dashboard">
             <Button
               variant="ghost"
               size="sm"
               className={`flex flex-col items-center gap-1 h-auto py-2 ${
-                isActive("/") ? "text-primary" : "text-muted-foreground"
+                isActive("/dashboard") ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <Home className="h-5 w-5" />
-              <span className="text-xs">Home</span>
+              <img src={wishlyLogo} alt="Dash" className="h-5 w-5" />
+              <span className="text-xs">Dash</span>
             </Button>
           </Link>
 

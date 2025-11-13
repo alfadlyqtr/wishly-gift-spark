@@ -6,6 +6,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import WishlistStack from "@/components/wishes/WishlistStack";
+import CreateWishlistModal from "@/components/wishes/CreateWishlistModal";
+import AddButton from "@/components/AddButton";
 import ReactCountryFlag from "react-country-flag";
 import { useProfileData } from "@/hooks/use-profile";
 // General events will be filtered by user's country and is_public_holiday
@@ -106,7 +112,11 @@ const Events = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [monthFilter, setMonthFilter] = useState<number | 'all'>('all');
   const { data: profileBundle } = useProfileData();
-  
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDesc, setEditDesc] = useState("");
 
   const today = useMemo(() => new Date(), []);
 
@@ -118,7 +128,7 @@ const Events = () => {
     else if (/meet|coffee|dinner/.test(t)) glyph = '🗓️';
     return (
       <span
-        className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-base text-white shadow-[0_8px_18px_rgba(200,80,192,0.28)] ring-1 ring-white/50 bg-gradient-to-br from-[#FFCC70] via-[#C850C0] to-[#4158D0]"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-base text-white shadow-[0_8px_18px_rgba(200,80,192,0.28)] ring-1 ring-white/50 bg-gradient-to-br from-[hsl(var(--brand-warm-end))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-cool-start))]"
         aria-hidden="true"
       >
         {glyph}
@@ -176,11 +186,11 @@ const Events = () => {
   return (
     <div className="container max-w-2xl mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center gap-3">
-        <div className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#4158D0] via-[#C850C0] to-[#FFCC70] shadow-[0_12px_30px_rgba(200,80,192,0.45)] ring-1 ring-white/40">
+        <div className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_12px_30px_rgba(200,80,192,0.45)] ring-1 ring-white/40">
           <Calendar className="h-5 w-5 text-white drop-shadow" />
-          <span className="absolute -inset-1 rounded-[14px] blur-md bg-gradient-to-br from-[#ffcc70]/20 to-[#c850c0]/10" aria-hidden="true" />
+          <span className="absolute -inset-1 rounded-[14px] blur-md bg-gradient-to-br from-[hsl(var(--brand-warm-end))]/20 to-[hsl(var(--brand-cool-end))]/10" aria-hidden="true" />
         </div>
-        <h2 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[#4158D0] via-[#C850C0] to-[#FFCC70] drop-shadow">{t('events.title', 'Events')}</h2>
+        <h2 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow">{t('events.title', 'Events')}</h2>
       </div>
 
       <Tabs defaultValue="mine" className="w-full">
@@ -191,93 +201,30 @@ const Events = () => {
         </TabsList>
 
         <TabsContent value="mine" className="pt-4">
-          <Card className="border-0 rounded-2xl ring-1 ring-white/30 bg-gradient-to-br from-[#4158D0]/10 via-[#C850C0]/10 to-[#FFCC70]/10 shadow-[0_18px_40px_rgba(0,0,0,0.20)]">
-            <CardHeader className="pb-3">
+          <Card className="border-0 rounded-2xl ring-1 ring-white/30 bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/10 via-[hsl(var(--brand-cool-end))]/10 to-[hsl(var(--brand-warm-end))]/10 shadow-[0_18px_40px_rgba(0,0,0,0.20)]">
+            <CardHeader className="pb-3 flex items-center justify-between">
               <CardTitle className="text-base font-semibold">{t('events.tab_my', 'My Events')}</CardTitle>
+              <CreateWishlistModal>
+                <AddButton ariaLabel="Add Wishlist" />
+              </CreateWishlistModal>
             </CardHeader>
             <CardContent>
+              {(myEvents?.length ?? 0) > 0 && (
+                <div className="w-full flex justify-center py-6">
+                  <WishlistStack
+                    randomRotation={true}
+                    sensitivity={180}
+                    sendToBackOnClick={false}
+                    cardDimensions={{ width: 320, height: 190 }}
+                    cards={(myEvents || []).map((e) => ({ id: e.id, title: e.title || 'Untitled' }))}
+                  />
+                </div>
+              )}
               {loadingMy ? (
                 <p className="text-sm text-muted-foreground">{t('common.loading', 'Loading...')}</p>
               ) : (myEvents?.length ?? 0) === 0 ? (
                 <p className="text-sm text-muted-foreground">{t('events.empty_my', 'No upcoming events.')}</p>
-              ) : (
-                <div className="divide-y divide-white/20">
-                  {myEvents!.map((e) => (
-                    <div key={e.id} className="py-2">
-                      <div className="flex items-center justify-between rounded-xl bg-white/50 backdrop-blur px-3 py-2 ring-1 ring-white/60 shadow-sm hover:shadow-md transition-transform hover:-translate-y-[1px]">
-                        <div className="flex items-center gap-3 min-w-0">
-                          {eventBadge(e.title)}
-                          <div className="min-w-0">
-                            <div className="font-medium truncate">{(() => {
-                              const raw = e.title || t('events.untitled', 'Untitled');
-                              return raw === 'My Birthday Wishlist' ? 'My Birthday' : raw;
-                            })()}</div>
-                            {e.description && (
-                              <div className="text-sm text-muted-foreground line-clamp-1">{e.description}</div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-sm text-muted-foreground">
-                            {e.event_date ? new Date(e.event_date).toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}
-                          </div>
-                          {e.title !== 'My Birthday Wishlist' && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="hover:scale-105 transition"
-                                aria-label="Edit event"
-                                onClick={async () => {
-                                  const newTitle = window.prompt('Edit title', e.title ?? '') ?? undefined;
-                                  const newDesc = window.prompt('Edit description', e.description ?? '') ?? undefined;
-                                  if (newTitle === undefined && newDesc === undefined) return;
-                                  try {
-                                    const payload: any = {};
-                                    if (typeof newTitle === 'string') payload.title = newTitle;
-                                    if (typeof newDesc === 'string') payload.description = newDesc;
-                                    if (Object.keys(payload).length === 0) return;
-                                    await (supabase as any)
-                                      .from('wishlists')
-                                      .update(payload)
-                                      .eq('id', e.id);
-                                    await queryClient.invalidateQueries({ queryKey: ['events', 'me'] });
-                                  } catch {}
-                                }}
-                              >
-                                <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white bg-gradient-to-br from-[#7dd3fc] via-[#a78bfa] to-[#f472b6] ring-1 ring-white/50 shadow-[0_6px_14px_rgba(124,58,237,0.28)]">
-                                  <Pencil className="h-4 w-4" />
-                                </span>
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="hover:scale-105 transition"
-                                aria-label="Delete event"
-                                onClick={async () => {
-                                  const ok = window.confirm('Delete this event?');
-                                  if (!ok) return;
-                                  try {
-                                    await (supabase as any)
-                                      .from('wishlists')
-                                      .delete()
-                                      .eq('id', e.id);
-                                    await queryClient.invalidateQueries({ queryKey: ['events', 'me'] });
-                                  } catch {}
-                                }}
-                              >
-                                <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white bg-gradient-to-br from-[#fca5a5] via-[#f97316] to-[#f59e0b] ring-1 ring-white/50 shadow-[0_6px_14px_rgba(249,115,22,0.28)]">
-                                  <Trash2 className="h-4 w-4" />
-                                </span>
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              ) : null}
             </CardContent>
           </Card>
         </TabsContent>
@@ -520,6 +467,73 @@ const Events = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Event</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="evt-title">Title</Label>
+              <Input id="evt-title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Event title" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="evt-desc">Description</Label>
+              <Input id="evt-desc" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Description" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button
+              onClick={async () => {
+                try {
+                  if (!activeEventId) return;
+                  const payload: any = {};
+                  payload.title = editTitle;
+                  payload.description = editDesc;
+                  await (supabase as any)
+                    .from('wishlists')
+                    .update(payload)
+                    .eq('id', activeEventId);
+                  setEditOpen(false);
+                  setActiveEventId(null);
+                  await queryClient.invalidateQueries({ queryKey: ['events', 'me'] });
+                } catch {}
+              }}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete this event?</DialogTitle>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                try {
+                  if (!activeEventId) return;
+                  await (supabase as any)
+                    .from('wishlists')
+                    .delete()
+                    .eq('id', activeEventId);
+                  setDeleteOpen(false);
+                  setActiveEventId(null);
+                  await queryClient.invalidateQueries({ queryKey: ['events', 'me'] });
+                } catch {}
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
