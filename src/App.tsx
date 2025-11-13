@@ -16,6 +16,9 @@ import Profile from "./pages/Profile";
 import WishlistDetail from "./pages/WishlistDetail";
 import Wishlists from "./pages/Wishlists";
 import Settings from "./pages/Settings";
+import Messages from "./pages/Messages";
+import Chat from "./pages/Chat";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +51,9 @@ const App = () => (
             <Route path="/wishlists" element={<Wishlists />} />
             <Route path="/wishlist/:id" element={<WishlistDetail />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/messages" element={<Messages />} />
+            <Route path="/chat/:id" element={<Chat />} />
+            <Route path="/notifications" element={<Notifications />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

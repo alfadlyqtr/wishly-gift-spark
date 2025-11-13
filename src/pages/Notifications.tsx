@@ -1,0 +1,68 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import BackButton from "@/components/BackButton";
+import { Bell } from "lucide-react";
+
+const Notifications = () => {
+  const [uid, setUid] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getUser().then(({ data }) => setUid(data.user?.id ?? null));
+  }, []);
+
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["activities", uid],
+    enabled: !!supabase && !!uid,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("activities")
+        .select("id, activity_type, target_id, created_at")
+        .eq("user_id", uid as string)
+        .order("created_at", { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  return (
+    <div className="container max-w-2xl mx-auto px-4 py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_12px_30px_rgba(200,80,192,0.45)] ring-1 ring-white/40">
+            <Bell className="h-5 w-5 text-white drop-shadow" />
+            <span className="absolute -inset-1 rounded-[14px] blur-md bg-gradient-to-br from-[#ffcc70]/20 to-[#c850c0]/10" aria-hidden="true" />
+          </div>
+          <h2 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow">
+            Notifications
+          </h2>
+        </div>
+        <BackButton onClick={() => navigate('/dashboard')}>Back</BackButton>
+      </div>
+
+      <div className="space-y-2">
+        {isLoading ? (
+          <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 text-sm text-muted-foreground">Loading...</div>
+        ) : (data as any[]).length === 0 ? (
+          <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 text-sm text-muted-foreground">You're all caught up.</div>
+        ) : (
+          (data as any[]).map((a: any) => (
+            <div key={a.id} className="flex items-center justify-between rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-3">
+              <div className="min-w-0">
+                <div className="font-medium truncate">{a.activity_type?.replaceAll('_', ' ') || 'Update'}</div>
+                <div className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleString()}</div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Notifications;

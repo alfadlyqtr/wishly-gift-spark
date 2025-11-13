@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 export type BackButtonProps = {
   onClick?: () => void;
@@ -14,6 +15,16 @@ export type BackButtonProps = {
  * - Soft gradient blur glow underneath
  */
 const BackButton: React.FC<BackButtonProps> = ({ onClick, children = "Back", className }) => {
+  const navigate = useNavigate();
+  const handleClick = () => {
+    if (onClick) return onClick();
+    try {
+      if (window.history.length > 1) navigate(-1);
+      else navigate("/dashboard");
+    } catch {
+      navigate("/dashboard");
+    }
+  };
   return (
     <div className={[
       "relative inline-flex items-center justify-center group",
@@ -40,7 +51,7 @@ const BackButton: React.FC<BackButtonProps> = ({ onClick, children = "Back", cla
       {/* Inner button */}
       <button
         type="button"
-        onClick={onClick}
+        onClick={handleClick}
         className="relative z-10 inline-flex h-10 w-[120px] items-center justify-center gap-2 rounded-[10px] bg-black text-white px-3 py-2 active:translate-y-[1px]"
       >
         <ArrowLeft className="h-4 w-4" />

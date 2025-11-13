@@ -24,13 +24,17 @@ export const MainLayout = () => {
           <img src={wishlyLogo} alt="Wishly" className="h-10" />
         </Link>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-secondary" />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <MessageSquare className="h-5 w-5" />
-          </Button>
+          <Link to="/notifications">
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5" />
+              <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-secondary" />
+            </Button>
+          </Link>
+          <Link to="/messages">
+            <Button variant="ghost" size="icon">
+              <MessageSquare className="h-5 w-5" />
+            </Button>
+          </Link>
         </div>
       </header>
 

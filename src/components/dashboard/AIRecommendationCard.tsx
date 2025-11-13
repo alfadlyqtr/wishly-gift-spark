@@ -15,8 +15,8 @@ export const AIRecommendationCard = () => {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Sparkles className="h-5 w-5 text-brand-warm-start" />
-          Gift ideas for Ali
-          <span className="text-sm font-normal text-muted-foreground">(Budget: Under 200 QAR)</span>
+          Gift ideas
+          <span className="text-sm font-normal text-muted-foreground">(Personalized picks)</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
