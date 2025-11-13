@@ -50,9 +50,9 @@ const Login = () => {
       </div>
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto w-32">
+          <Link to="/" className="mx-auto w-32">
             <img src={wishlyLogo} alt="Wishly" className="w-full" />
-          </div>
+          </Link>
           <CardTitle className="text-2xl font-bold">{t('auth.login_title')}</CardTitle>
           <CardDescription>{t('auth.login_subtitle')}</CardDescription>
         </CardHeader>
@@ -82,6 +82,11 @@ const Login = () => {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
+            <p className="text-center text-sm text-muted-foreground">
+              <Link to="/forgot-password" className="font-semibold text-primary hover:underline">
+                {t('auth.forgot_password_title')}
+              </Link>
+            </p>
             <Button type="submit" className="w-full bg-gradient-to-r from-brand-warm-start to-brand-warm-end text-white hover:opacity-90" disabled={loading}>
               {loading ? t('auth.login_button') + "..." : t('auth.login_button')}
             </Button>

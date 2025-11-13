@@ -1,10 +1,18 @@
+import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { Home, Store, Calendar, User, Plus, Bell, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import wishlyLogo from "@/assets/wishly-logo.png";
+import WishAddDialog from "@/components/wishes/WishAddDialog";
+import { useWishlists } from "@/hooks/use-wishlists";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+// reverted: no avatar in bottom nav
 
 export const MainLayout = () => {
   const location = useLocation();
+  const [addOpen, setAddOpen] = useState(false);
+  const { data: wishlistsData } = useWishlists();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -61,6 +69,7 @@ export const MainLayout = () => {
           </Link>
 
           <Button
+            onClick={() => setAddOpen(true)}
             size="lg"
             className="relative -mt-6 h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-brand-warm-start to-brand-warm-end hover:shadow-xl transition-all"
           >
@@ -97,6 +106,53 @@ export const MainLayout = () => {
           </Link>
         </div>
       </nav>
+      {/* Simplified Add Wish dialog */}
+      <WishAddDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        wishlists={(wishlistsData ?? []).map(w => ({ id: w.id, name: w.title || w.id }))}
+        onSubmit={async ({ wishlistId, title, brand, description, desire, imageFile }) => {
+          try {
+            // Get current user
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+              toast.error("You must be signed in");
+              return;
+            }
+
+            // Optional image upload to Storage (bucket must exist)
+            let publicImageUrl: string | null = null;
+            if (imageFile) {
+              const bucket = "wishlist_images"; // correct bucket name
+              const filePath = `wishlist-items/${user.id}/${Date.now()}_${imageFile.name}`;
+              const { error: uploadError } = await supabase.storage
+                .from(bucket)
+                .upload(filePath, imageFile, { upsert: false, contentType: imageFile.type });
+              if (uploadError) throw uploadError;
+              const { data: pub } = supabase.storage.from(bucket).getPublicUrl(filePath);
+              publicImageUrl = pub.publicUrl;
+            }
+
+            // Save to wishlist_items (existing table)
+            const payload: any = {
+              title,
+              description: description || (brand ? `Brand: ${brand}` : null),
+              image_url: publicImageUrl,
+              item_url: null,
+              price: null,
+              status: null,
+              wishlist_id: wishlistId,
+              added_at: new Date().toISOString(),
+              desire, // 0..5
+            };
+            const { error } = await supabase.from("wishlist_items").insert([payload]);
+            if (error) throw error;
+            toast.success("Wish saved");
+          } catch (e: any) {
+            toast.error(e?.message || "Failed to save wish");
+          }
+        }}
+      />
     </div>
   );
 };

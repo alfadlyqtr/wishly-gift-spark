@@ -17,6 +17,7 @@ const Signup = () => {
   const [username, setUsername] = useState("");
   const [fullName, setFullName] = useState("");
   const [dob, setDob] = useState("");
+  const [country, setCountry] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -43,6 +44,7 @@ const Signup = () => {
           username: username,
           full_name: fullName,
           dob: dob,
+          country: country,
         }
       },
     });
@@ -63,9 +65,9 @@ const Signup = () => {
       </div>
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto w-32">
+          <Link to="/" className="mx-auto w-32">
             <img src={wishlyLogo} alt="Wishly" className="w-full" />
-          </div>
+          </Link>
           <CardTitle className="text-2xl font-bold">{t('auth.signup_title')}</CardTitle>
           <CardDescription>{t('auth.signup_subtitle')}</CardDescription>
         </CardHeader>
@@ -101,6 +103,16 @@ const Signup = () => {
                 value={dob}
                 onChange={(e) => setDob(e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="country">{t('auth.country', 'Country/Region')}</Label>
+              <Input
+                id="country"
+                type="text"
+                placeholder="Qatar"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
               />
             </div>
             <div className="space-y-2">

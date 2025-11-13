@@ -33,6 +33,49 @@
     "no_account": "ليس لديك حساب؟",
     "have_account": "هل لديك حساب بالفعل؟",
     "sign_up": "إنشاء حساب",
-    "sign_in": "تسجيل الدخول"
+    "sign_in": "تسجيل الدخول",
+    "forgot_password_title": "نسيت كلمة المرور",
+    "forgot_password_subtitle": "أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين.",
+    "forgot_password_button": "إرسال رابط إعادة التعيين",
+    "forgot_password_success": "تم إرسال رسالة إعادة تعيين كلمة المرور. يرجى التحقق من بريدك.",
+    "back_to_login": "الرجوع لتسجيل الدخول",
+    "country": "الدولة/المنطقة"
+  }
+  ,
+  "wishlist_hub_title": "قوائم الأمنيات",
+  "Notes_button": "إنشاء قائمة أمنيات جديدة",
+  "wishlist_detail_back": "رجوع",
+  "profile": {
+    "tab_personal": "المعلومات الشخصية",
+    "tab_wishlists": "قوائم الأمنيات"
+  },
+  "settings": {
+    "title": "الإعدادات"
+  }
+  ,
+  "common": {
+    "title": "العنوان",
+    "description_optional": "الوصف (اختياري)",
+    "cancel": "إلغاء",
+    "creating": "جاري الإنشاء...",
+    "create": "إنشاء",
+    "loading": "جاري التحميل..."
+  }
+  ,
+  "wishlist": {
+    "create_title": "إنشاء قائمة أمنيات",
+    "create_hint": "ابدأ بعنوان وتفاصيل اختيارية. يمكنك التخصيص لاحقًا.",
+    "event_date": "تاريخ المناسبة"
+  }
+  ,
+  "events": {
+    "title": "الفعاليات",
+    "tab_my": "فعالياتي",
+    "tab_friends": "فعاليات الأصدقاء",
+    "tab_general": "الفعاليات العامة",
+    "empty_my": "لا توجد فعاليات قادمة.",
+    "empty_friends": "لا توجد فعاليات للأصدقاء.",
+    "empty_general": "لا توجد فعاليات عامة.",
+    "untitled": "بدون عنوان"
   }
 }

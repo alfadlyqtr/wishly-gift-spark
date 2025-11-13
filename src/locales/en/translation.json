@@ -33,6 +33,67 @@
     "no_account": "Don't have an account?",
     "have_account": "Already have an account?",
     "sign_up": "Sign up",
-    "sign_in": "Sign in"
+    "sign_in": "Sign in",
+    "forgot_password_title": "Forgot Password",
+    "forgot_password_subtitle": "Enter your email and we'll send you a reset link.",
+    "forgot_password_button": "Send Reset Link",
+    "forgot_password_success": "Password reset email sent. Please check your inbox.",
+    "back_to_login": "Back to login",
+    "country": "Country/Region"
+  },
+  "wishlist_hub_title": "Wishlists",
+  "Notes_button": "Create New Wishlist",
+  "wishlist_detail_back": "Back",
+  "profile": {
+    "tab_personal": "Personal Information",
+    "tab_wishlists": "Wishlists",
+    "dob": "Date of Birth",
+    "zodiac": "Zodiac"
+  },
+  "settings": {
+    "title": "Settings"
+  }
+  ,
+  "common": {
+    "title": "Title",
+    "description_optional": "Description (optional)",
+    "cancel": "Cancel",
+    "creating": "Creating...",
+    "create": "Create",
+    "loading": "Loading...",
+    "not_set": "Not set"
+  }
+  ,
+  "wishlist": {
+    "create_title": "Create Wishlist",
+    "create_hint": "Start with a title and optional details. You can customize more later.",
+    "event_date": "Event Date"
+  }
+  ,
+  "events": {
+    "title": "Events",
+    "tab_my": "My Events",
+    "tab_friends": "Friends' Events",
+    "tab_general": "General Events",
+    "empty_my": "No upcoming events.",
+    "empty_friends": "No friends' events.",
+    "empty_general": "No public events.",
+    "untitled": "Untitled"
+  }
+  ,
+  "zodiac": {
+    "aries": "Aries",
+    "taurus": "Taurus",
+    "gemini": "Gemini",
+    "cancer": "Cancer",
+    "leo": "Leo",
+    "virgo": "Virgo",
+    "libra": "Libra",
+    "scorpio": "Scorpio",
+    "sagittarius": "Sagittarius",
+    "capricorn": "Capricorn",
+    "aquarius": "Aquarius",
+    "pisces": "Pisces",
+    "unknown": "Unknown"
   }
 }
