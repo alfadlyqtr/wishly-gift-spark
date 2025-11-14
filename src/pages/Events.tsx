@@ -210,7 +210,7 @@ const Events = () => {
             </CardHeader>
             <CardContent>
               {(myEvents?.length ?? 0) > 0 && (
-                <div className="w-full flex justify-center py-6">
+                <div className="w-full flex justify-start pl-4 sm:justify-center py-6">
                   <WishlistStack
                     randomRotation={true}
                     sensitivity={180}

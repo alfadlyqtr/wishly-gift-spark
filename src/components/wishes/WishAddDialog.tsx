@@ -118,11 +118,11 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
         <DialogHeader>
           <DialogTitle className="sr-only">{itemId ? "Edit Wish" : "Add Wish"}</DialogTitle>
         </DialogHeader>
-        <div className="mx-auto w-full max-w-3xl rounded-2xl p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
-          <div className="rounded-2xl bg-white/90 backdrop-blur p-6 ring-1 ring-white/70">
+        <div className="mx-auto w-full max-w-md sm:max-w-2xl rounded-2xl p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
+          <div className="rounded-2xl bg-white/90 backdrop-blur p-4 sm:p-6 ring-1 ring-white/70">
             <h3 className="heading text-center font-semibold text-lg text-foreground">{itemId ? "Edit Wish" : "Create Wishlist Item"}</h3>
 
-            <div className="mt-2 space-y-3 overflow-y-auto pr-1">
+            <div className="mt-2 space-y-3 max-h-[60vh] overflow-y-auto pr-1">
             <div className="input-div flex flex-col">
               <Label className="mb-1">Wishlist</Label>
               <Select value={wishlistId} onValueChange={setWishlistId}>
@@ -146,12 +146,12 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
               {/* Inline keyframes for float */}
               <style>{`@keyframes folder-float {0%{transform:translateY(0)}50%{transform:translateY(-10px)}100%{transform:translateY(0)}}`}</style>
               <div
-                className="group relative w-full rounded-[20px] px-4 pt-16 pb-4 mx-auto"
+                className="group relative w-full rounded-[20px] px-3 sm:px-4 pt-12 sm:pt-16 pb-3 sm:pb-4 mx-auto"
                 style={{
                   background: "linear-gradient(135deg, #f162ba, #ed45ae)",
-                  minHeight: 140,
+                  minHeight: 120,
                   boxShadow: "0 24px 44px rgba(0,0,0,0.22)",
-                  maxWidth: 220,
+                  maxWidth: 200,
                   border: "1px solid rgba(255,255,255,0.45)",
                 }}
               >
@@ -165,9 +165,9 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                   style={{ animation: "folder-float 2.5s ease-in-out infinite" }}
                   aria-label="Upload image"
                 >
-                  <div className="relative overflow-hidden w-[118px] h-[78px]" style={{ filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.28))" }}>
+                  <div className="relative overflow-hidden w-[100px] h-[66px] sm:w-[118px] sm:h-[78px]" style={{ filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.28))" }}>
                     {/* tip */}
-                    <div className="absolute -top-2 left-6 h-5 w-20 rounded-t-[12px]" style={{ background: "linear-gradient(135deg,#ff9a56,#ff6f56)", boxShadow: "0 6px 16px rgba(0,0,0,0.22)" }} />
+                    <div className="absolute -top-2 left-4 sm:left-6 h-4 sm:h-5 w-16 sm:w-20 rounded-t-[12px]" style={{ background: "linear-gradient(135deg,#ff9a56,#ff6f56)", boxShadow: "0 6px 16px rgba(0,0,0,0.22)" }} />
                     {/* cover acts as preview mask */}
                     <div className="absolute inset-0 rounded-[14px]" style={{ background: "linear-gradient(135deg,#ffe563,#ffc663)", boxShadow: "0 18px 30px rgba(0,0,0,0.26)" }} />
                     {imageUrl ? (
@@ -180,7 +180,7 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="mt-5 w-full rounded-[16px] text-white text-center py-2.5 px-4 transition font-semibold tracking-wide"
+                  className="mt-3 sm:mt-5 w-full rounded-[16px] text-white text-center py-2 sm:py-2.5 px-3 sm:px-4 transition font-semibold tracking-wide text-sm sm:text-base"
                   style={{
                     background: "#ff9ad5",
                     boxShadow: "inset 0 1.5px 0 rgba(255,255,255,0.55), 0 10px 20px rgba(0,0,0,0.12)",
@@ -233,9 +233,9 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
             </div>
 
             {/* Actions */}
-            <div className="button-div flex items-center justify-center gap-3 pt-2">
-              <Button type="button" variant="secondary" onClick={() => onOpenChange?.(false)} className="px-6">Cancel</Button>
-              <Button type="button" disabled={!canSubmit} onClick={handleSubmit} className="px-8 py-2 bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white rounded-xl">{itemId ? "Update Wish" : "Save to Wishlist"}</Button>
+            <div className="button-div flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 pt-2">
+              <Button type="button" variant="secondary" onClick={() => onOpenChange?.(false)} className="w-full sm:w-auto px-6">Cancel</Button>
+              <Button type="button" disabled={!canSubmit} onClick={handleSubmit} className="w-full sm:w-auto px-8 py-2 bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white rounded-xl">{itemId ? "Update Wish" : "Save to Wishlist"}</Button>
             </div>
           </div>
         </div>
