@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Camera, Lock, Check } from 'lucide-react';
 import { LanguageToggle } from '@/components/LanguageToggle';
+import wishlyLogo from '@/assets/wishly-logo.png';
 
 const HomePage = () => {
   const { t } = useTranslation();
@@ -45,7 +46,7 @@ const HomePage = () => {
       {/* Header */}
       <header className="container mx-auto px-4 py-6 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <img src="/src/assets/wishly-logo.png" alt="Wishly" className="h-8" />
+          <img src={wishlyLogo} alt="Wishly" className="h-8 sm:h-10" />
         </div>
         <LanguageToggle />
       </header>
