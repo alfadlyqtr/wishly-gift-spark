@@ -85,8 +85,8 @@ const WishlistDetail = () => {
       </div>
 
       {/* Detail inside the same gradient card style as the stack */}
-      <div className="mx-auto mt-12" style={{ width: 420 }}>
-        <div className="wl-card" style={{ width: 420 }}>
+      <div className="mx-auto mt-12 w-full max-w-[420px]">
+        <div className="wl-card w-full">
           <div className="wl-card-surface p-5 text-white" style={{ alignItems: 'flex-start', justifyContent: 'flex-start' }}>
             <div className="w-full">
               <div className="flex items-center gap-2">
