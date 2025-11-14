@@ -165,7 +165,7 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                   style={{ animation: "folder-float 2.5s ease-in-out infinite" }}
                   aria-label="Upload image"
                 >
-                  <div className="relative overflow-hidden" style={{ width: 118, height: 78, filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.28))" }}>
+                  <div className="relative overflow-hidden w-[118px] h-[78px]" style={{ filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.28))" }}>
                     {/* tip */}
                     <div className="absolute -top-2 left-6 h-5 w-20 rounded-t-[12px]" style={{ background: "linear-gradient(135deg,#ff9a56,#ff6f56)", boxShadow: "0 6px 16px rgba(0,0,0,0.22)" }} />
                     {/* cover acts as preview mask */}
