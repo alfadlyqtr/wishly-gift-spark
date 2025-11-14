@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 
 interface ProtectedRouteProps {
@@ -12,12 +12,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Skip auth check if Supabase isn't configured
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
-
+    // Use the configured Supabase client (auth required)
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
@@ -40,10 +35,6 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  // Allow access if Supabase isn't configured (demo mode)
-  if (!supabase) {
-    return <>{children}</>;
-  }
 
   if (!session) {
     return <Navigate to="/login" replace />;
