@@ -239,4 +239,15 @@
     "no_items": "لا توجد عناصر حتى الآن.",
     "event_date_label": "تاريخ المناسبة"
   }
+  ,
+  "notifications": {
+    "title": "الإشعارات",
+    "follow_requests_title": "طلبات المتابعة",
+    "no_pending_requests": "لا توجد طلبات معلقة",
+    "requested_to_follow_you": "طلب متابعتك",
+    "approve": "موافقة",
+    "decline": "رفض",
+    "all_caught_up": "لا توجد إشعارات جديدة.",
+    "activity_update": "تحديث"
+  }
 }

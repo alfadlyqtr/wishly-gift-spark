@@ -204,6 +204,17 @@
     "event_date_label": "Event Date"
   }
   ,
+  "notifications": {
+    "title": "Notifications",
+    "follow_requests_title": "Follow Requests",
+    "no_pending_requests": "No pending requests",
+    "requested_to_follow_you": "Requested to follow you",
+    "approve": "Approve",
+    "decline": "Decline",
+    "all_caught_up": "You're all caught up.",
+    "activity_update": "Update"
+  }
+  ,
   "zodiac": {
     "aries": "Aries",
     "taurus": "Taurus",

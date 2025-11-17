@@ -6,10 +6,12 @@ import BackButton from "@/components/BackButton";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { acceptFollowRequest, declineFollowRequest } from "@/lib/follow";
+import { useTranslation } from "react-i18next";
 
 const Notifications = () => {
   const [uid, setUid] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     if (!supabase) return;
@@ -32,7 +34,7 @@ const Notifications = () => {
   });
 
   const queryClient = useQueryClient();
-  const pendingFollows = useQuery({
+  const { data: pendingFollowData = [], isLoading: pendingLoading } = useQuery({
     queryKey: ["notifications", "pending_follows", uid],
     enabled: !!supabase && !!uid,
     queryFn: async () => {
@@ -71,22 +73,22 @@ const Notifications = () => {
             <span className="absolute -inset-1 rounded-[14px] blur-md bg-gradient-to-br from-[#ffcc70]/20 to-[#c850c0]/10" aria-hidden="true" />
           </div>
           <h2 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow">
-            Notifications
+            {t('notifications.title', 'Notifications')}
           </h2>
         </div>
-        <BackButton onClick={() => navigate('/dashboard')}>Back</BackButton>
+        <BackButton onClick={() => navigate('/dashboard')}>{t('common.back', 'Back')}</BackButton>
       </div>
 
       {/* Approvals Section */}
       <div className="space-y-2">
         <div className="rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-3">
-          <div className="font-bold mb-2">Follow Requests</div>
-          {pendingFollows.isLoading ? (
-            <div className="text-sm text-muted-foreground">Loading...</div>
-          ) : (pendingFollows.data as any[]).length === 0 ? (
-            <div className="text-xs text-muted-foreground">No pending requests</div>
+          <div className="font-bold mb-2">{t('notifications.follow_requests_title', 'Follow Requests')}</div>
+          {pendingLoading ? (
+            <div className="text-sm text-muted-foreground">{t('common.loading', 'Loading...')}</div>
+          ) : (pendingFollowData as any[]).length === 0 ? (
+            <div className="text-xs text-muted-foreground">{t('notifications.no_pending_requests', 'No pending requests')}</div>
           ) : (
-            (pendingFollows.data as any[]).map((r: any) => (
+            (pendingFollowData as any[]).map((r: any) => (
               <div key={`${r.user_id}-${r.created_at}`} className="flex items-center justify-between rounded-xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-2 mb-2">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="relative flex shrink-0 overflow-hidden rounded-full h-9 w-9 ring-2 ring-white/80">
@@ -94,12 +96,12 @@ const Notifications = () => {
                   </span>
                   <div className="leading-tight min-w-0">
                     <div className="font-semibold truncate max-w-[160px]">{r.user_profiles?.full_name || r.user_profiles?.username || r.user_id}</div>
-                    <div className="text-xs text-muted-foreground truncate max-w-[200px]">Requested to follow you</div>
+                    <div className="text-xs text-muted-foreground truncate max-w-[200px]">{t('notifications.requested_to_follow_you', 'Requested to follow you')}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="gradient" onClick={() => approve.mutate(r.user_id)} disabled={approve.isPending}>Approve</Button>
-                  <Button size="sm" variant="ghost" onClick={() => decline.mutate(r.user_id)} disabled={decline.isPending}>Decline</Button>
+                  <Button size="sm" variant="gradient" onClick={() => approve.mutate(r.user_id)} disabled={approve.isPending}>{t('notifications.approve', 'Approve')}</Button>
+                  <Button size="sm" variant="ghost" onClick={() => decline.mutate(r.user_id)} disabled={decline.isPending}>{t('notifications.decline', 'Decline')}</Button>
                 </div>
               </div>
             ))
@@ -108,15 +110,23 @@ const Notifications = () => {
 
         {/* Activity Feed */}
         {isLoading ? (
-          <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 text-sm text-muted-foreground">Loading...</div>
+          <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 text-sm text-muted-foreground">{t('common.loading', 'Loading...')}</div>
         ) : (data as any[]).length === 0 ? (
-          <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 text-sm text-muted-foreground">You're all caught up.</div>
+          <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 text-sm text-muted-foreground">{t('notifications.all_caught_up', "You're all caught up.")}</div>
         ) : (
           (data as any[]).map((a: any) => (
             <div key={a.id} className="flex items-center justify-between rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-3">
               <div className="min-w-0">
-                <div className="font-medium truncate">{a.activity_type?.replaceAll('_', ' ') || 'Update'}</div>
-                <div className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleString()}</div>
+                <div className="font-medium truncate">{a.activity_type?.replaceAll('_', ' ') || t('notifications.activity_update', 'Update')}</div>
+                <div className="text-xs text-muted-foreground">
+                  {(() => {
+                    const d = new Date(a.created_at);
+                    if (i18n.language === 'ar') {
+                      return d.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
+                    }
+                    return d.toLocaleString();
+                  })()}
+                </div>
               </div>
             </div>
           ))
