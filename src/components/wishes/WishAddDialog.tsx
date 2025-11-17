@@ -53,6 +53,7 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
   const fileRef = useRef<HTMLInputElement | null>(null);
   const { t } = useTranslation();
   const [isExtracting, setIsExtracting] = useState(false);
+  const [extractedColors, setExtractedColors] = useState<{hex: string; score: number}[]>([]);
 
   useEffect(() => {
     if (fixedWishlistId) setWishlistId(fixedWishlistId);
@@ -252,13 +253,24 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
         });
         if (vres.ok) {
           const vjson = await vres.json();
+          console.log('[Vision] Full response:', vjson);
           const s = vjson?.structured || vjson;
+          const logos = vjson?.logos || [];
+          const labels = vjson?.labels || [];
+          const colors = vjson?.colors || [];
+          console.log('[Vision] Structured:', s, 'Logos:', logos, 'Labels:', labels, 'Colors:', colors);
+          setExtractedColors(colors.slice(0, 5)); // Store top 5 colors
           let applied = false;
           if (s?.title) { setTitle(s.title); applied = true; }
           if (s?.brand) { setBrand(s.brand); applied = true; }
           if (s?.description) { setDescription(s.description); applied = true; }
           if (s?.url) { setDescription((prev) => prev ? `${prev}\n${s.url}` : s.url); applied = true; }
-          if (applied) { toast.success(t('wish_item.extract_done', 'Extracted details from image')); return; }
+          if (applied) {
+            toast.success(t('wish_item.extract_done', 'Extracted details from image'));
+            return;
+          } else {
+            toast.message?.('Vision Debug', { description: `Logos: ${logos.join(', ') || 'none'} | Labels: ${labels.slice(0,3).join(', ') || 'none'}` });
+          }
         } else {
           const errText = await vres.text().catch(() => '');
           toast.message?.('Vision', { description: `Vision ${vres.status}: ${errText.slice(0, 140)}` });
