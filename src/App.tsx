@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import Explore from "./pages/Explore";
 import Events from "./pages/Events";
 import Profile from "./pages/Profile";
+import FollowersFollowing from "./pages/FollowersFollowing";
 import WishlistDetail from "./pages/WishlistDetail";
 import Wishlists from "./pages/Wishlists";
 import Settings from "./pages/Settings";
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/explore" element={<Explore />} />
             <Route path="/events" element={<Events />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/followers" element={<FollowersFollowing />} />
             <Route path="/wishlists" element={<Wishlists />} />
             <Route path="/wishlist/:id" element={<WishlistDetail />} />
             <Route path="/settings" element={<Settings />} />

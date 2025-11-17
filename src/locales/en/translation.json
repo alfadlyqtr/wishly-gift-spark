@@ -48,7 +48,10 @@
     "tab_personal": "Personal Information",
     "tab_wishlists": "Wishlists",
     "dob": "Date of Birth",
-    "zodiac": "Zodiac"
+    "zodiac": "Zodiac",
+    "followers": "Followers",
+    "following": "Following",
+    "sign_out": "Sign Out"
   },
   "settings": {
     "title": "Settings"
@@ -78,7 +81,127 @@
     "empty_my": "No upcoming events.",
     "empty_friends": "No friends' events.",
     "empty_general": "No public events.",
-    "untitled": "Untitled"
+    "untitled": "Untitled",
+    "public_holiday_disclaimer": "Public holiday dates can vary.",
+    "refresh_holidays": "Refresh Holidays",
+    "month_all": "All months",
+    "month_1": "January",
+    "month_2": "February",
+    "month_3": "March",
+    "month_4": "April",
+    "month_5": "May",
+    "month_6": "June",
+    "month_7": "July",
+    "month_8": "August",
+    "month_9": "September",
+    "month_10": "October",
+    "month_11": "November",
+    "month_12": "December",
+    "helper_fresh_start": "Fresh start",
+    "helper_new_beginnings": "New beginnings",
+    "helper_keep_in_shape": "Let's keep in shape",
+    "helper_month_of_reflection": "Month of reflection",
+    "helper_feast_after_fasting": "Feast after fasting",
+    "helper_festival_of_sacrifice": "Festival of sacrifice",
+    "helper_celebrate_the_nation": "Celebrate the nation",
+    "helper_banks_closed": "Banks closed",
+    "helper_workers_day": "Workers’ day",
+    "helper_merry_and_bright": "Merry and bright",
+    "helper_seasonal_balance": "Seasonal balance"
+  }
+  ,
+  "explore": {
+    "title": "Explore",
+    "subtitle": "Discover trending gifts, popular wishlists, and amazing products curated just for you.",
+    "search_placeholder_brands": "Search brands, stores, products",
+    "search_placeholder_users": "Search users",
+    "search_aria": "Search",
+    "segment_brands": "Brands/Stores",
+    "segment_users": "Users",
+    "empty_brands": "Search brands, stores, or products.",
+    "empty_users": "Type a name, username, or email to search users.",
+    "loading": "Loading",
+    "no_results": "No results."
+  }
+  ,
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Stay updated with your friends' wishes and upcoming events",
+    "no_upcoming_events": "No upcoming events.",
+    "event": "Event",
+    "next_event_title": "{{title}} in {{days}} days",
+    "next_event_date": "Happening on {{date}}",
+    "see_wishlists": "See Wishlists",
+    "start_group_gift": "Start a Group Gift",
+    "no_recent_activity_title": "No recent activity",
+    "no_recent_activity_subtitle": "Follow friends to see their latest wishes",
+    "added_wishes": "Added {{count}} wishes",
+    "action_like": "Like",
+    "action_share": "Share",
+    "action_comment": "Comment",
+    "gift_ideas_title": "Gift ideas",
+    "gift_ideas_subtitle": "Personalized picks",
+    "gift_smartwatch": "Smartwatch",
+    "gift_coffee_maker": "Coffee Maker",
+    "gift_bluetooth_speaker": "Bluetooth Speaker",
+    "gift_desk_lamp": "Desk Lamp"
+  }
+  ,
+  "messages": {
+    "title": "Messages",
+    "new_conversation": "New conversation",
+    "search_placeholder": "Search by name, username, or email",
+    "search_aria": "Search",
+    "empty_state": "No conversations yet."
+  }
+  ,
+  "chat": {
+    "new_message_title": "New Message",
+    "conversation_title": "Conversation",
+    "search_users_placeholder": "Search users to message",
+    "search_users_aria": "Search users",
+    "search_hint": "Type a name or username to search.",
+    "empty_thread": "Say hi to start the conversation.",
+    "type_message": "Type a message",
+    "send": "Send"
+  }
+  ,
+  "nav": {
+    "dash": "Dash",
+    "explore": "Explore",
+    "add_wish": "Add Wish",
+    "events": "Events",
+    "profile": "Profile"
+  }
+  ,
+  "wish_item": {
+    "add_hidden": "Add Wish",
+    "edit_hidden": "Edit Wish",
+    "create_title": "Create Wishlist Item",
+    "edit_title": "Edit Wishlist Item",
+    "wishlist_label": "Wishlist",
+    "wishlist_placeholder": "Tap to choose a wishlist",
+    "wishlist_move_hint": "Select a different wishlist to move this item.",
+    "upload_label": "Upload Image",
+    "upload_aria": "Upload image",
+    "upload_button": "Upload a File",
+    "clear_image": "Clear Image",
+    "item_name_label": "Item Name",
+    "item_name_placeholder": "e.g., Apple AirPods Pro (2nd gen)",
+    "brand_label": "Brand",
+    "brand_placeholder": "e.g., Apple",
+    "description_label": "Description",
+    "description_placeholder": "Add size, color, or why you want it…",
+    "desire_label": "How badly do you want it?",
+    "update_button": "Update Wish",
+    "save_button": "Save to Wishlist"
+  }
+  ,
+  "wishlist_detail": {
+    "contains": "This wishlist contains ({{count}}/10)",
+    "items_title": "Items",
+    "no_items": "No items yet.",
+    "event_date_label": "Event Date"
   }
   ,
   "zodiac": {

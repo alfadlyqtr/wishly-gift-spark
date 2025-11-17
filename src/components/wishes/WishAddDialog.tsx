@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useTranslation } from "react-i18next";
 // no tabs in simplified design
 
 export type WishlistOption = {
@@ -48,6 +49,7 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (fixedWishlistId) setWishlistId(fixedWishlistId);
@@ -116,18 +118,18 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="sr-only">{itemId ? "Edit Wish" : "Add Wish"}</DialogTitle>
+          <DialogTitle className="sr-only">{itemId ? t("wish_item.edit_hidden", "Edit Wish") : t("wish_item.add_hidden", "Add Wish")}</DialogTitle>
         </DialogHeader>
         <div className="mx-auto w-full max-w-md sm:max-w-2xl rounded-2xl p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
           <div className="rounded-2xl bg-white/90 backdrop-blur p-4 sm:p-6 ring-1 ring-white/70">
-            <h3 className="heading text-center font-semibold text-lg text-foreground">{itemId ? "Edit Wish" : "Create Wishlist Item"}</h3>
+            <h3 className="heading text-center font-semibold text-lg text-foreground">{itemId ? t("wish_item.edit_title", "Edit Wishlist Item") : t("wish_item.create_title", "Create Wishlist Item")}</h3>
 
             <div className="mt-2 space-y-3 max-h-[60vh] overflow-y-auto pr-1">
             <div className="input-div flex flex-col">
-              <Label className="mb-1">Wishlist</Label>
+              <Label className="mb-1">{t("wish_item.wishlist_label", "Wishlist")}</Label>
               <Select value={wishlistId} onValueChange={setWishlistId}>
                 <SelectTrigger disabled={!!fixedWishlistId} className="h-11 text-[15px] px-3 rounded-xl">
-                  <SelectValue placeholder="Tap to choose a wishlist" />
+                  <SelectValue placeholder={t("wish_item.wishlist_placeholder", "Tap to choose a wishlist")} />
                 </SelectTrigger>
                 <SelectContent>
                   {wishlists.map((w) => (
@@ -136,13 +138,13 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                 </SelectContent>
               </Select>
               {!fixedWishlistId && itemId ? (
-                <p className="mt-1 text-xs text-white/85">Select a different wishlist to move this item.</p>
+                <p className="mt-1 text-xs text-white/85">{t("wish_item.wishlist_move_hint", "Select a different wishlist to move this item.")}</p>
               ) : null}
             </div>
 
             {/* Upload (animated folder with sliding preview) */}
             <div className="input-div flex flex-col">
-              <Label className="mb-1">Upload Image</Label>
+              <Label className="mb-1">{t("wish_item.upload_label", "Upload Image")}</Label>
               {/* Inline keyframes for float */}
               <style>{`@keyframes folder-float {0%{transform:translateY(0)}50%{transform:translateY(-10px)}100%{transform:translateY(0)}}`}</style>
               <div
@@ -163,7 +165,7 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                   onClick={() => fileRef.current?.click()}
                   className="absolute -top-2 left-1/2 -translate-x-1/2 flex flex-col items-center"
                   style={{ animation: "folder-float 2.5s ease-in-out infinite" }}
-                  aria-label="Upload image"
+                  aria-label={t("wish_item.upload_aria", "Upload image")}
                 >
                   <div className="relative overflow-hidden w-[100px] h-[66px] sm:w-[118px] sm:h-[78px]" style={{ filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.28))" }}>
                     {/* tip */}
@@ -187,34 +189,34 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                     border: "1px solid rgba(255,255,255,0.75)",
                   }}
                 >
-                  Upload a File
+                  {t("wish_item.upload_button", "Upload a File")}
                 </button>
                 <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
               </div>
               {imageUrl ? (
                 <div className="mt-2">
-                  <Button type="button" variant="ghost" onClick={handleClearImage}>Clear Image</Button>
+                  <Button type="button" variant="ghost" onClick={handleClearImage}>{t("wish_item.clear_image", "Clear Image")}</Button>
                 </div>
               ) : null}
             </div>
 
             {/* Fields */}
             <div className="input-div flex flex-col">
-              <Label className="mb-1" htmlFor="title">Item Name</Label>
-              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Apple AirPods Pro (2nd gen)" className="h-11 text-[15px] px-3 rounded-xl" />
+              <Label className="mb-1" htmlFor="title">{t("wish_item.item_name_label", "Item Name")}</Label>
+              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("wish_item.item_name_placeholder", "e.g., Apple AirPods Pro (2nd gen)")} className="h-11 text-[15px] px-3 rounded-xl" />
             </div>
             <div className="input-div flex flex-col">
-              <Label className="mb-1" htmlFor="brand">Brand</Label>
-              <Input id="brand" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="e.g., Apple" className="h-11 text-[15px] px-3 rounded-xl" />
+              <Label className="mb-1" htmlFor="brand">{t("wish_item.brand_label", "Brand")}</Label>
+              <Input id="brand" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder={t("wish_item.brand_placeholder", "e.g., Apple")} className="h-11 text-[15px] px-3 rounded-xl" />
             </div>
             <div className="input-div flex flex-col">
-              <Label className="mb-1" htmlFor="desc">Description</Label>
-              <Textarea id="desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add size, color, or why you want it…" className="min-h-[84px] text-[15px] px-3 rounded-xl" />
+              <Label className="mb-1" htmlFor="desc">{t("wish_item.description_label", "Description")}</Label>
+              <Textarea id="desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("wish_item.description_placeholder", "Add size, color, or why you want it…")} className="min-h-[84px] text-[15px] px-3 rounded-xl" />
             </div>
 
             {/* Ambivalence slider (0-4) with emojis */}
             <div className="input-div flex flex-col">
-              <Label className="mb-2">How badly do you want it?</Label>
+              <Label className="mb-2">{t("wish_item.desire_label", "How badly do you want it?")}</Label>
               <div className="flex w-full flex-col gap-2">
                 {/* Emoji rail */}
                 <div className="flex w-full items-center justify-between px-1 text-xl select-none">
@@ -234,8 +236,8 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
 
             {/* Actions */}
             <div className="button-div flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 pt-2">
-              <Button type="button" variant="secondary" onClick={() => onOpenChange?.(false)} className="w-full sm:w-auto px-6">Cancel</Button>
-              <Button type="button" disabled={!canSubmit} onClick={handleSubmit} className="w-full sm:w-auto px-8 py-2 bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white rounded-xl">{itemId ? "Update Wish" : "Save to Wishlist"}</Button>
+              <Button type="button" variant="secondary" onClick={() => onOpenChange?.(false)} className="w-full sm:w-auto px-6">{t("common.cancel", "Cancel")}</Button>
+              <Button type="button" disabled={!canSubmit} onClick={handleSubmit} className="w-full sm:w-auto px-8 py-2 bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white rounded-xl">{itemId ? t("wish_item.update_button", "Update Wish") : t("wish_item.save_button", "Save to Wishlist")}</Button>
             </div>
           </div>
         </div>

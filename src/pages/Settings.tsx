@@ -167,12 +167,6 @@ const Settings = () => {
     }
   };
 
-  // Keep dir attribute in sync with language
-  useEffect(() => {
-    const dir = i18n.language === "ar" ? "rtl" : "ltr";
-    document.documentElement.setAttribute("dir", dir);
-  }, [i18n.language]);
-
   const handleChangeEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmail || !newEmail.includes("@")) {

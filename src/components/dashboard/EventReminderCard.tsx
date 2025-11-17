@@ -5,9 +5,11 @@ import { Gift, CalendarDays } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 export const EventReminderCard = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { data } = useQuery({
     queryKey: ["dashboard", "next-event"],
     queryFn: async () => {
@@ -32,7 +34,7 @@ export const EventReminderCard = () => {
       <Card className="overflow-hidden bg-white/80 backdrop-blur ring-1 ring-white/70">
         <CardContent className="p-5 flex items-center gap-3 text-muted-foreground">
           <CalendarDays className="h-5 w-5" />
-          <span>No upcoming events.</span>
+          <span>{t('dashboard.no_upcoming_events', 'No upcoming events.')}</span>
         </CardContent>
       </Card>
     );
@@ -48,8 +50,8 @@ export const EventReminderCard = () => {
             <AvatarFallback className="bg-primary text-primary-foreground">E</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-semibold text-lg">{data.title || 'Event'} in {daysLeft} days</p>
-            <p className="text-sm text-white/90">Happening on {new Date(data.event_date).toLocaleDateString()}</p>
+            <p className="font-semibold text-lg">{t('dashboard.next_event_title', '{{title}} in {{days}} days', { title: data.title || t('dashboard.event', 'Event'), days: daysLeft })}</p>
+            <p className="text-sm text-white/90">{t('dashboard.next_event_date', 'Happening on {{date}}', { date: new Date(data.event_date).toLocaleDateString() })}</p>
           </div>
         </div>
         <div className="flex gap-3">
@@ -58,13 +60,13 @@ export const EventReminderCard = () => {
             className="flex-1 bg-gradient-to-r from-brand-warm-start to-brand-warm-end border-none text-white hover:shadow-lg transition-all"
           >
             <Gift className="mr-2 h-4 w-4" />
-            See Wishlists
+            {t('dashboard.see_wishlists', 'See Wishlists')}
           </Button>
           <Button 
             variant="secondary" 
             className="flex-1 bg-white text-primary hover:bg-white/90"
           >
-            Start a Group Gift
+            {t('dashboard.start_group_gift', 'Start a Group Gift')}
           </Button>
         </div>
       </CardContent>

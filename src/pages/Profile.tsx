@@ -27,7 +27,7 @@ const Profile = () => {
 
   const { data, isLoading } = useProfileData();
   const { data: wishlists, isLoading: isWishlistsLoading } = useWishlists();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const followersFollowing = useQuery({
     queryKey: ["profile", "social"],
@@ -249,7 +249,27 @@ const Profile = () => {
                 <div className="w-full sm:w-auto text-right leading-tight rounded-xl bg-black/15 px-3 py-2 shadow-[0_8px_24px_rgba(0,0,0,0.22)] ring-1 ring-white/70 self-end md:self-auto mt-1 md:mt-0">
                   <div className="flex items-center justify-end gap-1 drop-shadow-[0_3px_6px_rgba(0,0,0,0.9)]">
                     <MapPin size={14} weight="bold" />
-                    <span className="text-[11px] tracking-wide font-semibold">{(data?.country || "").toString().toUpperCase() || ""}</span>
+                    <span className="text-[11px] tracking-wide font-semibold">
+                      {(() => {
+                        const raw = (data?.country || "").toString();
+                        if (!raw) return "";
+                        if (i18n.language !== "ar") return raw.toUpperCase();
+                        const m: Record<string, string> = {
+                          qatar: "قطر",
+                          "saudi arabia": "السعودية",
+                          uae: "الإمارات",
+                          "united arab emirates": "الإمارات",
+                          bahrain: "البحرين",
+                          kuwait: "الكويت",
+                          oman: "عُمان",
+                          egypt: "مصر",
+                          jordan: "الأردن",
+                          lebanon: "لبنان"
+                        };
+                        const n = raw.trim().toLowerCase();
+                        return m[n] || raw;
+                      })()}
+                    </span>
                     {data?.country && (
                       <ReactCountryFlag svg countryCode={(() => {
                         const m: Record<string, string> = { qatar: 'QA', uae: 'AE', 'united arab emirates': 'AE', 'saudi arabia': 'SA', bahrain: 'BH', kuwait: 'KW', oman: 'OM', egypt: 'EG', jordan: 'JO', lebanon: 'LB', 'united states': 'US', usa: 'US', 'united kingdom': 'GB', uk: 'GB' };
@@ -263,6 +283,9 @@ const Profile = () => {
                     {(() => {
                       const dob = data?.profile?.dob ? new Date(data.profile.dob) : null;
                       if (!dob || isNaN(dob.getTime())) return '';
+                      if (i18n.language === 'ar') {
+                        return dob.toLocaleDateString('ar-EG', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+                      }
                       const ord = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th');
                       const weekday = dob.toLocaleDateString('en-GB', { weekday: 'long' });
                       const day = dob.getDate();
@@ -278,7 +301,7 @@ const Profile = () => {
                       let age = now.getFullYear() - dob.getFullYear();
                       const m = now.getMonth() - dob.getMonth();
                       if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
-                      return `${age}y`;
+                      return i18n.language === 'ar' ? `${age} سنة` : `${age}y`;
                     })()}
                   </div>
                 </div>
@@ -286,20 +309,28 @@ const Profile = () => {
               {/* Followers/Following glass bar at bottom of header */}
               <div className="absolute left-3 right-3 bottom-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-black/15 text-white ring-1 ring-white/70 shadow-[0_8px_24px_rgba(0,0,0,0.22)] px-4 py-2 text-center">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/followers?tab=followers")}
+                    className="rounded-2xl bg-black/15 text-white ring-1 ring-white/70 shadow-[0_8px_24px_rgba(0,0,0,0.22)] px-4 py-2 text-center w-full cursor-pointer active:scale-[0.99] transition-transform"
+                  >
                     <div className="text-2xl font-extrabold drop-shadow-[0_3px_6px_rgba(0,0,0,0.7)]">{followersFollowing.data?.followers ?? 0}</div>
-                    <div className="text-[11px] tracking-wide opacity-95">Followers</div>
-                  </div>
-                  <div className="rounded-2xl bg-black/15 text-white ring-1 ring-white/70 shadow-[0_8px_24px_rgba(0,0,0,0.22)] px-4 py-2 text-center">
+                    <div className="text-[11px] tracking-wide opacity-95">{t('profile.followers', 'Followers')}</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/followers?tab=following")}
+                    className="rounded-2xl bg-black/15 text-white ring-1 ring-white/70 shadow-[0_8px_24px_rgba(0,0,0,0.22)] px-4 py-2 text-center w-full cursor-pointer active:scale-[0.99] transition-transform"
+                  >
                     <div className="text-2xl font-extrabold drop-shadow-[0_3px_6px_rgba(0,0,0,0.7)]">{followersFollowing.data?.following ?? 0}</div>
-                    <div className="text-[11px] tracking-wide opacity-95">Following</div>
-                  </div>
+                    <div className="text-[11px] tracking-wide opacity-95">{t('profile.following', 'Following')}</div>
+                  </button>
                 </div>
               </div>
             </div>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span>Personal Information</span>
+                <span>{t('profile.tab_personal', 'Personal Information')}</span>
                 {!isEditing ? (
                   <Button
                     variant="gradient"
@@ -368,7 +399,12 @@ const Profile = () => {
                 <div className="rounded-b-2xl bg-white text-foreground shadow-[0_8px_20px_-8px_rgba(0,0,0,0.15)] overflow-hidden">
                   <div className="flex items-center justify-between px-5 py-3 text-sm">
                     <p className="text-muted-foreground">{t('profile.dob', 'Date of Birth')}</p>
-                    <p className="font-medium">{data?.profile?.dob ? format(new Date(data.profile.dob), 'EEEE, dd MMMM yyyy') : t('common.not_set', 'Not set')}</p>
+                    <p className="font-medium">{data?.profile?.dob ?
+                      (i18n.language === 'ar'
+                        ? new Date(data.profile.dob).toLocaleDateString('ar-EG', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
+                        : format(new Date(data.profile.dob), 'EEEE, dd MMMM yyyy')
+                      ) : t('common.not_set', 'Not set')}
+                    </p>
                   </div>
                   <div className="h-[2px] bg-muted" />
                   <div className="flex items-center justify-between px-5 py-3 text-sm">
@@ -388,7 +424,7 @@ const Profile = () => {
           <div className="space-y-3">
             <Button variant="outline" className="w-full justify-start" size="lg" onClick={() => navigate('/settings')}>
               <Settings className="mr-2 h-5 w-5" />
-              Settings
+              {t('settings.title', 'Settings')}
             </Button>
             <Button 
               variant="outline" 
@@ -397,7 +433,7 @@ const Profile = () => {
               onClick={handleLogout}
             >
               <LogOut className="mr-2 h-5 w-5" />
-              Sign Out
+              {t('profile.sign_out', 'Sign Out')}
             </Button>
           </div>
         </div>

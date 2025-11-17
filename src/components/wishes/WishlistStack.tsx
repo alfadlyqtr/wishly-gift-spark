@@ -123,34 +123,36 @@ export default function WishlistStack({
             >
               <div className="wl-card-surface">
                 <div className="wl-card-title">{card.title}</div>
-                <button
-                  type="button"
-                  className="wl-open-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openWishlist(card.id);
-                  }}
-                >
-                  Open
-                </button>
-                {card.title !== 'My Birthday Wishlist' && (
+                <div className="flex items-center gap-4">
+                  {card.title !== 'My Birthday Wishlist' && (
+                    <button
+                      type="button"
+                      className="wl-delete-btn"
+                      aria-label="Delete wishlist"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (card.title === 'My Birthday Wishlist') {
+                          toast.error('Birthday wishlist cannot be deleted');
+                          return;
+                        }
+                        setTarget({ id: card.id, title: card.title });
+                        setDeleteOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                   <button
                     type="button"
-                    className="wl-delete-btn"
-                    aria-label="Delete wishlist"
+                    className="wl-open-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (card.title === 'My Birthday Wishlist') {
-                        toast.error('Birthday wishlist cannot be deleted');
-                        return;
-                      }
-                      setTarget({ id: card.id, title: card.title });
-                      setDeleteOpen(true);
+                      openWishlist(card.id);
                     }}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    Open
                   </button>
-                )}
+                </div>
               </div>
             </motion.div>
           </CardRotate>

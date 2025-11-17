@@ -47,10 +47,45 @@
   "wishlist_detail_back": "رجوع",
   "profile": {
     "tab_personal": "المعلومات الشخصية",
-    "tab_wishlists": "قوائم الأمنيات"
+    "tab_wishlists": "قوائم الأمنيات",
+    "dob": "تاريخ الميلاد",
+    "zodiac": "البرج",
+    "followers": "المتابِعون",
+    "following": "تتابِع",
+    "sign_out": "تسجيل الخروج"
   },
   "settings": {
-    "title": "الإعدادات"
+    "title": "الإعدادات",
+    "security": "أمان الحساب",
+    "change_password": "تغيير كلمة المرور",
+    "change_email": "تغيير البريد الإلكتروني",
+    "delete_account": "حذف الحساب",
+    "delete_confirm_title": "هل تريد حذف الحساب؟",
+    "delete_confirm_desc": "لا يمكن التراجع عن هذا الإجراء. سيتم حذف جميع بياناتك.",
+    "delete_account_note": "يتم تنفيذ الحذف عبر دالة Edge آمنة ويقوم بحذف البيانات المرتبطة.",
+    "sessions": "الجلسات النشطة",
+    "sessions_note": "لأجل الخصوصية، يمكنك إلغاء الجلسات على الأجهزة الأخرى.",
+    "revoke_others": "تسجيل الخروج من الجلسات الأخرى",
+    "preferences": "التفضيلات",
+    "language": "اللغة",
+    "notifications": "الإشعارات",
+    "notifications_desc": "استلام التحديثات العامة",
+    "profile_visibility": "ظهور الملف الشخصي",
+    "profile_visibility_desc": "إذا كان الملف عامًا، يمكن للناس العثور عليك في بحث الاستكشاف.",
+    "profile_public": "تم تعيين الملف الشخصي كعام",
+    "profile_private": "تم تعيين الملف الشخصي كخاص",
+    "private": "خاص",
+    "public": "عام",
+    "follow_requests": "طلبات المتابعة",
+    "follow_requests_desc": "اختر ما إذا كانت المتابعة تحتاج إلى موافقتك.",
+    "follow_approval_on": "طلبات المتابعة تتطلب الآن الموافقة",
+    "follow_approval_off": "يمكن لأي شخص متابعتك",
+    "approval_required": "تتطلب موافقة",
+    "anyone_can_follow": "أي شخص يمكنه المتابعة",
+    "follow_request_approved": "تمت الموافقة على الطلب",
+    "follow_request_declined": "تم رفض الطلب",
+    "requested_to_follow": "طلب متابعتك",
+    "no_pending_requests": "لا توجد طلبات معلقة حاليًا"
   }
   ,
   "common": {
@@ -59,7 +94,13 @@
     "cancel": "إلغاء",
     "creating": "جاري الإنشاء...",
     "create": "إنشاء",
-    "loading": "جاري التحميل..."
+    "loading": "جاري التحميل...",
+    "save": "حفظ",
+    "saving": "جاري الحفظ...",
+    "approve": "موافقة",
+    "decline": "رفض",
+    "not_set": "غير محدد",
+    "back": "رجوع"
   }
   ,
   "wishlist": {
@@ -76,6 +117,126 @@
     "empty_my": "لا توجد فعاليات قادمة.",
     "empty_friends": "لا توجد فعاليات للأصدقاء.",
     "empty_general": "لا توجد فعاليات عامة.",
-    "untitled": "بدون عنوان"
+    "untitled": "بدون عنوان",
+    "public_holiday_disclaimer": "قد تختلف تواريخ العطل الرسمية.",
+    "refresh_holidays": "تحديث العطلات",
+    "month_all": "كل الأشهر",
+    "month_1": "يناير",
+    "month_2": "فبراير",
+    "month_3": "مارس",
+    "month_4": "أبريل",
+    "month_5": "مايو",
+    "month_6": "يونيو",
+    "month_7": "يوليو",
+    "month_8": "أغسطس",
+    "month_9": "سبتمبر",
+    "month_10": "أكتوبر",
+    "month_11": "نوفمبر",
+    "month_12": "ديسمبر",
+    "helper_fresh_start": "بداية جديدة",
+    "helper_new_beginnings": "بدايات جديدة",
+    "helper_keep_in_shape": "لنحافظ على لياقتنا",
+    "helper_month_of_reflection": "شهر التأمل",
+    "helper_feast_after_fasting": "عيد بعد الصيام",
+    "helper_festival_of_sacrifice": "عيد الأضحى",
+    "helper_celebrate_the_nation": "فلنحتفل بالوطن",
+    "helper_banks_closed": "المصارف مغلقة",
+    "helper_workers_day": "عيد العمال",
+    "helper_merry_and_bright": "بهجة وأجواء مبهرة",
+    "helper_seasonal_balance": "توازن فصلي"
+  }
+  ,
+  "explore": {
+    "title": "استكشف",
+    "subtitle": "اكتشف الهدايا الرائجة، وقوائم الأمنيات الشائعة، والمنتجات الرائعة المختارة لك.",
+    "search_placeholder_brands": "ابحث عن العلامات التجارية، المتاجر، أو المنتجات",
+    "search_placeholder_users": "ابحث عن المستخدمين",
+    "search_aria": "بحث",
+    "segment_brands": "العلامات/المتاجر",
+    "segment_users": "المستخدمون",
+    "empty_brands": "ابحث عن العلامات التجارية، المتاجر، أو المنتجات.",
+    "empty_users": "اكتب اسمًا، اسم مستخدم، أو بريدًا للبحث عن المستخدمين.",
+    "loading": "جاري التحميل",
+    "no_results": "لا توجد نتائج."
+  }
+  ,
+  "dashboard": {
+    "title": "لوحة التحكم",
+    "subtitle": "ابقَ على اطلاع بأمنيات أصدقائك والفعاليات القادمة",
+    "no_upcoming_events": "لا توجد فعاليات قادمة.",
+    "event": "فعالية",
+    "next_event_title": "{{title}} بعد {{days}} يومًا",
+    "next_event_date": "ستقام بتاريخ {{date}}",
+    "see_wishlists": "عرض قوائم الأمنيات",
+    "start_group_gift": "ابدأ هدية جماعية",
+    "no_recent_activity_title": "لا يوجد نشاط حديث",
+    "no_recent_activity_subtitle": "تابع أصدقاءك لرؤية أحدث أمنياتهم",
+    "added_wishes": "أضاف {{count}} أمنية",
+    "action_like": "إعجاب",
+    "action_share": "مشاركة",
+    "action_comment": "تعليق",
+    "gift_ideas_title": "أفكار هدايا",
+    "gift_ideas_subtitle": "مختارة خصيصًا لك",
+    "gift_smartwatch": "ساعة ذكية",
+    "gift_coffee_maker": "آلة تحضير القهوة",
+    "gift_bluetooth_speaker": "سماعة بلوتوث",
+    "gift_desk_lamp": "مصباح مكتب"
+  }
+  ,
+  "messages": {
+    "title": "الرسائل",
+    "new_conversation": "محادثة جديدة",
+    "search_placeholder": "ابحث بالاسم أو اسم المستخدم أو البريد الإلكتروني",
+    "search_aria": "بحث",
+    "empty_state": "لا توجد محادثات بعد."
+  }
+  ,
+  "chat": {
+    "new_message_title": "رسالة جديدة",
+    "conversation_title": "محادثة",
+    "search_users_placeholder": "ابحث عن مستخدم لإرسال رسالة",
+    "search_users_aria": "بحث عن مستخدمين",
+    "search_hint": "اكتب اسمًا أو اسم مستخدم للبحث.",
+    "empty_thread": "ابدأ المحادثة بالتحية.",
+    "type_message": "اكتب رسالة",
+    "send": "إرسال"
+  }
+  ,
+  "nav": {
+    "dash": "الرئيسية",
+    "explore": "استكشف",
+    "add_wish": "أضف أمنية",
+    "events": "الفعاليات",
+    "profile": "الملف الشخصي"
+  }
+  ,
+  "wish_item": {
+    "add_hidden": "إضافة أمنية",
+    "edit_hidden": "تعديل أمنية",
+    "create_title": "إنشاء عنصر في قائمة الأمنيات",
+    "edit_title": "تعديل عنصر قائمة الأمنيات",
+    "wishlist_label": "قائمة الأمنيات",
+    "wishlist_placeholder": "اختر قائمة أمنيات",
+    "wishlist_move_hint": "اختر قائمة مختلفة لنقل هذا العنصر.",
+    "upload_label": "رفع صورة",
+    "upload_aria": "رفع صورة",
+    "upload_button": "رفع ملف",
+    "clear_image": "إزالة الصورة",
+    "item_name_label": "اسم العنصر",
+    "item_name_placeholder": "مثال: AirPods Pro (الجيل الثاني)",
+    "brand_label": "العلامة التجارية",
+    "brand_placeholder": "مثال: Apple",
+    "description_label": "الوصف",
+    "description_placeholder": "أضف الحجم، اللون، أو سبب رغبتك به…",
+    "desire_label": "ما مدى رغبتك في هذا العنصر؟",
+    "update_button": "تحديث الأمنية",
+    "save_button": "حفظ في قائمة الأمنيات"
+  }
+  ,
+  "wishlist_detail": {
+    "contains": "تحتوي هذه القائمة على ({{count}}/10)",
+    "items_title": "العناصر",
+    "no_items": "لا توجد عناصر حتى الآن.",
+    "event_date_label": "تاريخ المناسبة"
   }
 }

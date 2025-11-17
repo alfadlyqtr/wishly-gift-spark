@@ -4,9 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import AddButton from "@/components/AddButton";
 import { MessageSquare, Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const Messages = () => {
   const [q, setQ] = useState("");
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { data } = useQuery({
     queryKey: ["threads"],
@@ -59,10 +61,10 @@ const Messages = () => {
             <span className="absolute -inset-1 rounded-[14px] blur-md bg-gradient-to-br from-[#ffcc70]/20 to-[#c850c0]/10" aria-hidden="true" />
           </div>
           <h2 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow">
-            Messages
+            {t('messages.title', 'Messages')}
           </h2>
         </div>
-        <AddButton ariaLabel="New conversation" onClick={() => navigate('/chat/new')} />
+        <AddButton ariaLabel={t('messages.new_conversation', 'New conversation')} onClick={() => navigate('/chat/new')} />
       </div>
 
       {/* Search bar styled like Explore */}
@@ -75,8 +77,8 @@ const Messages = () => {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search by name, username, or email"
-              aria-label="Search"
+              placeholder={t('messages.search_placeholder', 'Search by name, username, or email')}
+              aria-label={t('messages.search_aria', 'Search')}
               className="h-12 w-full rounded-[12px] border-0 pl-12 pr-12 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
           </div>
@@ -106,7 +108,7 @@ const Messages = () => {
           </button>
         ))}
         {threads.length === 0 && (
-          <div className="rounded-2xl bg-white/60 px-3 py-2 text-sm text-muted-foreground">No conversations yet.</div>
+          <div className="rounded-2xl bg-white/60 px-3 py-2 text-sm text-muted-foreground">{t('messages.empty_state', 'No conversations yet.')}</div>
         )}
       </div>
     </div>

@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Store, Search, Filter, Users } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 const Explore = () => {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<"brands" | "users">("brands");
   const [q, setQ] = useState("");
   const debouncedQ = useMemo(() => q.trim(), [q]);
@@ -62,15 +64,15 @@ const Explore = () => {
               <span className="absolute -inset-1 rounded-[14px] blur-md bg-gradient-to-br from-[#ffcc70]/20 to-[#c850c0]/10" aria-hidden="true" />
             </div>
             <h2 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow">
-              Explore
+              {t('explore.title', 'Explore')}
             </h2>
           </div>
           <p className="hidden sm:block text-muted-foreground max-w-xs text-right leading-snug">
-            Discover trending gifts, popular wishlists, and amazing products curated just for you.
+            {t('explore.subtitle', 'Discover trending gifts, popular wishlists, and amazing products curated just for you.')}
           </p>
         </div>
         <p className="sm:hidden mt-2 text-muted-foreground">
-          Discover trending gifts, popular wishlists, and amazing products curated just for you.
+          {t('explore.subtitle', 'Discover trending gifts, popular wishlists, and amazing products curated just for you.')}
         </p>
       </div>
 
@@ -84,8 +86,8 @@ const Explore = () => {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder={mode === "brands" ? "Search brands, stores, products" : "Search users"}
-              aria-label="Search"
+              placeholder={mode === "brands" ? t('explore.search_placeholder_brands', 'Search brands, stores, products') : t('explore.search_placeholder_users', 'Search users')}
+              aria-label={t('explore.search_aria', 'Search')}
               className="h-12 w-full rounded-[12px] border-0 pl-12 pr-12 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
             <button
@@ -121,7 +123,7 @@ const Explore = () => {
             aria-pressed={mode === 'brands'}
           >
             <Store className="h-4 w-4" />
-            <span>Brands/Stores</span>
+            <span>{t('explore.segment_brands', 'Brands/Stores')}</span>
           </button>
           <button
             type="button"
@@ -132,7 +134,7 @@ const Explore = () => {
             aria-pressed={mode === 'users'}
           >
             <Users className="h-4 w-4" />
-            <span>Users</span>
+            <span>{t('explore.segment_users', 'Users')}</span>
           </button>
           </div>
         </div>
@@ -142,11 +144,11 @@ const Explore = () => {
       <div className="mx-auto w-full max-w-md space-y-3">
         {mode === "brands" ? (
           debouncedQ.length === 0 ? (
-            <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4 text-sm text-muted-foreground">Search brands, stores, or products.</div>
+            <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4 text-sm text-muted-foreground">{t('explore.empty_brands', 'Search brands, stores, or products.')}</div>
           ) : brandsQuery.isLoading ? (
-            <div className="flex items-center justify-center py-10"><div className="loader"><span className="text">Loading</span></div></div>
+            <div className="flex items-center justify-center py-10"><div className="loader"><span className="text">{t('explore.loading', 'Loading')}</span></div></div>
           ) : (brandsQuery.data?.length ?? 0) === 0 ? (
-            <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4 text-sm text-muted-foreground">No results.</div>
+            <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4 text-sm text-muted-foreground">{t('explore.no_results', 'No results.')}</div>
           ) : (
             <div className="space-y-3">
               {brandsQuery.data!.map((w: any) => (
@@ -159,7 +161,7 @@ const Explore = () => {
           )
         ) : (
           debouncedQ.length === 0 ? (
-            <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4 text-sm text-muted-foreground">Type a name, username, or email to search users.</div>
+            <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4 text-sm text-muted-foreground">{t('explore.empty_users', 'Type a name, username, or email to search users.')}</div>
           ) : usersQuery.isLoading ? (
             <div className="flex items-center justify-center py-10"><div className="loader"><span className="text">Loading</span></div></div>
           ) : (usersQuery.data?.length ?? 0) === 0 ? (

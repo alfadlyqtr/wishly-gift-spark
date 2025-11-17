@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import BackButton from "@/components/BackButton";
 import { MessageSquare, Search, Send, Users } from "lucide-react";
 import { openOrCreateDirectThread } from "@/lib/messages";
+import { useTranslation } from "react-i18next";
 
 const Chat = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +14,7 @@ const Chat = () => {
   const [text, setText] = useState("");
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const qc = useQueryClient();
+  const { t, i18n } = useTranslation();
 
   // Get current user id
   const [uid, setUid] = useState<string | null>(null);
@@ -131,10 +133,10 @@ const Chat = () => {
             <span className="absolute -inset-1 rounded-[14px] blur-md bg-gradient-to-br from-[#ffcc70]/20 to-[#c850c0]/10" aria-hidden="true" />
           </div>
           <h2 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow">
-            {id === 'new' ? 'New Message' : 'Conversation'}
+            {id === 'new' ? t('chat.new_message_title', 'New Message') : t('chat.conversation_title', 'Conversation')}
           </h2>
         </div>
-        <BackButton onClick={() => navigate(-1)}>Back</BackButton>
+        <BackButton onClick={() => navigate(-1)}>{t('common.back', 'Back')}</BackButton>
       </div>
 
       {id === 'new' ? (
@@ -148,17 +150,17 @@ const Chat = () => {
               <input
                 value={newQ}
                 onChange={(e) => setNewQ(e.target.value)}
-                placeholder="Search users to message"
-                aria-label="Search users"
+                placeholder={t('chat.search_users_placeholder', 'Search users to message')}
+                aria-label={t('chat.search_users_aria', 'Search users')}
                 className="h-12 w-full rounded-[12px] border-0 pl-12 pr-12 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
               />
             </div>
           </div>
           <div className="space-y-2">
             {usersLoading ? (
-              <div className="text-sm text-muted-foreground">Loading...</div>
+              <div className="text-sm text-muted-foreground">{t('common.loading', 'Loading...')}</div>
             ) : (userResults as any[]).length === 0 ? (
-              <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 text-sm text-muted-foreground">Type a name or username to search.</div>
+              <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 text-sm text-muted-foreground">{t('chat.search_hint', 'Type a name or username to search.')}</div>
             ) : (
               (userResults as any[]).map((u: any) => (
                 <button key={u.id} onClick={() => startDirect(u.id)} className="w-full flex items-center gap-3 rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 px-3 py-2 hover:shadow-sm">
@@ -183,12 +185,20 @@ const Chat = () => {
               return (
                 <div key={m.id} className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm ${me ? 'ml-auto bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white' : 'bg-white text-foreground ring-1 ring-black/5'}`}>
                   <div>{m.content}</div>
-                  <div className={`mt-1 text-[10px] ${me ? 'text-white/80' : 'text-muted-foreground'}`}>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                  <div className={`mt-1 text-[10px] ${me ? 'text-white/80' : 'text-muted-foreground'}`}>
+                    {(() => {
+                      const d = new Date(m.created_at);
+                      const opts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
+                      return i18n.language === 'ar'
+                        ? d.toLocaleTimeString('ar-EG', opts)
+                        : d.toLocaleTimeString([], opts);
+                    })()}
+                  </div>
                 </div>
               );
             })}
             {renderMessages.length === 0 && (
-              <div className="text-sm text-muted-foreground">Say hi to start the conversation.</div>
+              <div className="text-sm text-muted-foreground">{t('chat.empty_thread', 'Say hi to start the conversation.')}</div>
             )}
           </div>
 
@@ -199,7 +209,7 @@ const Chat = () => {
                 <input
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  placeholder="Type a message"
+                  placeholder={t('chat.type_message', 'Type a message')}
                   className="h-10 flex-1 rounded-[10px] border-0 px-3 text-sm focus:outline-none"
                   onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
                 />
@@ -210,7 +220,7 @@ const Chat = () => {
                   className="inline-flex h-9 px-3 items-center justify-center gap-1 rounded-xl text-white bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_8px_18px_rgba(200,80,192,0.28)] disabled:opacity-60"
                 >
                   <Send className="h-4 w-4" />
-                  <span>Send</span>
+                  <span>{t('chat.send', 'Send')}</span>
                 </button>
               </div>
             </div>

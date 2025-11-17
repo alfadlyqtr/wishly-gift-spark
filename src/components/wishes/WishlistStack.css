@@ -63,7 +63,7 @@
 /* Small delete icon next to Open */
 .wl-delete-btn {
   position: absolute;
-  right: 58px; /* sits to the left of Open */
+  right: 80px; /* further left to create more space from Open */
   bottom: 12px;
   height: 28px;
   width: 28px;

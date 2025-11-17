@@ -19,7 +19,7 @@ type WishlistItem = Database["public"]["Tables"]["wishlist_items"]["Row"];
 const WishlistDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<WishlistItem | null>(null);
@@ -64,6 +64,9 @@ const WishlistDetail = () => {
   const eventDateText = (() => {
     const d = data?.wishlist?.event_date ? new Date(data.wishlist.event_date) : null;
     if (!d || isNaN(d.getTime())) return null;
+    if (i18n.language === 'ar') {
+      return d.toLocaleDateString('ar-EG', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    }
     const weekday = d.toLocaleDateString('en-GB', { weekday: 'long' });
     const day = d.getDate();
     const month = d.toLocaleDateString('en-GB', { month: 'long' });
@@ -153,7 +156,7 @@ const WishlistDetail = () => {
                   </div>
                 )}
               </div>
-              <p className="mt-0.5 text-xs opacity-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">This wishlist contains ({items.length}/10)</p>
+              <p className="mt-0.5 text-xs opacity-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{t('wishlist_detail.contains', 'This wishlist contains ({{count}}/10)', { count: items.length })}</p>
               {data?.wishlist?.description && (
                 <p className="mt-1 text-sm opacity-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{data.wishlist.description}</p>
               )}
@@ -162,7 +165,7 @@ const WishlistDetail = () => {
               )}
 
               <div className="mt-3 bg-white/5 rounded-md p-3 w-full" style={{ maxHeight: 5 * 76, overflowY: 'auto' }}>
-                <h3 className="text-base font-semibold drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">Items</h3>
+                <h3 className="text-base font-semibold drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{t('wishlist_detail.items_title', 'Items')}</h3>
                 {items.length > 0 ? (
                   <div className="mt-2 divide-y divide-white/10">
                     {items.map((it) => (
@@ -239,7 +242,7 @@ const WishlistDetail = () => {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm opacity-80 mt-1">No items yet.</p>
+                  <p className="text-sm opacity-80 mt-1">{t('wishlist_detail.no_items', 'No items yet.')}</p>
                 )}
               </div>
             </div>

@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Heart, Repeat2, MessageCircle, Users } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { useTranslation } from "react-i18next";
 
 export const SocialWishCard = () => {
+  const { t } = useTranslation();
   const { data } = useQuery({
     queryKey: ["dashboard", "social"],
     queryFn: async () => {
@@ -38,8 +40,8 @@ export const SocialWishCard = () => {
               <Users className="h-4 w-4" />
             </div>
             <div>
-              <p className="font-semibold">No recent activity</p>
-              <p className="text-sm text-muted-foreground">Follow friends to see their latest wishes</p>
+              <p className="font-semibold">{t('dashboard.no_recent_activity_title', 'No recent activity')}</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.no_recent_activity_subtitle', 'Follow friends to see their latest wishes')}</p>
             </div>
           </div>
         </CardHeader>
@@ -58,7 +60,7 @@ export const SocialWishCard = () => {
           </Avatar>
           <div>
             <p className="font-semibold">{owner?.full_name || owner?.username || 'User'}</p>
-            <p className="text-sm text-muted-foreground">Added {data.length} wishes</p>
+            <p className="text-sm text-muted-foreground">{t('dashboard.added_wishes', 'Added {{count}} wishes', { count: (data as any[]).length })}</p>
           </div>
         </div>
       </CardHeader>
@@ -79,15 +81,15 @@ export const SocialWishCard = () => {
       <CardFooter className="flex justify-around border-t pt-3">
         <Button variant="ghost" size="sm" className="flex items-center gap-2">
           <Heart className="h-4 w-4" />
-          <span className="text-sm">Like</span>
+          <span className="text-sm">{t('dashboard.action_like', 'Like')}</span>
         </Button>
         <Button variant="ghost" size="sm" className="flex items-center gap-2">
           <Repeat2 className="h-4 w-4" />
-          <span className="text-sm">Share</span>
+          <span className="text-sm">{t('dashboard.action_share', 'Share')}</span>
         </Button>
         <Button variant="ghost" size="sm" className="flex items-center gap-2">
           <MessageCircle className="h-4 w-4" />
-          <span className="text-sm">Comment</span>
+          <span className="text-sm">{t('dashboard.action_comment', 'Comment')}</span>
         </Button>
       </CardFooter>
     </Card>

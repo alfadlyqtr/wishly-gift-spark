@@ -1,13 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { useTranslation } from "react-i18next";
 
 export const AIRecommendationCard = () => {
+  const { t, i18n } = useTranslation();
   const recommendations = [
-    { id: 1, name: "Smartwatch", price: "150 QAR", emoji: "⌚" },
-    { id: 2, name: "Coffee Maker", price: "180 QAR", emoji: "☕" },
-    { id: 3, name: "Bluetooth Speaker", price: "120 QAR", emoji: "🔊" },
-    { id: 4, name: "Desk Lamp", price: "95 QAR", emoji: "💡" },
+    { id: 1, nameKey: "dashboard.gift_smartwatch", fallback: "Smartwatch", price: "150 QAR", emoji: "⌚" },
+    { id: 2, nameKey: "dashboard.gift_coffee_maker", fallback: "Coffee Maker", price: "180 QAR", emoji: "☕" },
+    { id: 3, nameKey: "dashboard.gift_bluetooth_speaker", fallback: "Bluetooth Speaker", price: "120 QAR", emoji: "🔊" },
+    { id: 4, nameKey: "dashboard.gift_desk_lamp", fallback: "Desk Lamp", price: "95 QAR", emoji: "💡" },
   ];
 
   return (
@@ -15,8 +17,8 @@ export const AIRecommendationCard = () => {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Sparkles className="h-5 w-5 text-brand-warm-start" />
-          Gift ideas
-          <span className="text-sm font-normal text-muted-foreground">(Personalized picks)</span>
+          {t("dashboard.gift_ideas_title", "Gift ideas")}
+          <span className="text-sm font-normal text-muted-foreground">({t("dashboard.gift_ideas_subtitle", "Personalized picks")})</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -31,7 +33,7 @@ export const AIRecommendationCard = () => {
                   {item.emoji}
                 </div>
                 <div>
-                  <p className="text-sm font-medium line-clamp-2">{item.name}</p>
+                  <p className="text-sm font-medium line-clamp-2">{t(item.nameKey as any, item.fallback)}</p>
                   <p className="text-xs text-muted-foreground">{item.price}</p>
                 </div>
               </div>

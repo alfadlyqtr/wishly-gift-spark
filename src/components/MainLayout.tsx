@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { Home, Store, Calendar, User, Plus, Bell, MessageSquare } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import wishlyLogo from "@/assets/wishly-logo.png";
 import WishAddDialog from "@/components/wishes/WishAddDialog";
@@ -14,6 +15,7 @@ export const MainLayout = () => {
   const [addOpen, setAddOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const { data: wishlistsData } = useWishlists();
+  const { t } = useTranslation();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -82,7 +84,7 @@ export const MainLayout = () => {
               }`}
             >
               <img src={wishlyLogo} alt="Dash" className="h-5 w-5" />
-              <span className="text-xs">Dash</span>
+              <span className="text-xs">{t('nav.dash', 'Dash')}</span>
             </Button>
           </Link>
 
@@ -95,7 +97,7 @@ export const MainLayout = () => {
               }`}
             >
               <Store className="h-5 w-5" />
-              <span className="text-xs">Explore</span>
+              <span className="text-xs">{t('nav.explore', 'Explore')}</span>
             </Button>
           </Link>
 
@@ -106,7 +108,7 @@ export const MainLayout = () => {
           >
             <div className="flex flex-col items-center">
               <Plus className="h-6 w-6" />
-              <span className="text-[10px] font-medium">Add Wish</span>
+              <span className="text-[10px] font-medium">{t('nav.add_wish', 'Add Wish')}</span>
             </div>
           </Button>
 
@@ -119,7 +121,7 @@ export const MainLayout = () => {
               }`}
             >
               <Calendar className="h-5 w-5" />
-              <span className="text-xs">Events</span>
+              <span className="text-xs">{t('nav.events', 'Events')}</span>
             </Button>
           </Link>
 
@@ -132,7 +134,7 @@ export const MainLayout = () => {
               }`}
             >
               <User className="h-5 w-5" />
-              <span className="text-xs">Profile</span>
+              <span className="text-xs">{t('nav.profile', 'Profile')}</span>
             </Button>
           </Link>
         </div>

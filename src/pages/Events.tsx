@@ -103,7 +103,7 @@ function usePublicEvents() {
 }
 
 const Events = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const { data: myEvents, isLoading: loadingMy } = useMyEvents();
   const { data: friendsEvents, isLoading: loadingFriends } = useFriendsEvents();
@@ -280,21 +280,21 @@ const Events = () => {
                     const v = e.target.value;
                     setMonthFilter(v === 'all' ? 'all' : Number(v));
                   }}
-                  aria-label="Filter by month"
+                  aria-label={t('events.month_filter_aria', 'Filter by month')}
                 >
-                  <option value="all">All months</option>
-                  <option value="1">January</option>
-                  <option value="2">February</option>
-                  <option value="3">March</option>
-                  <option value="4">April</option>
-                  <option value="5">May</option>
-                  <option value="6">June</option>
-                  <option value="7">July</option>
-                  <option value="8">August</option>
-                  <option value="9">September</option>
-                  <option value="10">October</option>
-                  <option value="11">November</option>
-                  <option value="12">December</option>
+                  <option value="all">{t('events.month_all', 'All months')}</option>
+                  <option value="1">{t('events.month_1', 'January')}</option>
+                  <option value="2">{t('events.month_2', 'February')}</option>
+                  <option value="3">{t('events.month_3', 'March')}</option>
+                  <option value="4">{t('events.month_4', 'April')}</option>
+                  <option value="5">{t('events.month_5', 'May')}</option>
+                  <option value="6">{t('events.month_6', 'June')}</option>
+                  <option value="7">{t('events.month_7', 'July')}</option>
+                  <option value="8">{t('events.month_8', 'August')}</option>
+                  <option value="9">{t('events.month_9', 'September')}</option>
+                  <option value="10">{t('events.month_10', 'October')}</option>
+                  <option value="11">{t('events.month_11', 'November')}</option>
+                  <option value="12">{t('events.month_12', 'December')}</option>
                 </select>
               <Button
                 variant="outline"
@@ -380,6 +380,32 @@ const Events = () => {
                       return d.getMonth() === m;
                     });
                   }
+                  const formatDate = (iso: string) => {
+                    const d = new Date(iso);
+                    if (Number.isNaN(d.getTime())) return '';
+                    if (i18n.language === 'ar') {
+                      return d.toLocaleDateString('ar-EG', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+                    }
+                    return d.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+                  };
+                  const mapTitle = (name: string) => {
+                    if (i18n.language !== 'ar') return name;
+                    const n = name.trim().toLowerCase();
+                    if (/new year'?s\s+day/.test(n)) return 'يوم السنة الجديدة';
+                    if (/new year'?s\s+eve/.test(n)) return 'ليلة رأس السنة';
+                    if (/new year'?s.*holiday/.test(n)) return 'عطلة رأس السنة';
+                    if (/national\s+sports?\s+day/.test(n)) return 'اليوم الرياضي الوطني';
+                    if (/ramadan/.test(n) && /start/.test(n)) return 'بداية رمضان';
+                    if (/march/.test(n) && /bank/.test(n)) return 'عطلة مصرفية في مارس';
+                    if (/march/.test(n) && /equinox/.test(n)) return 'الاعتدال الربيعي';
+                    if (/eid/.test(n) && /fitr/.test(n)) return 'عيد الفطر';
+                    if (/eid/.test(n) && /adha/.test(n)) return 'عيد الأضحى';
+                    if (/june/.test(n) && /solstice/.test(n)) return 'الانقلاب الصيفي';
+                    if (/september/.test(n) && /equinox/.test(n)) return 'الاعتدال الخريفي';
+                    if (/national/.test(n) && /day/.test(n)) return 'اليوم الوطني';
+                    if (/december/.test(n) && /solstice/.test(n)) return 'الانقلاب الشتوي';
+                    return name;
+                  };
                   return rows.length === 0 ? (
                     <p className="text-sm text-muted-foreground">{t('events.empty_general', 'No public events.')}</p>
                   ) : (
@@ -388,7 +414,7 @@ const Events = () => {
                         <div key={e.id || `${e.name}-${e.date}-${e.country_code || e.country}`} className="py-2">
                           <div className="flex items-center justify-between rounded-xl bg-white/50 backdrop-blur px-3 py-2 ring-1 ring-white/60 shadow-sm">
                             <div className="min-w-0">
-                              <div className="font-medium truncate">{e?.name || e?.title || t('events.untitled', 'Untitled')}</div>
+                              <div className="font-medium truncate">{mapTitle(String(e?.name || e?.title || t('events.untitled', 'Untitled')))}</div>
                               {(() => {
                                 const raw = (e?.name || e?.title || '').toString();
                                 const name = raw.toLowerCase();
@@ -408,24 +434,24 @@ const Events = () => {
                                 let iconNode: any = <span>📅</span>;
                                 let text = 'Mark the date';
                                 // prioritize sports before national so National Sports Day shows sports remark
-                                if (/sports?|sport/.test(name)) { iconNode = <span>🏃</span>; text = "Let's keep in shape"; }
-                                else if (/ramadan/.test(name)) { iconNode = <span>🌙</span>; text = 'Month of reflection'; }
-                                else if (/eid\s*al[- ]fitr/.test(name)) { iconNode = <span>🎉</span>; text = 'Feast after fasting'; }
-                                else if (/eid\s*al[- ]adha/.test(name)) { iconNode = <span>🕋</span>; text = 'Festival of sacrifice'; }
+                                if (/sports?|sport/.test(name)) { iconNode = <span>🏃</span>; text = t('events.helper_keep_in_shape', "Let's keep in shape"); }
+                                else if (/ramadan/.test(name)) { iconNode = <span>🌙</span>; text = t('events.helper_month_of_reflection', 'Month of reflection'); }
+                                else if (/eid\s*al[- ]fitr/.test(name)) { iconNode = <span>🎉</span>; text = t('events.helper_feast_after_fasting', 'Feast after fasting'); }
+                                else if (/eid\s*al[- ]adha/.test(name)) { iconNode = <span>🕋</span>; text = t('events.helper_festival_of_sacrifice', 'Festival of sacrifice'); }
                                 else if (/(national|independence).*day/.test(name)) {
                                   iconNode = cc ? (
                                     <ReactCountryFlag svg countryCode={cc} style={{ width: '18px', height: '14px' }} aria-label={cc} />
                                   ) : (
                                     <span>🏛️</span>
                                   );
-                                  text = 'Celebrate the nation';
+                                  text = t('events.helper_celebrate_the_nation', 'Celebrate the nation');
                                 }
-                                else if (/bank/.test(name)) { iconNode = <span>🏦</span>; text = 'Banks closed'; }
-                                else if (/(labor|labour)\s*day/.test(name)) { iconNode = <span>🛠️</span>; text = 'Workers’ day'; }
-                                else if (/christmas/.test(name)) { iconNode = <span>🎄</span>; text = 'Merry and bright'; }
-                                else if (/equinox|solstice/.test(name)) { iconNode = <span>🌌</span>; text = 'Seasonal balance'; }
-                                else if (/new year'?s\s+day/.test(name)) { iconNode = <span>🎉</span>; text = 'Fresh start'; }
-                                else if (/new year'?s/.test(name)) { iconNode = <span>🎉</span>; text = 'New beginnings'; }
+                                else if (/bank/.test(name)) { iconNode = <span>🏦</span>; text = t('events.helper_banks_closed', 'Banks closed'); }
+                                else if (/(labor|labour)\s*day/.test(name)) { iconNode = <span>🛠️</span>; text = t('events.helper_workers_day', 'Workers’ day'); }
+                                else if (/christmas/.test(name)) { iconNode = <span>🎄</span>; text = t('events.helper_merry_and_bright', 'Merry and bright'); }
+                                else if (/equinox|solstice/.test(name)) { iconNode = <span>🌌</span>; text = t('events.helper_seasonal_balance', 'Seasonal balance'); }
+                                else if (/new year'?s\s+day/.test(name)) { iconNode = <span>🎉</span>; text = t('events.helper_fresh_start', 'Fresh start'); }
+                                else if (/new year'?s/.test(name)) { iconNode = <span>🎉</span>; text = t('events.helper_new_beginnings', 'New beginnings'); }
                                 return (
                                   <div className="text-sm text-muted-foreground line-clamp-1 flex items-center gap-1">
                                     {iconNode}
@@ -449,7 +475,7 @@ const Events = () => {
                               {(() => {
                                 const dStart = e?.date_start || e?.date || e?.event_date || '';
                                 const dEnd = e?.date_end || '';
-                                const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+                                const fmt = (iso: string) => formatDate(iso);
                                 if (dStart && dEnd && dStart !== dEnd) {
                                   return `${fmt(dStart)} → ${fmt(dEnd)}`;
                                 }
