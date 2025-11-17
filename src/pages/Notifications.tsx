@@ -18,6 +18,8 @@ const Notifications = () => {
     supabase.auth.getUser().then(({ data }) => setUid(data.user?.id ?? null));
   }, []);
 
+  const queryClient = useQueryClient();
+
   const { data = [], isLoading } = useQuery({
     queryKey: ["activities", uid],
     enabled: !!supabase && !!uid,
@@ -32,8 +34,6 @@ const Notifications = () => {
       return data || [];
     },
   });
-
-  const queryClient = useQueryClient();
   const { data: pendingFollowData = [], isLoading: pendingLoading } = useQuery({
     queryKey: ["notifications", "pending_follows", uid],
     enabled: !!supabase && !!uid,
@@ -117,7 +117,25 @@ const Notifications = () => {
           (data as any[]).map((a: any) => (
             <div key={a.id} className="flex items-center justify-between rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-3">
               <div className="min-w-0">
-                <div className="font-medium truncate">{a.activity_type?.replaceAll('_', ' ') || t('notifications.activity_update', 'Update')}</div>
+                <div className="font-medium truncate">
+                  {(() => {
+                    const type = String(a.activity_type || "");
+                    switch (type) {
+                      case "wish_added":
+                        return t('notifications.activity_wish_added', 'You added a new wish');
+                      case "wishlist_created":
+                        return t('notifications.activity_wishlist_created', 'You created a new wishlist');
+                      case "wishlist_updated":
+                        return t('notifications.activity_wishlist_updated', 'You updated a wishlist');
+                      case "follow_accepted":
+                        return t('notifications.activity_follow_accepted', 'You accepted a follow request');
+                      case "new_follower":
+                        return t('notifications.activity_new_follower', 'You have a new follower');
+                      default:
+                        return t('notifications.activity_update', 'Update');
+                    }
+                  })()}
+                </div>
                 <div className="text-xs text-muted-foreground">
                   {(() => {
                     const d = new Date(a.created_at);

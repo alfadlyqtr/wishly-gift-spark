@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,7 +10,9 @@ import { useTranslation } from "react-i18next";
 
 export const EventReminderCard = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const [countdown, setCountdown] = useState<{ days: number; hours: number; minutes: number } | null>(null);
+
   const { data } = useQuery({
     queryKey: ["dashboard", "next-event"],
     queryFn: async () => {
@@ -29,6 +32,36 @@ export const EventReminderCard = () => {
     },
   });
 
+  useEffect(() => {
+    if (!data?.event_date) {
+      setCountdown(null);
+      return;
+    }
+    const target = new Date(data.event_date).getTime();
+    if (Number.isNaN(target)) {
+      setCountdown(null);
+      return;
+    }
+
+    const update = () => {
+      const now = Date.now();
+      const diffMs = target - now;
+      if (diffMs <= 0) {
+        setCountdown({ days: 0, hours: 0, minutes: 0 });
+        return;
+      }
+      const totalMinutes = Math.floor(diffMs / (1000 * 60));
+      const days = Math.floor(totalMinutes / (60 * 24));
+      const hours = Math.floor((totalMinutes - days * 24 * 60) / 60);
+      const minutes = totalMinutes % 60;
+      setCountdown({ days, hours, minutes });
+    };
+
+    update();
+    const id = setInterval(update, 60_000);
+    return () => clearInterval(id);
+  }, [data?.event_date]);
+
   if (!data) {
     return (
       <Card className="overflow-hidden bg-white/80 backdrop-blur ring-1 ring-white/70">
@@ -40,7 +73,16 @@ export const EventReminderCard = () => {
     );
   }
 
-  const daysLeft = Math.ceil((new Date(data.event_date).getTime() - new Date().getTime()) / (1000*60*60*24));
+  const countdownLabel = (() => {
+    if (!countdown) return null;
+    const { days, hours, minutes } = countdown;
+    if (days === 0 && hours === 0 && minutes === 0) {
+      return t('dashboard.countdown_today', 'Happening today');
+    }
+    return t('dashboard.countdown_full', '{{days}}d {{hours}}h {{minutes}}m left', { days, hours, minutes });
+  })();
+
+  const daysLeft = Math.ceil((new Date(data.event_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
   return (
     <Card className="overflow-hidden bg-gradient-to-br from-brand-cool-start to-brand-cool-end border-none text-white">
       <CardContent className="p-6 space-y-4">
@@ -50,8 +92,21 @@ export const EventReminderCard = () => {
             <AvatarFallback className="bg-primary text-primary-foreground">E</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-semibold text-lg">{t('dashboard.next_event_title', '{{title}} in {{days}} days', { title: data.title || t('dashboard.event', 'Event'), days: daysLeft })}</p>
-            <p className="text-sm text-white/90">{t('dashboard.next_event_date', 'Happening on {{date}}', { date: new Date(data.event_date).toLocaleDateString() })}</p>
+            <p className="font-semibold text-lg">
+              {t('dashboard.next_event_title', '{{title}} in {{days}} days', {
+                title: data.title || t('dashboard.event', 'Event'),
+                days: daysLeft,
+              })}
+            </p>
+            <p className="text-sm text-white/90">
+              {countdownLabel || t('dashboard.next_event_date', 'Happening on {{date}}', {
+                date:
+                  new Date(data.event_date).toLocaleDateString(
+                    i18n.language === 'ar' ? 'ar-EG' : undefined,
+                    { year: 'numeric', month: '2-digit', day: '2-digit' }
+                  ),
+              })}
+            </p>
           </div>
         </div>
         <div className="flex gap-3">

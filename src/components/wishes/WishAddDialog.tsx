@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTranslation } from "react-i18next";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 // no tabs in simplified design
 
 export type WishlistOption = {
@@ -50,6 +52,7 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const { t } = useTranslation();
+  const [isExtracting, setIsExtracting] = useState(false);
 
   useEffect(() => {
     if (fixedWishlistId) setWishlistId(fixedWishlistId);
@@ -89,6 +92,303 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
     setImageFile(null);
     setImageUrl(null);
     if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const readFileAsBase64 = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const res = reader.result as string;
+        // res format: data:image/png;base64,xxxx
+        const base64 = res.includes(",") ? res.split(",")[1] : res;
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  async function loadTesseract(): Promise<any> {
+    if (typeof window === 'undefined') return null;
+    const w = window as any;
+    if (w.Tesseract) return w.Tesseract;
+    await new Promise<void>((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.min.js';
+      s.async = true;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('Failed to load OCR library'));
+      document.head.appendChild(s);
+    });
+    return (window as any).Tesseract;
+  }
+
+  function parseOcrText(text: string) {
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    let title = '';
+    for (const l of lines) {
+      const wc = l.split(/\s+/).length;
+      if (wc >= 3 && wc <= 10) { title = l; break; }
+    }
+    if (!title && lines[0]) title = lines[0];
+    const urlMatch = text.match(/https?:[^\s]+/i);
+    const brandMatch = text.match(/\b([A-Z][a-zA-Z]{2,})\b/);
+    const brand = brandMatch ? brandMatch[1] : '';
+    const url = urlMatch ? urlMatch[0] : '';
+    return { title, brand, description: text.slice(0, 400), url };
+  }
+
+  async function preprocessImageToCanvas(srcUrl: string): Promise<HTMLCanvasElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxW = 1400;
+        const scale = Math.min(1, maxW / img.width);
+        canvas.width = Math.floor(img.width * scale);
+        canvas.height = Math.floor(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Canvas unsupported'));
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = imgData.data;
+        const contrast = 1.35;
+        for (let i = 0; i < d.length; i += 4) {
+          const r = d[i], g = d[i+1], b = d[i+2];
+          let y = 0.299*r + 0.587*g + 0.114*b;
+          y = (y - 128) * contrast + 128;
+          const v = Math.max(0, Math.min(255, y));
+          d[i] = d[i+1] = d[i+2] = v;
+        }
+        ctx.putImageData(imgData, 0, 0);
+        resolve(canvas);
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = srcUrl;
+    });
+  }
+
+  const runOcrFallback = async () => {
+    const localeIsAr = typeof navigator !== 'undefined' && navigator.language?.startsWith('ar');
+    const Tesseract = await loadTesseract();
+    if (!Tesseract || !imageUrl) throw new Error('OCR unavailable');
+    // Try both English and Arabic if available
+    const canvas = await preprocessImageToCanvas(imageUrl as string).catch(() => null);
+    const target = (canvas as any) || (imageUrl as string);
+    let result: any = null;
+    try {
+      // Prefer Arabic first if UI is Arabic
+      const primaryLang = localeIsAr ? 'ara' : 'eng';
+      const secondaryLang = localeIsAr ? 'eng' : 'ara';
+      try {
+        result = await Tesseract.recognize(target, `${primaryLang}+${secondaryLang}`);
+      } catch {
+        result = await Tesseract.recognize(target, primaryLang);
+      }
+    } catch {
+      result = await Tesseract.recognize(target, 'eng');
+    }
+    const rawText = result?.data?.text || result?.text || '';
+    const { title: tTitle, brand: tBrand, description: tDesc, url: tUrl } = parseOcrText(rawText);
+    let updated = false;
+    if (tTitle && !title) { setTitle(tTitle); updated = true; }
+    if (tBrand && !brand) { setBrand(tBrand); updated = true; }
+    if (tDesc && !description) { setDescription(tDesc); updated = true; }
+    if (tUrl) { setDescription((prev) => prev ? `${prev}\n${tUrl}` : tUrl); updated = true; }
+    // Post-process with Deepseek to clean/structure OCR text
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-gateway`;
+      const sys = localeIsAr
+        ? 'أنت مساعد Wishly. لخص النص التالي إلى JSON بالمفاتيح: title, brand, description, url. لا تُدخل أسعارًا. إذا كان النص رديئًا فأعد فقط ما تستطيع.'
+        : 'You are Wishly. Summarize the following OCR text into strict JSON keys: title, brand, description, url. No prices. If poor text, return what you can.';
+      const body = { model: 'deepseek-chat', messages: [
+        { role: 'system', content: sys },
+        { role: 'user', content: `OCR TEXT:\n${rawText}` },
+      ], temperature: 0.2, max_tokens: 300 } as const;
+      const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
+      if (resp.ok) {
+        let out: any = null;
+        try { out = await resp.json(); } catch { const txt = await resp.text(); const m = txt.match(/\{[\s\S]*\}/); if (m) out = JSON.parse(m[0]); }
+        if (out && typeof out === 'object') {
+          let improved = false;
+          if (out.title && (!title || out.title.length > title.length)) { setTitle(out.title); improved = true; }
+          if (out.brand && (!brand || out.brand.length > brand.length)) { setBrand(out.brand); improved = true; }
+          if (out.description && (!description || out.description.length > description.length)) { setDescription(out.description); improved = true; }
+          if (out.url) { setDescription((prev) => prev ? `${prev}\n${out.url}` : out.url); improved = true; }
+          updated = updated || improved;
+        }
+      }
+    } catch {}
+    if (updated) toast.success(t('wish_item.extract_done', 'Extracted details from image'));
+    else toast.warning?.(localeIsAr ? 'لم نتمكن من استخراج نص واضح من الصورة.' : 'Couldn’t extract clear text from the image.');
+    return updated;
+  };
+
+  const handleExtractFromImage = async () => {
+    try {
+      if (!imageFile) {
+        toast.error(t("wish_item.extract_no_image", "Please upload an image first"));
+        return;
+      }
+      setIsExtracting(true);
+      const base64 = await readFileAsBase64(imageFile);
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const url = `${baseUrl}/functions/v1/ai-gateway`;
+      const locale = typeof navigator !== "undefined" && navigator.language?.startsWith("ar") ? "ar" : "en";
+      // A) Google Vision Edge Function first (if configured on project)
+      try {
+        const visionFn = `${baseUrl}/functions/v1/extract-from-image`;
+        const vres = await fetch(visionFn, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY as string}` }),
+          },
+          body: JSON.stringify({ image_base64: base64, locale }),
+        });
+        if (vres.ok) {
+          const vjson = await vres.json();
+          const s = vjson?.structured || vjson;
+          let applied = false;
+          if (s?.title) { setTitle(s.title); applied = true; }
+          if (s?.brand) { setBrand(s.brand); applied = true; }
+          if (s?.description) { setDescription(s.description); applied = true; }
+          if (s?.url) { setDescription((prev) => prev ? `${prev}\n${s.url}` : s.url); applied = true; }
+          if (applied) { toast.success(t('wish_item.extract_done', 'Extracted details from image')); return; }
+        } else {
+          const errText = await vres.text().catch(() => '');
+          toast.message?.('Vision', { description: `Vision ${vres.status}: ${errText.slice(0, 140)}` });
+        }
+      } catch {}
+      const systemPrompt = locale === 'ar'
+        ? "أنت مساعد Wishly. أعد فقط JSON بالمفاتيح: title, brand, description, url. لا تُدخل أسعارًا. إذا تعذر عليك فهم الصورة فأعد فقط {} دون نص إضافي."
+        : "You are Wishly. Return ONLY strict JSON with keys: title, brand, description, url. No prices. If you cannot parse the image, return just {} with no extra text.";
+      const dataUrl = `data:${imageFile.type || 'image/png'};base64,${base64}`;
+      const body = {
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content:
+              locale === 'ar'
+                ? `هذه صورة منتج (مشفرة كـ data URL). استخرج title و brand و description ورابط إن وجد من الصورة. data_url:\n${dataUrl}`
+                : `This is a product image (encoded as a data URL). Extract a concise title, brand, description, and a link if present from any visible text. data_url:\n${dataUrl}`,
+          },
+        ],
+        temperature: 0.2,
+        max_tokens: 400,
+      } as const;
+
+      // 0) Optional: If Deepseek Vision model configured, try vision with image_url first
+      const visionModel = (import.meta as any).env?.VITE_DEEPSEEK_VISION_MODEL as string | undefined;
+      if (visionModel) {
+        try {
+          // upload image to storage (public) for URL reference
+          const filename = `extract/${Date.now()}_${imageFile.name}`;
+          const upload = await supabase.storage.from('public').upload(filename, imageFile, { upsert: true });
+          if (!upload.error) {
+            const { data: { publicUrl } } = supabase.storage.from('public').getPublicUrl(filename);
+            const visionBody = {
+              model: visionModel,
+              messages: [
+                { role: 'system', content: locale === 'ar' ? 'أعد فقط JSON: title, brand, description, url. بدون أسعار.' : 'Return ONLY JSON: title, brand, description, url. No prices.' },
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: locale === 'ar' ? 'استخرج الحقول من الصورة' : 'Extract fields from this product image' },
+                    { type: 'image_url', image_url: { url: publicUrl } },
+                  ],
+                },
+              ],
+              temperature: 0.2,
+              max_tokens: 400,
+            } as const;
+            const vres = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(visionBody) });
+            if (vres.ok) {
+              let jout: any = null;
+              try { jout = await vres.json(); } catch { const txt = await vres.text(); const m = txt.match(/\{[\s\S]*\}/); if (m) jout = JSON.parse(m[0]); }
+              if (jout && typeof jout === 'object') {
+                let applied = false;
+                if (jout.title) { setTitle(jout.title); applied = true; }
+                if (jout.brand) { setBrand(jout.brand); applied = true; }
+                if (jout.description) { setDescription(jout.description); applied = true; }
+                if (jout.url) { setDescription((prev) => prev ? `${prev}\n${jout.url}` : jout.url); applied = true; }
+                if (applied) {
+                  toast.success(t('wish_item.extract_done', 'Extracted details from image'));
+                  return; // stop here if vision worked
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(text || `Gateway error ${resp.status}`);
+      }
+      // Response might be JSON or streamed text. Try JSON first.
+      let out: any = null;
+      try {
+        const j = await resp.json();
+        if (j && typeof j === 'object') out = j;
+      } catch {
+        const text = await resp.text();
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) {
+          try { out = JSON.parse(match[0]); } catch {}
+        }
+      }
+      if (!out || typeof out !== 'object') {
+        throw new Error(locale === 'ar' ? 'تعذر استخراج البيانات من الاستجابة' : 'Could not extract data from AI response');
+      }
+      // Expecting { title?: string, brand?: string, description?: string, url?: string }
+      let updated = false;
+      if (out?.title) { setTitle(out.title); updated = true; }
+      if (out?.brand) { setBrand(out.brand); updated = true; }
+      if (out?.description) { setDescription(out.description); updated = true; }
+      if (out?.url) {
+        setDescription((prev) => prev ? `${prev}\n${out.url}` : out.url);
+        updated = true;
+      }
+      if (updated) {
+        toast.success(t("wish_item.extract_done", "Extracted details from image"));
+      } else {
+        // If nothing useful returned, attempt OCR fallback automatically
+        await runOcrFallback();
+      }
+    } catch (e: any) {
+      const msg = e?.message || (typeof e === 'string' ? e : '') || 'Failed to extract from image';
+      // Normalize DeepSeek 400 into friendly text
+      if (/DeepSeek API error|Gateway error|400/.test(msg)) {
+        // Try client-side OCR fallback
+        try {
+          await runOcrFallback();
+        } catch (ocrErr: any) {
+          const friendly = typeof navigator !== 'undefined' && navigator.language?.startsWith('ar')
+            ? 'تعذر استخراج النص من الصورة الآن.'
+            : 'Could not extract text from the image.';
+          toast.error(friendly);
+        }
+      } else {
+        toast.error(msg);
+      }
+    } finally {
+      setIsExtracting(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -196,6 +496,9 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
               {imageUrl ? (
                 <div className="mt-2">
                   <Button type="button" variant="ghost" onClick={handleClearImage}>{t("wish_item.clear_image", "Clear Image")}</Button>
+                  <Button type="button" className="ml-2" onClick={handleExtractFromImage} disabled={isExtracting}>
+                    {isExtracting ? t("wish_item.extracting", "Extracting...") : t("wish_item.extract_ai_button", "Extract details with AI")}
+                  </Button>
                 </div>
               ) : null}
             </div>

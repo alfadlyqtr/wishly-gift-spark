@@ -54,6 +54,18 @@
     "following": "تتابِع",
     "sign_out": "تسجيل الخروج"
   },
+  "followers": {
+    "back": "رجوع",
+    "title": "الاتصالات",
+    "subtitle": "المتابِعون والمتابَعون",
+    "followers_tab": "المتابِعون",
+    "following_tab": "تتابِع",
+    "empty_followers": "لا يوجد متابعون بعد",
+    "empty_following": "لا تتابِع أي شخص بعد",
+    "loading": "جاري التحميل...",
+    "follows_you": "يتابعك",
+    "you_follow": "تتابِعه"
+  },
   "settings": {
     "title": "الإعدادات",
     "security": "أمان الحساب",
@@ -180,7 +192,9 @@
     "gift_smartwatch": "ساعة ذكية",
     "gift_coffee_maker": "آلة تحضير القهوة",
     "gift_bluetooth_speaker": "سماعة بلوتوث",
-    "gift_desk_lamp": "مصباح مكتب"
+    "gift_desk_lamp": "مصباح مكتب",
+    "ai_loading": "جاري سؤال Wishly عن أفكار هدايا...",
+    "ai_error": "سيتم استخدام أفكار افتراضية لأن الذكاء الاصطناعي غير متوفر الآن."
   }
   ,
   "messages": {
@@ -248,6 +262,16 @@
     "approve": "موافقة",
     "decline": "رفض",
     "all_caught_up": "لا توجد إشعارات جديدة.",
-    "activity_update": "تحديث"
+    "activity_update": "تحديث",
+    "activity_wish_added": "لقد أضفت أمنية جديدة",
+    "activity_wishlist_created": "لقد أنشأت قائمة أمنيات جديدة",
+    "activity_wishlist_updated": "لقد قمت بتحديث قائمة أمنيات",
+    "activity_follow_accepted": "لقد وافقت على طلب متابعة",
+    "activity_new_follower": "لديك متابع جديد"
+  }
+  ,
+  "dashboard_countdown": {
+    "countdown_today": "اليوم",
+    "countdown_full": "متبقي {{days}} يوم {{hours}} ساعة {{minutes}} دقيقة"
   }
 }

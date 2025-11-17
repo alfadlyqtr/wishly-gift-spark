@@ -1,13 +1,16 @@
+import { useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Heart, Repeat2, MessageCircle, Users } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useTranslation } from "react-i18next";
 
 export const SocialWishCard = () => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
   const { data } = useQuery({
     queryKey: ["dashboard", "social"],
     queryFn: async () => {
@@ -30,6 +33,29 @@ export const SocialWishCard = () => {
       return items || [];
     },
   });
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    const channel = (supabase as any)
+      .channel("dashboard-social-wishes")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "wishlist_items" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["dashboard", "social"] });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      try {
+        (supabase as any).removeChannel(channel);
+      } catch {
+        // ignore cleanup errors
+      }
+    };
+  }, [queryClient]);
 
   if (!data || (data as any[]).length === 0) {
     return (

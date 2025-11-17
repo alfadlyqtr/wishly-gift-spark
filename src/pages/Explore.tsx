@@ -93,7 +93,7 @@ const Explore = () => {
             <button
               type="button"
               className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white shadow-[0_8px_18px_rgba(200,80,192,0.28)]"
-              aria-label="Filters"
+              aria-label={t('explore.filters_aria', 'Filters')}
             >
               <Filter className="h-4 w-4" />
             </button>
@@ -163,9 +163,9 @@ const Explore = () => {
           debouncedQ.length === 0 ? (
             <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4 text-sm text-muted-foreground">{t('explore.empty_users', 'Type a name, username, or email to search users.')}</div>
           ) : usersQuery.isLoading ? (
-            <div className="flex items-center justify-center py-10"><div className="loader"><span className="text">Loading</span></div></div>
+            <div className="flex items-center justify-center py-10"><div className="loader"><span className="text">{t('explore.loading', 'Loading')}</span></div></div>
           ) : (usersQuery.data?.length ?? 0) === 0 ? (
-            <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4 text-sm text-muted-foreground">No results.</div>
+            <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4 text-sm text-muted-foreground">{t('explore.no_results', 'No results.')}</div>
           ) : (
             <div className="space-y-3">
               {usersQuery.data!.map((u: any) => (
