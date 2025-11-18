@@ -308,11 +308,14 @@ const WishlistDetail = () => {
                 </div>
               )}
 
-              <div className="mt-3 bg-white/5 rounded-md p-3 w-full" style={{ maxHeight: 5 * 76, overflowY: 'auto' }}>
+              <div
+                className="mt-3 bg-white/5 rounded-md p-3 w-full overscroll-contain"
+                style={{ maxHeight: 'min(65vh, 520px)', overflowY: 'auto' }}
+              >
                 <h3 className="text-base font-semibold drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{t('wishlist_detail.items_title', 'Items')}</h3>
                 {items.length > 0 ? (
-                  <div className="mt-2 divide-y divide-white/10">
-                    {items.map((it) => (
+                  <div className="mt-2 space-y-3">
+                    {items.map((it, idx) => (
                       <div key={it.id} className="py-3">
                         <div className="flex items-start gap-3">
                           {it.image_url ? (
@@ -336,13 +339,15 @@ const WishlistDetail = () => {
                           <div className="flex min-w-0 flex-1 flex-col">
                             <div className="flex items-center gap-2">
                               <span className="text-lg leading-none">{desireEmoji((it as any).desire)}</span>
-                              <span className="font-medium truncate">{it.title}</span>
+                              <span className="text-sm font-semibold text-white whitespace-nowrap truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                                {it.title}
+                              </span>
                             </div>
                             {(it as any)?.brand ? (
                               <span className="text-xs opacity-90">{(it as any).brand}</span>
                             ) : null}
                             {it.description && (
-                              <span className="text-xs opacity-90 line-clamp-2">{it.description}</span>
+                              <span className="text-xs opacity-90">{it.description}</span>
                             )}
                             {it.item_url && (
                               <a href={it.item_url} target="_blank" className="text-[11px] underline" rel="noreferrer">
@@ -435,6 +440,9 @@ const WishlistDetail = () => {
                             </div>
                           )}
                         </div>
+                        {idx < items.length - 1 && (
+                          <div className="mt-3 h-[1px] w-full rounded-full bg-white/25 backdrop-blur-[2px]" />
+                        )}
                       </div>
                     ))}
                   </div>
@@ -566,10 +574,14 @@ const WishlistDetail = () => {
         <div className="mx-auto mt-5 w-full max-w-[520px]">
           <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/60 px-4 py-4 shadow-[0_10px_28px_rgba(0,0,0,0.08)]">
             <div className="flex items-center justify-center gap-3 mb-2">
-              <img src={wishlyLogo} alt="Wishly" className="h-8 w-8 rounded-full ring-1 ring-white/50 shadow-sm object-cover" />
+              <img src={wishlyLogo} alt="Wishly" className="h-12 w-12 rounded-full ring-1 ring-white/50 shadow-sm object-cover" />
               <div className="text-center">
-                <div className="text-sm sm:text-base font-semibold">{t('giftr.cta_head','Create wishlists. Share with friends.')}</div>
-                <div className="text-xs opacity-80 -mt-0.5">{t('giftr.cta_sub','See your friends\' wishlists too.')}</div>
+                <div className="text-white text-lg sm:text-xl font-extrabold drop-shadow-[0_3px_12px_rgba(0,0,0,0.45)] tracking-tight">
+                  {t('giftr.cta_head','Wishlist in Style')}
+                </div>
+                <div className="text-xs opacity-95 -mt-0.5 text-black/80">
+                  {t('giftr.cta_sub','Create wishlists and share them with friends.')}
+                </div>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">

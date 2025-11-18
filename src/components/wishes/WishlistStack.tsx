@@ -98,11 +98,41 @@ export default function WishlistStack({
 
   const shareWishlist = async (id: string, title: string) => {
     try {
-      const url = `${window.location.origin}/wishlist/${id}?mode=gifter`;
-      if ((navigator as any)?.share) {
-        await (navigator as any).share({ title: title || 'Wishlist', url });
+      const publicBase = (import.meta as any).env?.VITE_PUBLIC_SITE_URL as string | undefined;
+      const origin = (publicBase && /^https?:\/\//i.test(publicBase)) ? publicBase.replace(/\/$/, '') : window.location.origin;
+      const url = `${origin}/wishlist/${id}?mode=gifter`;
+      const shareTitle = title || 'Wishlist';
+      const text = `${shareTitle} — ${url}`;
+
+      const nav: any = navigator as any;
+      if (nav?.share) {
+        const payload: any = { title: shareTitle, text, url };
+        if (!nav.canShare || nav.canShare(payload)) {
+          try {
+            await nav.share(payload);
+            return;
+          } catch (err: any) {
+            // fall through to other strategies
+          }
+        }
+      }
+
+      // Mobile WhatsApp deep link fallback (best-effort)
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        const waDeepLink = `whatsapp://send?text=${encodeURIComponent(text)}`;
+        const waWeb = `https://wa.me/?text=${encodeURIComponent(text)}`;
+        try {
+          // Try deep link first
+          window.location.href = waDeepLink;
+          // If it doesn't resolve (e.g., no app), the user can still use the web link we copy below
+        } catch {}
+        // Also copy to clipboard as a reliable fallback
+        await navigator.clipboard.writeText(text);
+        toast.success('Link copied. If WhatsApp did not open, paste into any app.');
         return;
       }
+
       await navigator.clipboard.writeText(url);
       toast.success('Link copied');
     } catch (e: any) {

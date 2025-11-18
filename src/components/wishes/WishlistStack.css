@@ -106,10 +106,10 @@
   transform: translateY(-1px);
 }
 
-/* Mobile tuning: soften shadow to avoid heavy shade behind the stack */
-@media (max-width: 420px) {
+/* Mobile tuning: remove heavy shade behind the stack */
+@media (max-width: 480px) {
   .wl-card {
-    filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.22));
+    filter: none;
   }
   .wl-share-btn{
     top: 8px;
