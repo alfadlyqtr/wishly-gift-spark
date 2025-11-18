@@ -388,15 +388,15 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent>
+      <DialogContent className="w-[92vw] max-w-[420px] p-0 sm:p-0 rounded-2xl">
         <DialogHeader>
           <DialogTitle className="sr-only">{itemId ? t("wish_item.edit_hidden", "Edit Wish") : t("wish_item.add_hidden", "Add Wish")}</DialogTitle>
         </DialogHeader>
-        <div className="mx-auto w-full max-w-md sm:max-w-2xl rounded-2xl p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
+        <div className="mx-auto w-full rounded-2xl p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
           <div className="rounded-2xl bg-white/90 backdrop-blur p-4 sm:p-6 ring-1 ring-white/70">
             <h3 className="heading text-center font-semibold text-lg text-foreground">{itemId ? t("wish_item.edit_title", "Edit Wishlist Item") : t("wish_item.create_title", "Create Wishlist Item")}</h3>
 
-            <div className="mt-2 space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+            <div className="mt-2 space-y-3 max-h-[75vh] overflow-y-auto pr-1">
             <div className="input-div flex flex-col">
               <Label className="mb-1">{t("wish_item.wishlist_label", "Wishlist")}</Label>
               <Select value={wishlistId} onValueChange={setWishlistId}>
@@ -425,7 +425,8 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                   background: "linear-gradient(135deg, #f162ba, #ed45ae)",
                   minHeight: 120,
                   boxShadow: "0 24px 44px rgba(0,0,0,0.22)",
-                  maxWidth: 200,
+                  maxWidth: 260,
+                  width: '100%',
                   border: "1px solid rgba(255,255,255,0.45)",
                 }}
               >
@@ -484,17 +485,17 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                 </div>
               </div>
 
-              <div className="mt-2 flex items-center gap-2">
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
                 {imageUrl ? (
                   <Button type="button" variant="ghost" onClick={handleClearImage}>{t("wish_item.clear_image", "Clear Image")}</Button>
                 ) : null}
-                <div className="flex items-center gap-2">
-                  <Button type="button" onClick={handleExtractFromImage} disabled={isExtracting || !imageFile}>
+                <div className="flex items-center gap-2 flex-1 min-w-0 w-full">
+                  <Button type="button" onClick={handleExtractFromImage} disabled={isExtracting || !imageFile} className="flex-1 min-w-0 truncate">
                     {isExtracting ? t("wish_item.extracting", "Extracting...") : t("wish_item.extract_ai_button", "Extract details with AI")}
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button type="button" variant="secondary" className="px-2" aria-label="Style presets">
+                      <Button type="button" variant="secondary" className="px-2 shrink-0" aria-label="Style presets">
                         <ChevronDown className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -506,7 +507,7 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                <span className="ml-1 text-xs text-muted-foreground">Style: {stylePreset}</span>
+                <span className="basis-full ml-1 text-xs text-muted-foreground">Style: {stylePreset}</span>
               </div>
             </div>
 
@@ -534,11 +535,10 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                   {description.length}/{DESC_MAX}
                 </div>
               </div>
-              <span className="ml-1 text-xs text-muted-foreground">Style: {stylePreset}</span>
             </div>
 
             {/* Actions */}
-            <div className="button-div flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 pt-2">
+            <div className="button-div flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 pt-2 pb-[max(env(safe-area-inset-bottom),0px)]">
               <Button type="button" variant="secondary" onClick={() => onOpenChange?.(false)} className="w-full sm:w-auto px-6">{t("common.cancel", "Cancel")}</Button>
               <Button type="button" disabled={!canSubmit} onClick={handleSubmit} className="w-full sm:w-auto px-8 py-2 bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white rounded-xl">{itemId ? t("wish_item.update_button", "Update Wish") : t("wish_item.save_button", "Save to Wishlist")}</Button>
           </div>

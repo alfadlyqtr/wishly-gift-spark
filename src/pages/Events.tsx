@@ -117,6 +117,7 @@ const Events = () => {
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
+  const [cardSize, setCardSize] = useState<{ width: number; height: number }>({ width: 300, height: 170 });
 
   const today = useMemo(() => new Date(), []);
 
@@ -183,39 +184,53 @@ const Events = () => {
     })();
   }, [profileBundle?.profile?.dob, queryClient]);
 
+  // Responsive card size for mobile-first view
+  useEffect(() => {
+    const compute = () => {
+      const vw = typeof window !== 'undefined' ? Math.min(window.innerWidth, 480) : 360;
+      const pad = vw < 380 ? 24 : 32; // mirror container paddings
+      const width = Math.max(260, Math.min(340, vw - pad * 2));
+      const height = Math.round(width * 0.57);
+      setCardSize({ width, height });
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    return () => window.removeEventListener('resize', compute);
+  }, []);
+
   return (
-    <div className="container max-w-2xl mx-auto px-4 py-6 space-y-6">
+    <div className="container mx-auto max-w-md px-3 py-4 space-y-4 sm:max-w-2xl sm:px-4 sm:py-6 sm:space-y-6">
       <div className="flex items-center gap-3">
-        <div className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_12px_30px_rgba(200,80,192,0.45)] ring-1 ring-white/40">
-          <Calendar className="h-5 w-5 text-white drop-shadow" />
+        <div className="relative inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_12px_30px_rgba(200,80,192,0.45)] ring-1 ring-white/40">
+          <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-white drop-shadow" />
           <span className="absolute -inset-1 rounded-[14px] blur-md bg-gradient-to-br from-[hsl(var(--brand-warm-end))]/20 to-[hsl(var(--brand-cool-end))]/10" aria-hidden="true" />
         </div>
-        <h2 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow">{t('events.title', 'Events')}</h2>
+        <h2 className="text-xl sm:text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow">{t('events.title', 'Events')}</h2>
       </div>
 
       <Tabs defaultValue="mine" className="w-full">
-        <TabsList className="grid grid-cols-3 rounded-2xl bg-white/40 backdrop-blur px-1 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] ring-1 ring-white/50">
-          <TabsTrigger value="mine" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl transition">{t('events.tab_my', 'My Events')}</TabsTrigger>
-          <TabsTrigger value="friends" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl transition">{t('events.tab_friends', "Friends' Events")}</TabsTrigger>
-          <TabsTrigger value="public" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl transition">{t('events.tab_general', 'General Events')}</TabsTrigger>
+        <TabsList className="grid grid-cols-3 rounded-2xl bg-white/40 backdrop-blur px-1 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] ring-1 ring-white/50 h-10 sm:h-11">
+          <TabsTrigger value="mine" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl transition px-3 py-2 text-xs sm:text-sm">{t('events.tab_my', 'My Events')}</TabsTrigger>
+          <TabsTrigger value="friends" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl transition px-3 py-2 text-xs sm:text-sm">{t('events.tab_friends', "Friends' Events")}</TabsTrigger>
+          <TabsTrigger value="public" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl transition px-3 py-2 text-xs sm:text-sm">{t('events.tab_general', 'General Events')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="mine" className="pt-4">
-          <Card className="border-0 rounded-2xl ring-1 ring-white/30 bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/10 via-[hsl(var(--brand-cool-end))]/10 to-[hsl(var(--brand-warm-end))]/10 shadow-[0_18px_40px_rgba(0,0,0,0.20)]">
-            <CardHeader className="pb-3 flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">{t('events.tab_my', 'My Events')}</CardTitle>
+          <Card className="border-0 rounded-2xl ring-1 ring-white/30 bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/10 via-[hsl(var(--brand-cool-end))]/10 to-[hsl(var(--brand-warm-end))]/10 shadow-[0_18px_40px_rgba(0,0,0,0.20)] overflow-hidden">
+            <CardHeader className="pb-2 sm:pb-3 flex items-center justify-between">
+              <CardTitle className="text-sm sm:text-base font-semibold">{t('events.tab_my', 'My Events')}</CardTitle>
               <CreateWishlistModal>
                 <AddButton ariaLabel="Add Wishlist" />
               </CreateWishlistModal>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-2">
               {(myEvents?.length ?? 0) > 0 && (
-                <div className="w-full flex justify-start pl-4 sm:justify-center py-6">
+                <div className="w-full flex justify-center py-4 sm:py-6">
                   <WishlistStack
                     randomRotation={true}
                     sensitivity={180}
                     sendToBackOnClick={false}
-                    cardDimensions={{ width: 320, height: 190 }}
+                    cardDimensions={{ width: cardSize.width, height: cardSize.height }}
                     cards={(myEvents || []).map((e) => ({ id: e.id, title: e.title || 'Untitled' }))}
                   />
                 </div>
