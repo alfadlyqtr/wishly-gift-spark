@@ -35,16 +35,39 @@ async function geminiExtractStructure(image_base64: string, locale: string, tone
   } as const;
 
   // Tone/style guidance
-  const toneIntensity = (tone || 'natural').toLowerCase();
-  const writingStyle = (style || 'Auto').toLowerCase();
+  // Normalize inputs
+  const toneIntensityRaw = (tone || 'natural').toLowerCase();
+  const toneIntensity = ['neutral','chill','interested','excited','obsessed'].includes(toneIntensityRaw)
+    ? toneIntensityRaw
+    : 'natural';
+  let writingStyle = (style || 'auto').toLowerCase().replace(/\s+/g, ' ');
+  if (writingStyle === 'genz') writingStyle = 'gen z';
+  if (!['auto','professional','natural','gen z'].includes(writingStyle)) writingStyle = 'auto';
+
+  // Derive tone/style rule snippets
+  const toneRulesMap: Record<string, string> = {
+    neutral: 'No first-person. Objective phrasing. No exclamations.',
+    chill: 'Soft, calm phrasing. First-person optional. No exclamations.',
+    interested: 'One mild first-person cue (e.g., "I like"). Positive but restrained.',
+    excited: 'Upbeat first-person (e.g., "I love"). One exclamation at most; keep tasteful.',
+    obsessed: 'Enthusiastic first-person (e.g., "I really want this"). No more than one exclamation. Still tasteful.'
+  };
+  const styleRulesMap: Record<string, string> = {
+    'auto': 'Neutral register based on language. No slang or emoji.',
+    'professional': 'Formal, clean sentences, no slang/emoji, avoid contractions.',
+    'natural': 'Everyday conversational voice, contractions allowed, no slang/emoji.',
+    'gen z': 'Light slang allowed, at most 1 emoji, concise and playful.'
+  };
+  const toneRule = toneRulesMap[toneIntensity] || toneRulesMap['interested'];
+  const styleRule = styleRulesMap[writingStyle] || styleRulesMap['auto'];
 
   // The core instruction prompt (wishlist-style, personal tone)
   const prompt = `Analyze the uploaded product image.
   Identify the brand and item name, then write a wishlist-style description that sounds personal and natural (not like a store listing).
   Rules for Description:
   - Language: ${locale === 'ar' ? 'Arabic' : 'English'}
-  - Tone intensity: ${toneIntensity} (options: neutral, chill, interested, excited, obsessed). Reflect emotion, but stay tasteful.
-  - Writing style: ${writingStyle} (options: auto, professional, natural, gen z). Style controls register/word choice only; tone controls emotion.
+  - Tone: ${toneIntensity}. ${toneRule}
+  - Style: ${writingStyle}. ${styleRule}
   - Avoid marketing jargon and spec-sheet terms; no prices or model codes.
   - Length: 1–2 sentences (<= 200 characters ideally).
   - Brand: mention naturally once near the start; do not repeat the brand.
