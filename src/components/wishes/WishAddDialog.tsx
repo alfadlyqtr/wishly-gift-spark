@@ -3,6 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -51,13 +53,18 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedColors, setExtractedColors] = useState<{hex: string; score: number}[]>([]);
+  const [stylePreset, setStylePreset] = useState<"Auto" | "Professional" | "Natural" | "GenZ">(() => (typeof window !== 'undefined' && (localStorage.getItem('wish_style_preset') as any)) || 'Auto');
 
   useEffect(() => {
     if (fixedWishlistId) setWishlistId(fixedWishlistId);
   }, [fixedWishlistId]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') localStorage.setItem('wish_style_preset', stylePreset);
+  }, [stylePreset]);
 
   // When opening in edit mode, seed state
   useEffect(() => {
@@ -76,6 +83,47 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
   }, [open, initialTitle, initialBrand, initialDescription, initialDesire, initialImageUrl, fixedWishlistId, initialWishlistId]);
 
   const canSubmit = useMemo(() => !!wishlistId && !!title, [wishlistId, title]);
+
+  const DESC_MAX = 200;
+
+  const refineDescription = (brand: string, description: string, maxLen = DESC_MAX) => {
+    if (!description) return description;
+    let text = description.trim();
+    if (brand) {
+      const esc = brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const lower = text.toLowerCase();
+      const idx = lower.indexOf(brand.toLowerCase());
+      if (idx !== -1) {
+        const head = text.slice(0, idx + brand.length);
+        const tail = text
+          .slice(idx + brand.length)
+          .replace(new RegExp(esc, 'gi'), '')
+          .replace(/\s{2,}/g, ' ')
+          .trim();
+        text = (head + ' ' + tail).replace(/\s{2,}/g, ' ').trim();
+      } else {
+        text = text.replace(new RegExp(`\\b${esc}\\b`, 'gi'), '').replace(/\s{2,}/g, ' ').trim();
+      }
+    }
+    // Keep at most two sentences
+    const sentences = text.split(/(?<=[.!?])\s+/);
+    if (sentences.length > 2) text = `${sentences[0]} ${sentences[1]}`.trim();
+    // Respect max length without cutting mid-sentence
+    if (text.length > maxLen) {
+      const before = text.slice(0, maxLen);
+      const lastEnd = Math.max(before.lastIndexOf('.'), before.lastIndexOf('!'), before.lastIndexOf('?'));
+      if (lastEnd >= 60) {
+        text = before.slice(0, lastEnd + 1).trim();
+      } else {
+        const lastComma = before.lastIndexOf(',');
+        const lastSpace = before.lastIndexOf(' ');
+        const pos = Math.max(lastComma, lastSpace);
+        text = before.slice(0, pos > 0 ? pos : maxLen).trim();
+        if (!/[.!?]$/.test(text)) text += '.';
+      }
+    }
+    return text;
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -194,34 +242,9 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
     let updated = false;
     if (tTitle && !title) { setTitle(tTitle); updated = true; }
     if (tBrand && !brand) { setBrand(tBrand); updated = true; }
-    if (tDesc && !description) { setDescription(tDesc); updated = true; }
+    if (tDesc && !description) { setDescription(refineDescription(tBrand, tDesc)); updated = true; }
     if (tUrl) { setDescription((prev) => prev ? `${prev}\n${tUrl}` : tUrl); updated = true; }
-    // Post-process with Deepseek to clean/structure OCR text
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      const token = session.session?.access_token;
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-gateway`;
-      const sys = localeIsAr
-        ? 'أنت مساعد Wishly. لخص النص التالي إلى JSON بالمفاتيح: title, brand, description, url. لا تُدخل أسعارًا. إذا كان النص رديئًا فأعد فقط ما تستطيع.'
-        : 'You are Wishly. Summarize the following OCR text into strict JSON keys: title, brand, description, url. No prices. If poor text, return what you can.';
-      const body = { model: 'deepseek-chat', messages: [
-        { role: 'system', content: sys },
-        { role: 'user', content: `OCR TEXT:\n${rawText}` },
-      ], temperature: 0.2, max_tokens: 300 } as const;
-      const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
-      if (resp.ok) {
-        let out: any = null;
-        try { out = await resp.json(); } catch { const txt = await resp.text(); const m = txt.match(/\{[\s\S]*\}/); if (m) out = JSON.parse(m[0]); }
-        if (out && typeof out === 'object') {
-          let improved = false;
-          if (out.title && (!title || out.title.length > title.length)) { setTitle(out.title); improved = true; }
-          if (out.brand && (!brand || out.brand.length > brand.length)) { setBrand(out.brand); improved = true; }
-          if (out.description && (!description || out.description.length > description.length)) { setDescription(out.description); improved = true; }
-          if (out.url) { setDescription((prev) => prev ? `${prev}\n${out.url}` : out.url); improved = true; }
-          updated = updated || improved;
-        }
-      }
-    } catch {}
+    // Note: removed ai-gateway/Deepseek post-processing; keep pure OCR fallback only
     if (updated) toast.success(t('wish_item.extract_done', 'Extracted details from image'));
     else toast.warning?.(localeIsAr ? 'لم نتمكن من استخراج نص واضح من الصورة.' : 'Couldn’t extract clear text from the image.');
     return updated;
@@ -238,166 +261,47 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
       const { data: session } = await supabase.auth.getSession();
       const token = session.session?.access_token;
       const baseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-      const url = `${baseUrl}/functions/v1/ai-gateway`;
-      const locale = typeof navigator !== "undefined" && navigator.language?.startsWith("ar") ? "ar" : "en";
-      // A) Google Vision Edge Function first (if configured on project)
-      try {
-        const visionFn = `${baseUrl}/functions/v1/extract-from-image`;
-        const vres = await fetch(visionFn, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY as string}` }),
-          },
-          body: JSON.stringify({ image_base64: base64, locale }),
-        });
-        if (vres.ok) {
-          const vjson = await vres.json();
-          console.log('[Vision] Full response:', vjson);
-          const s = vjson?.structured || vjson;
-          const logos = vjson?.logos || [];
-          const labels = vjson?.labels || [];
-          const colors = vjson?.colors || [];
-          console.log('[Vision] Structured:', s, 'Logos:', logos, 'Labels:', labels, 'Colors:', colors);
-          setExtractedColors(colors.slice(0, 5)); // Store top 5 colors
-          let applied = false;
-          if (s?.title) { setTitle(s.title); applied = true; }
-          if (s?.brand) { setBrand(s.brand); applied = true; }
-          if (s?.description) { setDescription(s.description); applied = true; }
-          if (s?.url) { setDescription((prev) => prev ? `${prev}\n${s.url}` : s.url); applied = true; }
-          if (applied) {
-            toast.success(t('wish_item.extract_done', 'Extracted details from image'));
-            return;
-          } else {
-            toast.message?.('Vision Debug', { description: `Logos: ${logos.join(', ') || 'none'} | Labels: ${labels.slice(0,3).join(', ') || 'none'}` });
-          }
-        } else {
-          const errText = await vres.text().catch(() => '');
-          toast.message?.('Vision', { description: `Vision ${vres.status}: ${errText.slice(0, 140)}` });
-        }
-      } catch {}
-      const systemPrompt = locale === 'ar'
-        ? "أنت مساعد Wishly. أعد فقط JSON بالمفاتيح: title, brand, description, url. لا تُدخل أسعارًا. إذا تعذر عليك فهم الصورة فأعد فقط {} دون نص إضافي."
-        : "You are Wishly. Return ONLY strict JSON with keys: title, brand, description, url. No prices. If you cannot parse the image, return just {} with no extra text.";
-      const dataUrl = `data:${imageFile.type || 'image/png'};base64,${base64}`;
-      const body = {
-        model: "deepseek-chat",
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content:
-              locale === 'ar'
-                ? `هذه صورة منتج (مشفرة كـ data URL). استخرج title و brand و description ورابط إن وجد من الصورة. data_url:\n${dataUrl}`
-                : `This is a product image (encoded as a data URL). Extract a concise title, brand, description, and a link if present from any visible text. data_url:\n${dataUrl}`,
-          },
-        ],
-        temperature: 0.2,
-        max_tokens: 400,
-      } as const;
+      const locale = (typeof window !== 'undefined' && (i18n?.language || navigator.language))?.startsWith('ar') ? 'ar' : 'en';
+      const tone = ["neutral","chill","interested","excited","obsessed"][Math.min(4, Math.max(0, desire))];
 
-      // 0) Optional: If Deepseek Vision model configured, try vision with image_url first
-      const visionModel = (import.meta as any).env?.VITE_DEEPSEEK_VISION_MODEL as string | undefined;
-      if (visionModel) {
-        try {
-          // upload image to storage (public) for URL reference
-          const filename = `extract/${Date.now()}_${imageFile.name}`;
-          const upload = await supabase.storage.from('public').upload(filename, imageFile, { upsert: true });
-          if (!upload.error) {
-            const { data: { publicUrl } } = supabase.storage.from('public').getPublicUrl(filename);
-            const visionBody = {
-              model: visionModel,
-              messages: [
-                { role: 'system', content: locale === 'ar' ? 'أعد فقط JSON: title, brand, description, url. بدون أسعار.' : 'Return ONLY JSON: title, brand, description, url. No prices.' },
-                {
-                  role: 'user',
-                  content: [
-                    { type: 'text', text: locale === 'ar' ? 'استخرج الحقول من الصورة' : 'Extract fields from this product image' },
-                    { type: 'image_url', image_url: { url: publicUrl } },
-                  ],
-                },
-              ],
-              temperature: 0.2,
-              max_tokens: 400,
-            } as const;
-            const vres = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(visionBody) });
-            if (vres.ok) {
-              let jout: any = null;
-              try { jout = await vres.json(); } catch { const txt = await vres.text(); const m = txt.match(/\{[\s\S]*\}/); if (m) jout = JSON.parse(m[0]); }
-              if (jout && typeof jout === 'object') {
-                let applied = false;
-                if (jout.title) { setTitle(jout.title); applied = true; }
-                if (jout.brand) { setBrand(jout.brand); applied = true; }
-                if (jout.description) { setDescription(jout.description); applied = true; }
-                if (jout.url) { setDescription((prev) => prev ? `${prev}\n${jout.url}` : jout.url); applied = true; }
-                if (applied) {
-                  toast.success(t('wish_item.extract_done', 'Extracted details from image'));
-                  return; // stop here if vision worked
-                }
-              }
-            }
-          }
-        } catch {}
-      }
-
-      const resp = await fetch(url, {
-        method: "POST",
+      const visionFn = `${baseUrl}/functions/v1/extract-from-image`;
+      const vres = await fetch(visionFn, {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY as string}` }),
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ image_base64: base64, locale, tone, style: stylePreset }),
       });
-      if (!resp.ok) {
-        const text = await resp.text();
-        throw new Error(text || `Gateway error ${resp.status}`);
+
+      if (!vres.ok) {
+        const errText = await vres.text().catch(() => '');
+        throw new Error(errText || `Extract error ${vres.status}`);
       }
-      // Response might be JSON or streamed text. Try JSON first.
-      let out: any = null;
-      try {
-        const j = await resp.json();
-        if (j && typeof j === 'object') out = j;
-      } catch {
-        const text = await resp.text();
-        const match = text.match(/\{[\s\S]*\}/);
-        if (match) {
-          try { out = JSON.parse(match[0]); } catch {}
-        }
-      }
-      if (!out || typeof out !== 'object') {
-        throw new Error(locale === 'ar' ? 'تعذر استخراج البيانات من الاستجابة' : 'Could not extract data from AI response');
-      }
-      // Expecting { title?: string, brand?: string, description?: string, url?: string }
+
+      const vjson = await vres.json();
+      const s = vjson?.structured || vjson;
+
+      // Map Gemini structured fields to our UI fields
+      const titleFromApi = s?.Item_Name || s?.title || '';
+      const brandFromApi = s?.Brand || s?.brand || '';
+      const descFromApi = s?.Description || s?.description || '';
+
       let updated = false;
-      if (out?.title) { setTitle(out.title); updated = true; }
-      if (out?.brand) { setBrand(out.brand); updated = true; }
-      if (out?.description) { setDescription(out.description); updated = true; }
-      if (out?.url) {
-        setDescription((prev) => prev ? `${prev}\n${out.url}` : out.url);
-        updated = true;
-      }
+      if (titleFromApi) { setTitle(titleFromApi); updated = true; }
+      if (brandFromApi) { setBrand(brandFromApi); updated = true; }
+      if (descFromApi) { const rd = refineDescription(brandFromApi, descFromApi); setDescription(rd); updated = true; }
+
       if (updated) {
-        toast.success(t("wish_item.extract_done", "Extracted details from image"));
-      } else {
-        // If nothing useful returned, attempt OCR fallback automatically
-        await runOcrFallback();
+        toast.success(t('wish_item.extract_done', 'Extracted details from image'));
+        return;
       }
+
+      // Fallback to client-side OCR if nothing was extracted
+      await runOcrFallback();
     } catch (e: any) {
       const msg = e?.message || (typeof e === 'string' ? e : '') || 'Failed to extract from image';
-      // Normalize DeepSeek 400 into friendly text
-      if (/DeepSeek API error|Gateway error|400/.test(msg)) {
-        // Try client-side OCR fallback
-        try {
-          await runOcrFallback();
-        } catch (ocrErr: any) {
-          const friendly = typeof navigator !== 'undefined' && navigator.language?.startsWith('ar')
-            ? 'تعذر استخراج النص من الصورة الآن.'
-            : 'Could not extract text from the image.';
-          toast.error(friendly);
-        }
-      } else {
-        toast.error(msg);
-      }
+      toast.error(msg);
     } finally {
       setIsExtracting(false);
     }
@@ -505,14 +409,49 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                 </button>
                 <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
               </div>
-              {imageUrl ? (
-                <div className="mt-2">
+              {/* Tone slider placed above extract button */}
+              <div className="mt-3">
+                <Label className="mb-2">{t("wish_item.desire_label", "How badly do you want it?")}</Label>
+                <div className="flex w-full flex-col gap-2">
+                  <div className="flex w-full items-center justify-between px-1 text-xl select-none">
+                    {["😐","😌","🙂","😊","😍"].map((e, i) => (
+                      <span key={i} className={`transition-all ${desire === i ? "opacity-100 scale-110" : "opacity-70"}`}>{e}</span>
+                    ))}
+                  </div>
+                  <Slider
+                    value={[desire]}
+                    max={4}
+                    step={1}
+                    onValueChange={(v) => setDesire(Math.min(4, Math.max(0, v[0] ?? 0)))}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-2 flex items-center gap-2">
+                {imageUrl ? (
                   <Button type="button" variant="ghost" onClick={handleClearImage}>{t("wish_item.clear_image", "Clear Image")}</Button>
-                  <Button type="button" className="ml-2" onClick={handleExtractFromImage} disabled={isExtracting}>
+                ) : null}
+                <div className="flex items-center gap-2">
+                  <Button type="button" onClick={handleExtractFromImage} disabled={isExtracting || !imageFile}>
                     {isExtracting ? t("wish_item.extracting", "Extracting...") : t("wish_item.extract_ai_button", "Extract details with AI")}
                   </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button type="button" variant="secondary" className="px-2" aria-label="Style presets">
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setStylePreset('Auto')}>Auto</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setStylePreset('Professional')}>Professional</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setStylePreset('Natural')}>Natural</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setStylePreset('GenZ')}>Gen Z</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              ) : null}
+                <span className="ml-1 text-xs text-muted-foreground">Style: {stylePreset}</span>
+              </div>
             </div>
 
             {/* Fields */}
@@ -526,35 +465,28 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
             </div>
             <div className="input-div flex flex-col">
               <Label className="mb-1" htmlFor="desc">{t("wish_item.description_label", "Description")}</Label>
-              <Textarea id="desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("wish_item.description_placeholder", "Add size, color, or why you want it…")} className="min-h-[84px] text-[15px] px-3 rounded-xl" />
-            </div>
-
-            {/* Ambivalence slider (0-4) with emojis */}
-            <div className="input-div flex flex-col">
-              <Label className="mb-2">{t("wish_item.desire_label", "How badly do you want it?")}</Label>
-              <div className="flex w-full flex-col gap-2">
-                {/* Emoji rail */}
-                <div className="flex w-full items-center justify-between px-1 text-xl select-none">
-                  {(["😐","😌","🙂","😊","😍"] as const).map((e, i) => (
-                    <span key={i} className={`transition-all ${desire === i ? "opacity-100 scale-110" : "opacity-70"}`}>{e}</span>
-                  ))}
-                </div>
-                <Slider
-                  value={[desire]}
-                  max={4}
-                  step={1}
-                  onValueChange={(v) => setDesire(Math.min(4, Math.max(0, v[0] ?? 0)))}
-                  className="w-full"
+              <div className="relative">
+                <Textarea
+                  id="desc"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value.slice(0, DESC_MAX))}
+                  placeholder={t("wish_item.description_placeholder", "Add size, color, or why you want it…")}
+                  className="min-h-[84px] text-[15px] px-3 rounded-xl pr-14"
                 />
+                <div className="pointer-events-none absolute bottom-2 right-3 text-xs select-none"
+                     style={{ color: description.length > DESC_MAX - 20 ? 'var(--destructive)' as any : 'var(--muted-foreground)' as any }}>
+                  {description.length}/{DESC_MAX}
+                </div>
               </div>
+              <span className="ml-1 text-xs text-muted-foreground">Style: {stylePreset}</span>
             </div>
 
             {/* Actions */}
             <div className="button-div flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 pt-2">
               <Button type="button" variant="secondary" onClick={() => onOpenChange?.(false)} className="w-full sm:w-auto px-6">{t("common.cancel", "Cancel")}</Button>
               <Button type="button" disabled={!canSubmit} onClick={handleSubmit} className="w-full sm:w-auto px-8 py-2 bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white rounded-xl">{itemId ? t("wish_item.update_button", "Update Wish") : t("wish_item.save_button", "Save to Wishlist")}</Button>
-            </div>
           </div>
+        </div>
         </div>
         </div>
       </DialogContent>
