@@ -86,7 +86,14 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
 
   const DESC_MAX = 200;
 
-  const refineDescription = (brand: string, description: string, maxLen = DESC_MAX) => {
+  const refineDescription = (
+    brand: string,
+    description: string,
+    maxLen = DESC_MAX,
+    tone?: 'neutral' | 'chill' | 'interested' | 'excited' | 'obsessed',
+    stylePreset?: 'Auto' | 'Professional' | 'Natural' | 'GenZ',
+    locale?: 'en' | 'ar'
+  ) => {
     if (!description) return description;
     let text = description.trim();
     if (brand) {
@@ -105,6 +112,46 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
         text = text.replace(new RegExp(`\\b${esc}\\b`, 'gi'), '').replace(/\s{2,}/g, ' ').trim();
       }
     }
+    // Apply tone/style adjustments (light-touch, post-Gemini)
+    const isAr = locale === 'ar';
+    const style = (stylePreset || 'Auto');
+    const toneVal = tone || 'interested';
+
+    // Normalize excessive exclamations
+    text = text.replace(/!{2,}/g, '!');
+
+    // Tone injection when missing first-person (except neutral)
+    const hasFirstPerson = /\b(I\b|I'm\b|I am\b|أحب|أريده|يعجبني)/i.test(text);
+    const inject = (phraseEn: string, phraseAr: string) => (isAr ? phraseAr : phraseEn);
+    if (!hasFirstPerson && toneVal !== 'neutral') {
+      if (toneVal === 'interested') text = `${inject('I like ', 'يعجبني ')}${text}`;
+      else if (toneVal === 'excited') text = `${inject('I love ', 'أحب ')}${text}`;
+      else if (toneVal === 'obsessed') text = `${inject('I really want this – ', 'أريده بشدة – ')}${text}`;
+    }
+
+    // Professional style: no slang, no emoji, no exclamations, minimize first-person
+    if (style === 'Professional') {
+      text = text
+        .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '')
+        .replace(/!/g, '')
+        .replace(/\bI\s+(really\s+)?(want|love|like)\b/gi, (m) => m.replace(/\bI\s+/i, ''))
+        .replace(/\bI'm\b/gi, 'I am');
+    }
+
+    // Gen Z: allow one emoji max; add a light emoji if none
+    if (style === 'GenZ') {
+      const hasEmoji = /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu.test(text);
+      if (!hasEmoji) {
+        const emoji = toneVal === 'obsessed' ? '😍' : toneVal === 'excited' ? '✨' : '🙂';
+        text = `${text} ${emoji}`.trim();
+      }
+    }
+
+    // Neutral tone: avoid first-person/exclamations
+    if (toneVal === 'neutral') {
+      text = text.replace(/!/g, '').replace(/\bI\b[^.]{0,30}/gi, (m) => m.replace(/\bI\b/i, '').trim());
+    }
+
     // Keep at most two sentences
     const sentences = text.split(/(?<=[.!?])\s+/);
     if (sentences.length > 2) text = `${sentences[0]} ${sentences[1]}`.trim();
@@ -242,7 +289,12 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
     let updated = false;
     if (tTitle && !title) { setTitle(tTitle); updated = true; }
     if (tBrand && !brand) { setBrand(tBrand); updated = true; }
-    if (tDesc && !description) { setDescription(refineDescription(tBrand, tDesc)); updated = true; }
+    if (tDesc && !description) {
+      const tone2 = ["neutral","chill","interested","excited","obsessed"][Math.min(4, Math.max(0, desire))] as any;
+      const loc2 = (typeof window !== 'undefined' && (i18n?.language || navigator.language))?.startsWith('ar') ? 'ar' : 'en';
+      setDescription(refineDescription(tBrand, tDesc, DESC_MAX, tone2, stylePreset, loc2));
+      updated = true;
+    }
     if (tUrl) { setDescription((prev) => prev ? `${prev}\n${tUrl}` : tUrl); updated = true; }
     // Note: removed ai-gateway/Deepseek post-processing; keep pure OCR fallback only
     if (updated) toast.success(t('wish_item.extract_done', 'Extracted details from image'));
@@ -290,7 +342,11 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
       let updated = false;
       if (titleFromApi) { setTitle(titleFromApi); updated = true; }
       if (brandFromApi) { setBrand(brandFromApi); updated = true; }
-      if (descFromApi) { const rd = refineDescription(brandFromApi, descFromApi); setDescription(rd); updated = true; }
+      if (descFromApi) {
+        const loc = locale as 'en' | 'ar';
+        const rd = refineDescription(brandFromApi, descFromApi, DESC_MAX, tone as any, stylePreset, loc);
+        setDescription(rd); updated = true;
+      }
 
       if (updated) {
         toast.success(t('wish_item.extract_done', 'Extracted details from image'));
