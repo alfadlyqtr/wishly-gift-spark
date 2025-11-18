@@ -18,6 +18,7 @@ export const MainLayout = () => {
   const { t } = useTranslation();
 
   const isActive = (path: string) => location.pathname === path;
+  const isGifterShared = new URLSearchParams(location.search).get('mode')?.toLowerCase() === 'gifter';
 
   useEffect(() => {
     let mounted = true;
@@ -41,7 +42,8 @@ export const MainLayout = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Top Bar */}
+      {/* Top Bar (hidden on shared gifter view) */}
+      {!isGifterShared && (
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-card px-4 shadow-sm">
         <Link to="/" className="flex items-center">
           <img src={wishlyLogo} alt="Wishly" className="h-10" />
@@ -66,13 +68,15 @@ export const MainLayout = () => {
           </Link>
         </div>
       </header>
+      )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto pb-20">
+      <main className={`flex-1 overflow-y-auto ${isGifterShared ? '' : 'pb-20'}`}>
         <Outlet />
       </main>
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation (hidden on shared gifter view) */}
+      {!isGifterShared && (
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card shadow-lg">
         <div className="flex items-center justify-around px-2 py-2">
           <Link to="/dashboard">
@@ -139,7 +143,9 @@ export const MainLayout = () => {
           </Link>
         </div>
       </nav>
+      )}
       {/* Simplified Add Wish dialog */}
+      {!isGifterShared && (
       <WishAddDialog
         open={addOpen}
         onOpenChange={setAddOpen}
@@ -186,6 +192,7 @@ export const MainLayout = () => {
           }
         }}
       />
+      )}
     </div>
   );
 };

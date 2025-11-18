@@ -6,6 +6,8 @@
 .wl-card-rotate {
   position: absolute;
   cursor: grab;
+  /* Better touch handling: allow vertical page scroll while supporting horizontal/diagonal flick */
+  touch-action: pan-y;
 }
 
 .wl-card {
@@ -28,6 +30,28 @@
   padding: 12px;
   border-radius: 15px;
   background: linear-gradient(-45deg, hsl(var(--brand-warm-start)) 0%, hsl(var(--brand-cool-end)) 100%);
+}
+
+/* Share button (top-right) */
+.wl-share-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  height: 28px;
+  width: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.wl-share-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: translateY(-1px);
 }
 
 .wl-card-title {
@@ -80,4 +104,17 @@
 .wl-delete-btn:hover {
   background: rgba(0, 0, 0, 0.8);
   transform: translateY(-1px);
+}
+
+/* Mobile tuning: soften shadow to avoid heavy shade behind the stack */
+@media (max-width: 420px) {
+  .wl-card {
+    filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.22));
+  }
+  .wl-share-btn{
+    top: 8px;
+    right: 8px;
+    height: 26px;
+    width: 26px;
+  }
 }

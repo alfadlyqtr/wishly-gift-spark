@@ -2,7 +2,7 @@ import { motion, useMotionValue, useTransform } from 'motion/react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './WishlistStack.css';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Share2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useQueryClient } from '@tanstack/react-query';
@@ -30,7 +30,7 @@ function CardRotate({ children, onSendToBack, sensitivity }: CardRotateProps) {
     const velY = info?.velocity?.y ?? 0;
     const distance = Math.hypot(offX, offY);
     const speed = Math.hypot(velX, velY);
-    const velocityThreshold = 900; // require a real flick
+    const velocityThreshold = 650; // lower threshold for better mobile flicks
 
     if (distance > sensitivity || speed > velocityThreshold) {
       onSendToBack();
@@ -47,6 +47,7 @@ function CardRotate({ children, onSendToBack, sensitivity }: CardRotateProps) {
       drag
       dragConstraints={{ top: 0, right: 0, bottom: 0, left: 0 }}
       dragElastic={0.6}
+      dragDirectionLock
       whileTap={{ cursor: 'grabbing' }}
       onDragEnd={handleDragEnd}
     >
@@ -95,6 +96,20 @@ export default function WishlistStack({
     navigate(`/wishlist/${id}`);
   };
 
+  const shareWishlist = async (id: string, title: string) => {
+    try {
+      const url = `${window.location.origin}/wishlist/${id}?mode=gifter`;
+      if ((navigator as any)?.share) {
+        await (navigator as any).share({ title: title || 'Wishlist', url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copied');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to share');
+    }
+  };
+
   return (
     <div
       className={["wl-stack-container", className].join(' ')}
@@ -122,6 +137,17 @@ export default function WishlistStack({
               style={{ width: cardDimensions.width, height: cardDimensions.height }}
             >
               <div className="wl-card-surface">
+                <button
+                  type="button"
+                  className="wl-share-btn"
+                  aria-label="Share wishlist"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    shareWishlist(card.id, card.title);
+                  }}
+                >
+                  <Share2 className="h-4 w-4" />
+                </button>
                 <div className="wl-card-title">{card.title}</div>
                 <div className="flex items-center gap-4">
                   {card.title !== 'My Birthday Wishlist' && (
