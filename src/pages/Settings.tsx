@@ -33,6 +33,12 @@ const Settings = () => {
   const [followSupported, setFollowSupported] = useState<boolean>(true);
   const [loadingFollow, setLoadingFollow] = useState<boolean>(false);
 
+  // Wishlist preferences
+  const [allowSharing, setAllowSharing] = useState<boolean>(true);
+  const [allowFriendsClaim, setAllowFriendsClaim] = useState<boolean>(true);
+  const [showCountdown, setShowCountdown] = useState<boolean>(true);
+  const [savingWishlistPrefs, setSavingWishlistPrefs] = useState<boolean>(false);
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPassword || newPassword.length < 6) {
@@ -49,6 +55,33 @@ const Settings = () => {
       toast.error(err?.message || "Failed to change password");
     } finally {
       setChangingPassword(false);
+    }
+  };
+
+  const saveWishlistPrefs = async (changes?: Partial<{ allow_wishlist_sharing: boolean; allow_friends_claim: boolean; show_countdown_timer: boolean }>) => {
+    try {
+      setSavingWishlistPrefs(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const payload: any = {
+        allow_wishlist_sharing: allowSharing,
+        allow_friends_claim: allowFriendsClaim,
+        show_countdown_timer: showCountdown,
+        ...(changes || {})
+      };
+      const { error } = await (supabase as any)
+        .from('user_profiles')
+        .update(payload)
+        .eq('id', user.id);
+      if (error) throw error;
+      toast.success(t('settings.wishlist_prefs_saved','Wishlist preferences saved'));
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to save wishlist preferences (ask to add columns: allow_wishlist_sharing:boolean, allow_friends_claim:boolean, show_countdown_timer:boolean)');
+    } finally {
+      setSavingWishlistPrefs(false);
     }
   };
 
@@ -101,7 +134,7 @@ const Settings = () => {
         if (!user) return;
         const { data, error } = await (supabase as any)
           .from("user_profiles")
-          .select("is_searchable, require_follow_approval")
+          .select("is_searchable, require_follow_approval, allow_wishlist_sharing, allow_friends_claim, show_countdown_timer")
           .eq("id", user.id)
           .single();
         if (!error && data) {
@@ -113,6 +146,9 @@ const Settings = () => {
           } else {
             setFollowSupported(false);
           }
+          if (typeof (data as any).allow_wishlist_sharing === 'boolean') setAllowSharing((data as any).allow_wishlist_sharing);
+          if (typeof (data as any).allow_friends_claim === 'boolean') setAllowFriendsClaim((data as any).allow_friends_claim);
+          if (typeof (data as any).show_countdown_timer === 'boolean') setShowCountdown((data as any).show_countdown_timer);
         } else if (error) {
           setVisibilitySupported(false);
           setFollowSupported(false);
@@ -265,6 +301,7 @@ const Settings = () => {
               <Input id="new-pass" type="password" placeholder="••••••••" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="rounded-xl" />
               <Button variant="gradient" type="submit" disabled={changingPassword}>{changingPassword ? t("common.saving", "Saving...") : t("common.save", "Save")}</Button>
             </div>
+
           </form>
 
           <form onSubmit={handleChangeEmail} className="space-y-2">
@@ -277,7 +314,7 @@ const Settings = () => {
 
           <div className="pt-2">
             <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-              <Button variant="gradient" className="w-full" onClick={() => setDeleteOpen(true)}>
+              <Button variant="destructive" className="w-full" onClick={() => setDeleteOpen(true)}>
                 <Trash2 className="h-4 w-4 mr-2" /> {t("settings.delete_account", "Delete Account")}
               </Button>
               <DialogContent>
@@ -294,7 +331,7 @@ const Settings = () => {
               </DialogContent>
             </Dialog>
             <p className="mt-2 text-xs text-muted-foreground">
-              {t("settings.delete_account_note", "Deletion is processed via a secure Edge Function and cascades related data.")}
+              {t("settings.delete_account_note", "We’ll guide you through deleting your account safely. This action is permanent and cannot be undone.")}
             </p>
           </div>
         </CardContent>
@@ -390,6 +427,28 @@ const Settings = () => {
             </div>
             <div className="pt-2">
               <Button variant="gradient" onClick={savePreferences} disabled={savingPrefs}>{savingPrefs ? t("common.saving", "Saving...") : t("common.save", "Save")}</Button>
+            </div>
+          </div>
+
+          {/* Wishlist Sharing (moved under Preferences) */}
+          <div className="space-y-2 pt-2">
+            <Label className="flex items-center gap-2"><Globe2 className="h-4 w-4" /> {t('settings.wishlist_sharing','Wishlist & Sharing')}</Label>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
+                <span className="text-sm text-muted-foreground">{t('settings.allow_sharing','Show share icon on my wishlist cards')}</span>
+                <Switch checked={allowSharing} onCheckedChange={(v)=>{ setAllowSharing(v); }} />
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
+                <span className="text-sm text-muted-foreground">{t('settings.allow_friends_claim','Allow friends to claim items')}</span>
+                <Switch checked={allowFriendsClaim} onCheckedChange={(v)=>{ setAllowFriendsClaim(v); }} />
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
+                <span className="text-sm text-muted-foreground">{t('settings.show_countdown','Show countdown timer on shared page')}</span>
+                <Switch checked={showCountdown} onCheckedChange={(v)=>{ setShowCountdown(v); }} />
+              </div>
+            </div>
+            <div className="pt-2">
+              <Button variant="gradient" onClick={()=>saveWishlistPrefs()} disabled={savingWishlistPrefs}>{savingWishlistPrefs ? t('common.saving','Saving...') : t('common.save','Save')}</Button>
             </div>
           </div>
 

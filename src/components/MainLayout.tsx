@@ -14,6 +14,7 @@ export const MainLayout = () => {
   const location = useLocation();
   const [addOpen, setAddOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState<number>(0);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const { data: wishlistsData } = useWishlists();
   const { t } = useTranslation();
 
@@ -33,6 +34,12 @@ export const MainLayout = () => {
           .eq("following_id", uid)
           .eq("status", "pending");
         if (mounted) setPendingCount((count as number | null) ?? 0);
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('avatar_url')
+          .eq('id', uid)
+          .maybeSingle();
+        if (mounted) setAvatarUrl((profile as any)?.avatar_url || null);
       } catch {
         if (mounted) setPendingCount(0);
       }
@@ -46,7 +53,7 @@ export const MainLayout = () => {
       {!isGifterShared && (
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-card px-4 shadow-sm">
         <Link to="/" className="flex items-center">
-          <img src={wishlyLogo} alt="Wishly" className="h-10" />
+          <img src={wishlyLogo} alt="Wishly" className="h-12 md:h-14" />
         </Link>
         <div className="flex items-center gap-2">
           <Link to="/notifications">
@@ -77,8 +84,9 @@ export const MainLayout = () => {
 
       {/* Bottom Navigation (hidden on shared gifter view) */}
       {!isGifterShared && (
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card shadow-lg">
-        <div className="flex items-center justify-around px-2 py-2">
+      <nav className="fixed bottom-3 left-0 right-0 z-50">
+        <div className="mx-auto w-[min(720px,92%)]">
+          <div className="flex items-center justify-around px-3 py-2 rounded-2xl bg-white/75 backdrop-blur ring-1 ring-white/70 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
           <Link to="/dashboard">
             <Button
               variant="ghost"
@@ -87,8 +95,10 @@ export const MainLayout = () => {
                 isActive("/dashboard") ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <img src={wishlyLogo} alt="Dash" className="h-5 w-5" />
-              <span className="text-xs">{t('nav.dash', 'Dash')}</span>
+              <img src={wishlyLogo} alt="Dash" className="h-7 w-7 rounded-full ring-1 ring-white/70 object-cover" />
+              <span className="text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">
+                {t('nav.dash', 'Dash')}
+              </span>
             </Button>
           </Link>
 
@@ -100,19 +110,23 @@ export const MainLayout = () => {
                 isActive("/explore") ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <Store className="h-5 w-5" />
-              <span className="text-xs">{t('nav.explore', 'Explore')}</span>
+              <Store className="h-7 w-7" />
+              <span className="text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">
+                {t('nav.explore', 'Explore')}
+              </span>
             </Button>
           </Link>
 
           <Button
             onClick={() => setAddOpen(true)}
             size="lg"
-            className="relative -mt-6 h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-brand-warm-start to-brand-warm-end hover:shadow-xl transition-all"
+            className="relative -mt-7 h-16 w-16 rounded-full bg-gradient-to-br from-brand-warm-start to-brand-warm-end shadow-[0_12px_32px_rgba(0,0,0,0.25)] hover:shadow-[0_16px_44px_rgba(0,0,0,0.28)] ring-2 ring-white/80 transition-all"
           >
             <div className="flex flex-col items-center">
-              <Plus className="h-6 w-6" />
-              <span className="text-[10px] font-medium">{t('nav.add_wish', 'Add Wish')}</span>
+              <Plus className="h-7 w-7" />
+              <span className="text-[12px] font-extrabold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]">
+                {t('nav.add_wish', 'Add Wish')}
+              </span>
             </div>
           </Button>
 
@@ -124,8 +138,10 @@ export const MainLayout = () => {
                 isActive("/events") ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <Calendar className="h-5 w-5" />
-              <span className="text-xs">{t('nav.events', 'Events')}</span>
+              <Calendar className="h-7 w-7" />
+              <span className="text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">
+                {t('nav.events', 'Events')}
+              </span>
             </Button>
           </Link>
 
@@ -137,10 +153,22 @@ export const MainLayout = () => {
                 isActive("/profile") ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <User className="h-5 w-5" />
-              <span className="text-xs">{t('nav.profile', 'Profile')}</span>
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Profile"
+                  className="h-8 w-8 rounded-full object-cover ring-2 ring-white/80"
+                  onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
+                />
+              ) : (
+                <User className="h-7 w-7" />
+              )}
+              <span className="text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">
+                {t('nav.profile', 'Profile')}
+              </span>
             </Button>
           </Link>
+          </div>
         </div>
       </nav>
       )}

@@ -1,5 +1,5 @@
 import { motion, useMotionValue, useTransform } from 'motion/react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './WishlistStack.css';
 import { Trash2, Share2 } from 'lucide-react';
@@ -30,7 +30,7 @@ function CardRotate({ children, onSendToBack, sensitivity }: CardRotateProps) {
     const velY = info?.velocity?.y ?? 0;
     const distance = Math.hypot(offX, offY);
     const speed = Math.hypot(velX, velY);
-    const velocityThreshold = 650; // lower threshold for better mobile flicks
+    const velocityThreshold = 400;
 
     if (distance > sensitivity || speed > velocityThreshold) {
       onSendToBack();
@@ -46,8 +46,7 @@ function CardRotate({ children, onSendToBack, sensitivity }: CardRotateProps) {
       style={{ x, y, rotateX, rotateY }}
       drag
       dragConstraints={{ top: 0, right: 0, bottom: 0, left: 0 }}
-      dragElastic={0.6}
-      dragDirectionLock
+      dragElastic={0.7}
       whileTap={{ cursor: 'grabbing' }}
       onDragEnd={handleDragEnd}
     >
@@ -80,6 +79,7 @@ export default function WishlistStack({
   const queryClient = useQueryClient();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [target, setTarget] = useState<{ id: string; title: string } | null>(null);
+  const [allowShare, setAllowShare] = useState<boolean>(true);
 
   const sendToBack = (id: string) => {
     setStack((prev) => {
@@ -92,9 +92,29 @@ export default function WishlistStack({
     });
   };
 
+
   const openWishlist = (id: string) => {
     navigate(`/wishlist/${id}`);
   };
+
+  // Load user's share preference (hide share icon when disabled)
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const uid = auth.user?.id;
+        if (!uid) return;
+        const { data } = await (supabase as any)
+          .from('user_profiles')
+          .select('allow_wishlist_sharing')
+          .eq('id', uid)
+          .maybeSingle();
+        if (typeof (data as any)?.allow_wishlist_sharing === 'boolean') {
+          setAllowShare((data as any).allow_wishlist_sharing);
+        }
+      } catch {}
+    })();
+  }, []);
 
   const shareWishlist = async (id: string, title: string) => {
     try {
@@ -150,7 +170,11 @@ export default function WishlistStack({
         const scale = 1 + index * 0.08 - stack.length * 0.08;
 
         return (
-          <CardRotate key={card.id} onSendToBack={() => sendToBack(card.id)} sensitivity={sensitivity}>
+          <CardRotate
+            key={card.id}
+            onSendToBack={() => sendToBack(card.id)}
+            sensitivity={sensitivity}
+          >
             <motion.div
               className="wl-card"
               onClick={() => {
@@ -167,17 +191,19 @@ export default function WishlistStack({
               style={{ width: cardDimensions.width, height: cardDimensions.height }}
             >
               <div className="wl-card-surface">
-                <button
-                  type="button"
-                  className="wl-share-btn"
-                  aria-label="Share wishlist"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    shareWishlist(card.id, card.title);
-                  }}
-                >
-                  <Share2 className="h-4 w-4" />
-                </button>
+                {allowShare && (
+                  <button
+                    type="button"
+                    className="wl-share-btn"
+                    aria-label="Share wishlist"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      shareWishlist(card.id, card.title);
+                    }}
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </button>
+                )}
                 <div className="wl-card-title">{card.title}</div>
                 <div className="flex items-center gap-4">
                   {card.title !== 'My Birthday Wishlist' && (

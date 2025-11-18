@@ -6,7 +6,7 @@
 .wl-card-rotate {
   position: absolute;
   cursor: grab;
-  /* Better touch handling: allow vertical page scroll while supporting horizontal/diagonal flick */
+  /* Touch handling: allow vertical page scroll while supporting horizontal/diagonal flick */
   touch-action: pan-y;
 }
 

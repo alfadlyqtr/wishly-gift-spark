@@ -35,7 +35,7 @@ const WishlistDetail = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const [claimed, setClaimed] = useState<Record<string, boolean>>({});
-  const [owner, setOwner] = useState<{ full_name?: string | null; username?: string | null; avatar_url?: string | null } | null>(null);
+  const [owner, setOwner] = useState<{ full_name?: string | null; username?: string | null; avatar_url?: string | null; allow_friends_claim?: boolean | null; show_countdown_timer?: boolean | null } | null>(null);
   const [countdown, setCountdown] = useState<string | null>(null);
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
 
@@ -48,7 +48,7 @@ const WishlistDetail = () => {
         // Try to join owner profile for gifter header (user_profiles is the correct table)
         (supabase as any)
           .from("wishlists")
-          .select("*, owner:user_profiles(full_name,username,avatar_url)")
+          .select("*, owner:user_profiles(full_name,username,avatar_url,allow_friends_claim,show_countdown_timer)")
           .eq("id", id)
           .maybeSingle(),
         supabase.from("wishlist_items").select("*").eq("wishlist_id", id).order("added_at", { ascending: false }),
@@ -64,6 +64,7 @@ const WishlistDetail = () => {
   const isBirthdayWishlist = (data?.wishlist?.title || "") === "My Birthday Wishlist";
   const isGifterMode = (searchParams.get('mode') || '').toLowerCase() === 'gifter';
   const fromFriendsTab = Boolean((location as any)?.state?.from === 'friends');
+  const isAr = i18n.language?.startsWith('ar');
 
   const items = useMemo(() => data?.items ?? [], [data]);
   const wishlistsOptions = useMemo(
@@ -88,7 +89,7 @@ const WishlistDetail = () => {
         if (!ownerId) return;
         const { data: prof } = await supabase
           .from('user_profiles' as any)
-          .select('full_name, username, avatar_url')
+          .select('full_name, username, avatar_url, allow_friends_claim, show_countdown_timer')
           .eq('id', ownerId)
           .maybeSingle();
         if (!cancelled) setOwner((prof as any) || null);
@@ -168,7 +169,7 @@ const WishlistDetail = () => {
       )}
 
       {isGifterMode && (
-        <div className="relative w-full">
+        <div className="relative w-full" dir={isAr ? 'rtl' : 'ltr'}>
           {/* Owner header */}
           <div className="relative mx-auto max-w-[520px] w-full mb-4 flex items-center gap-4 rounded-2xl px-5 py-4 ring-1 ring-white/60 shadow-[0_10px_28px_rgba(0,0,0,0.10)] overflow-hidden" style={{background:'linear-gradient(135deg, rgba(255,255,255,0.85), rgba(255,255,255,0.6))'}}>
             <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full opacity-20" style={{background:'radial-gradient(circle, rgba(99,102,241,0.8), transparent 60%)'}}/>
@@ -182,7 +183,9 @@ const WishlistDetail = () => {
                 const handle = owner?.username ? `@${owner.username}` : '';
                 const wlTitle = (data?.wishlist?.title || t('wishlist_detail.wishlist','Wishlist')) as string;
                 const possessive = /s$/i.test(name) ? `${name}'` : `${name}'s`;
-                const welcome = `${t('giftr.welcome_to','Welcome to')} ${possessive} ${wlTitle}`;
+                const welcome = isAr
+                  ? `${t('giftr.welcome_to','مرحبًا بكم في')} ${'قائمة أمنيات'} ${name}`
+                  : `${t('giftr.welcome_to','Welcome to')} ${possessive} ${wlTitle}`;
                 return (
                   <>
                     <div className="flex items-center gap-2 text-base sm:text-xl font-extrabold truncate">
@@ -201,8 +204,8 @@ const WishlistDetail = () => {
         </div>
       )}
 
-      {isGifterMode && daysRemaining !== null && (
-        <div className="mx-auto mb-2 flex flex-col items-center" style={{ maxWidth: 420 }}>
+      {isGifterMode && (owner?.show_countdown_timer ?? true) && daysRemaining !== null && (
+        <div className="mx-auto mb-2 flex flex-col items-center" style={{ maxWidth: 420 }} dir={isAr ? 'rtl' : 'ltr'}>
           <Counter
             value={daysRemaining}
             places={daysRemaining >= 100 ? [100,10,1] : daysRemaining >= 10 ? [10,1] : [1]}
@@ -218,12 +221,12 @@ const WishlistDetail = () => {
             borderRadius={8}
             horizontalPadding={6}
           />
-          <span className="mt-1 text-xs text-white drop-shadow-sm">{t('giftr.days_left','days left')}</span>
+          <span className="mt-1 text-xs text-white drop-shadow-sm">{isAr ? 'أيام متبقية' : t('giftr.days_left','days left')}</span>
         </div>
       )}
 
       {/* Detail inside the same gradient card style as the stack */}
-      <div className={`mx-auto ${isGifterMode ? 'mt-6' : 'mt-12'} w-full max-w-[420px]`}>
+      <div className={`mx-auto ${isGifterMode ? 'mt-6' : 'mt-12'} w-full max-w-[420px]`} dir={isAr ? 'rtl' : 'ltr'}>
         <div className="wl-card w-full">
           <div className="wl-card-surface p-5 text-white" style={{ alignItems: 'flex-start', justifyContent: 'flex-start' }}>
             <div className="w-full">
@@ -301,7 +304,7 @@ const WishlistDetail = () => {
               )}
               {eventDateText && (
                 <div className="mt-1 flex items-center gap-2">
-                  <p className="text-xs opacity-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] m-0">{eventDateText}</p>
+                  <p className={`mt-1 text-xs opacity-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] ${isAr ? 'text-right' : ''}`}>{eventDateText}</p>
                   <span className="inline-flex items-center rounded-full bg-white/80 px-2 py-0.5 text-[11px] ring-1 ring-black/10 text-blue-900">
                     {items.length} {t('giftr.items','items')}
                   </span>
@@ -312,7 +315,7 @@ const WishlistDetail = () => {
                 className="mt-3 bg-white/5 rounded-md p-3 w-full overscroll-contain"
                 style={{ maxHeight: 'min(65vh, 520px)', overflowY: 'auto' }}
               >
-                <h3 className="text-base font-semibold drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{t('wishlist_detail.items_title', 'Items')}</h3>
+                <h3 className={`text-base font-semibold drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] ${isAr ? 'text-right' : ''}`}>{isAr ? 'العناصر' : t('wishlist_detail.items_title', 'Items')}</h3>
                 {items.length > 0 ? (
                   <div className="mt-2 space-y-3">
                     {items.map((it, idx) => (
@@ -337,17 +340,17 @@ const WishlistDetail = () => {
                             </button>
                           ) : null}
                           <div className="flex min-w-0 flex-1 flex-col">
-                            <div className="flex items-center gap-2">
+                            <div className={`flex items-center gap-2 ${isAr ? 'justify-between' : ''}`}>
                               <span className="text-lg leading-none">{desireEmoji((it as any).desire)}</span>
-                              <span className="text-sm font-semibold text-white whitespace-nowrap truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                              <span className={`text-sm font-semibold text-white whitespace-nowrap truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] ${isAr ? 'text-right' : ''}`}>
                                 {it.title}
                               </span>
                             </div>
                             {(it as any)?.brand ? (
-                              <span className="text-xs opacity-90">{(it as any).brand}</span>
+                              <span className={`text-xs opacity-90 ${isAr ? 'text-right' : ''}`}>{(it as any).brand}</span>
                             ) : null}
                             {it.description && (
-                              <span className="text-xs opacity-90">{it.description}</span>
+                              <span className={`text-xs opacity-90 ${isAr ? 'text-right' : ''}`}>{it.description}</span>
                             )}
                             {it.item_url && (
                               <a href={it.item_url} target="_blank" className="text-[11px] underline" rel="noreferrer">
@@ -357,26 +360,28 @@ const WishlistDetail = () => {
                           </div>
                           {isGifterMode ? (
                             <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                className="h-8 px-3"
-                                variant="default"
-                                onClick={() => {
-                                  toast.message(t('giftr.cta_title','Want to send a message or claim an item?'), {
-                                    description: t('giftr.cta_sub','See your friends\' wishlists too.'),
-                                    action: {
-                                      label: t('giftr.cta_signup','Sign up'),
-                                      onClick: () => navigate('/signup')
-                                    },
-                                    cancel: {
-                                      label: t('giftr.cta_login','Log in'),
-                                      onClick: () => navigate('/login')
-                                    }
-                                  } as any);
-                                }}
-                              >
-                                {claimed[it.id] ? t('giftr.claimed_btn', 'Claimed') : t('giftr.claim_btn', 'Claim')}
-                              </Button>
+                              {(owner?.allow_friends_claim ?? true) && (
+                                <Button
+                                  size="sm"
+                                  className="h-8 px-3"
+                                  variant="default"
+                                  onClick={() => {
+                                    toast.message(t('giftr.cta_title','Want to send a message or claim an item?'), {
+                                      description: t('giftr.cta_sub','See your friends\' wishlists too.'),
+                                      action: {
+                                        label: t('giftr.cta_signup','Sign up'),
+                                        onClick: () => navigate('/signup')
+                                      },
+                                      cancel: {
+                                        label: t('giftr.cta_login','Log in'),
+                                        onClick: () => navigate('/login')
+                                      }
+                                    } as any);
+                                  }}
+                                >
+                                  {claimed[it.id] ? (isAr ? 'تم الحجز' : t('giftr.claimed_btn', 'Claimed')) : (isAr ? 'حجز' : t('giftr.claim_btn', 'Claim'))}
+                                </Button>
+                              )}
                               {it.item_url ? (
                                 <a href={it.item_url} target="_blank" rel="noreferrer" className="text-xs underline">
                                   {t('giftr.view_link', 'View link')}
@@ -385,21 +390,23 @@ const WishlistDetail = () => {
                             </div>
                           ) : fromFriendsTab ? (
                             <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                className="h-8 px-3"
-                                onClick={async () => {
-                                  try {
-                                    const { data: { user } } = await supabase.auth.getUser();
-                                    if (!user) { navigate('/login'); return; }
-                                    toast.success(t('giftr.claim_soon','Claim reserved — coming soon'));
-                                  } catch {
-                                    toast.error(t('giftr.error','Something went wrong'));
-                                  }
-                                }}
-                              >
-                                {t('giftr.claim_btn','Claim')}
-                              </Button>
+                              {(owner?.allow_friends_claim ?? true) && (
+                                <Button
+                                  size="sm"
+                                  className="h-8 px-3"
+                                  onClick={async () => {
+                                    try {
+                                      const { data: { user } } = await supabase.auth.getUser();
+                                      if (!user) { navigate('/login'); return; }
+                                      toast.success(t('giftr.claim_soon','Claim reserved — coming soon'));
+                                    } catch {
+                                      toast.error(t('giftr.error','Something went wrong'));
+                                    }
+                                  }}
+                                >
+                                  {isAr ? 'حجز' : t('giftr.claim_btn','Claim')}
+                                </Button>
+                              )}
                               {it.item_url ? (
                                 <a href={it.item_url} target="_blank" rel="noreferrer" className="text-xs underline">
                                   {t('giftr.view_link', 'View link')}
