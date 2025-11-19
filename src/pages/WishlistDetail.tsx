@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useTranslation } from "react-i18next";
 import type { Database } from "@/integrations/supabase/types";
 import wishlyLogo from "@/assets/wishly-logo.png";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Wishlist = Database["public"]["Tables"]["wishlists"]["Row"];
 type WishlistItem = Database["public"]["Tables"]["wishlist_items"]["Row"];
@@ -41,6 +42,7 @@ const WishlistDetail = () => {
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
   const [slide, setSlide] = useState(0);
+  const isMobile = useIsMobile();
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["wishlist-detail", id],
@@ -215,10 +217,10 @@ const WishlistDetail = () => {
             lineDistance={[6,5,4] as any}
             bendRadius={5.0}
             bendStrength={-0.5}
-            interactive={true}
-            parallax={true}
-            parallaxStrength={0.12}
-            animationSpeed={0.85}
+            interactive={!isMobile}
+            parallax={!isMobile}
+            animationSpeed={isMobile ? 0.35 : 0.85}
+            parallaxStrength={isMobile ? 0.05 : 0.12}
             linesGradient={["#4f46e5","#06b6d4","#ec4899","#f59e0b"]}
             mixBlendMode="normal"
           />
