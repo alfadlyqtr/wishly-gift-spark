@@ -351,7 +351,27 @@ const Events = () => {
           <Card className="border-0 rounded-2xl ring-1 ring-white/30 bg-gradient-to-br from-[#4158D0]/10 via-[#C850C0]/10 to-[#FFCC70]/10 shadow-[0_18px_40px_rgba(0,0,0,0.20)]">
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
               <div className="flex flex-col gap-1">
-                <CardTitle className="text-base font-semibold">{t('events.tab_general', 'General Events')}</CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base font-semibold">{t('events.tab_general', 'General Events')}</CardTitle>
+                  {profileBundle?.country && (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      {(() => {
+                        const raw = (profileBundle.country || '').toString().trim();
+                        const n = raw.toLowerCase();
+                        const map: Record<string, string> = {
+                          qatar: 'QA', 'saudi arabia': 'SA', 'united arab emirates': 'AE', uae: 'AE',
+                          bahrain: 'BH', kuwait: 'KW', oman: 'OM', egypt: 'EG', jordan: 'JO', lebanon: 'LB',
+                          canada: 'CA', 'united states': 'US', usa: 'US', 'united kingdom': 'GB', uk: 'GB'
+                        };
+                        const cc = /^[A-Za-z]{2}$/.test(raw) ? raw.toUpperCase() : (map[n] ?? '');
+                        return cc ? (
+                          <ReactCountryFlag svg countryCode={cc} style={{ width: '16px', height: '12px' }} aria-label={cc} />
+                        ) : null;
+                      })()}
+                      <span>{(profileBundle.country || '').toString()}</span>
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs text-muted-foreground">{t('events.public_holiday_disclaimer', 'Public holiday dates can vary.')}</span>
                 {!profileBundle?.country && (
                   <span className="text-[11px] text-muted-foreground/80">
@@ -547,15 +567,28 @@ const Events = () => {
                                 );
                               })()}
                               {(() => {
-                                const raw = (e?.name || e?.title || '').toString().toLowerCase();
-                                const isNational = /(national|independence).*day/.test(raw);
-                                const hasCountry = Boolean(e?.country_code || e?.country);
-                                if (!isNational && hasCountry) {
-                                  return (
-                                    <div className="text-sm text-muted-foreground">{e.country_code || e.country}</div>
-                                  );
-                                }
-                                return null;
+                                const countryRaw = (e?.country_code || e?.country || '').toString().trim();
+                                if (!countryRaw) return null;
+                                const normalize = (s: string) => s.trim().toLowerCase();
+                                const toIso2 = (s: string): string => {
+                                  const n = normalize(s);
+                                  const map: Record<string, string> = {
+                                    qatar: 'QA', 'saudi arabia': 'SA', 'united arab emirates': 'AE', uae: 'AE',
+                                    bahrain: 'BH', kuwait: 'KW', oman: 'OM', egypt: 'EG', jordan: 'JO', lebanon: 'LB',
+                                    canada: 'CA', 'united states': 'US', usa: 'US', 'united kingdom': 'GB', uk: 'GB'
+                                  };
+                                  if (/^[A-Za-z]{2}$/.test(s)) return s.toUpperCase();
+                                  return map[n] ? map[n] : '';
+                                };
+                                const cc = toIso2(countryRaw);
+                                return (
+                                  <div className="text-sm text-muted-foreground flex items-center gap-1">
+                                    {cc && (
+                                      <ReactCountryFlag svg countryCode={cc} style={{ width: '16px', height: '12px' }} aria-label={cc} />
+                                    )}
+                                    <span>{countryRaw}</span>
+                                  </div>
+                                );
                               })()}
                             </div>
                             <div className="text-sm text-muted-foreground">
