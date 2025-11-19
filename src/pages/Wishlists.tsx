@@ -29,7 +29,7 @@ const Wishlists: React.FC = () => {
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : cards.length > 0 ? (
-        <div className="w-full flex justify-center py-10 mt-16 sm:mt-24">
+        <div className="w-full flex flex-col items-center py-10 mt-16 sm:mt-24 space-y-2">
           <WishlistStack
             randomRotation={true}
             sensitivity={180}
@@ -37,6 +37,30 @@ const Wishlists: React.FC = () => {
             cardDimensions={{ width: 320, height: 190 }}
             cards={cards}
           />
+          {cards.length > 1 && (
+            <div className="mt-2 text-center text-[11px] text-muted-foreground">
+              <span className="inline-flex items-center justify-center gap-1 px-3 py-[2px] rounded-full bg-muted/40 border border-border/60">
+                <span>{"<"}-----{" >"}</span>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  aria-hidden="true"
+                  className="overflow-visible"
+                >
+                  <circle cx="3" cy="7" r="3" fill="currentColor">
+                    <animateTransform
+                      attributeName="transform"
+                      type="translate"
+                      dur="1.2s"
+                      values="0 0; 4 0; 0 0"
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                </svg>
+              </span>
+            </div>
+          )}
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">No wishlists yet.</p>
