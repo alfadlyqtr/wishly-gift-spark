@@ -91,12 +91,15 @@ export const MainLayout = () => {
             <Button
               variant="ghost"
               size="sm"
-              className={`flex flex-col items-center gap-1 h-auto py-2 ${
+              className={`flex flex-col items-center gap-1 h-auto py-2 -mt-2 ${
                 isActive("/dashboard") ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <img src={wishlyLogo} alt="Dash" className="h-7 w-7 rounded-full ring-1 ring-white/70 object-cover" />
-              <span className="text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">
+              <img src={wishlyLogo} alt="Dash" className="h-8 w-8 rounded-full ring-1 ring-white/70 object-cover" />
+              <span
+                className="text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+              >
                 {t('nav.dash', 'Dash')}
               </span>
             </Button>
@@ -106,12 +109,15 @@ export const MainLayout = () => {
             <Button
               variant="ghost"
               size="sm"
-              className={`flex flex-col items-center gap-1 h-auto py-2 ${
+              className={`flex flex-col items-center gap-1 h-auto py-2 -mt-4 ${
                 isActive("/explore") ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <Store className="h-7 w-7" />
-              <span className="text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">
+              <Store className="h-10 w-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]" strokeWidth={2.4} />
+              <span
+                className="text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+              >
                 {t('nav.explore', 'Explore')}
               </span>
             </Button>
@@ -120,11 +126,19 @@ export const MainLayout = () => {
           <Button
             onClick={() => setAddOpen(true)}
             size="lg"
-            className="relative -mt-7 h-16 w-16 rounded-full bg-gradient-to-br from-brand-warm-start to-brand-warm-end shadow-[0_12px_32px_rgba(0,0,0,0.25)] hover:shadow-[0_16px_44px_rgba(0,0,0,0.28)] ring-2 ring-white/80 transition-all"
+            className="relative -mt-10 px-3 py-2 bg-transparent shadow-none ring-0 transition-all"
           >
             <div className="flex flex-col items-center">
-              <Plus className="h-7 w-7" />
-              <span className="text-[12px] font-extrabold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]">
+              <span
+                className="text-3xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+              >
+                +
+              </span>
+              <span
+                className="text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+              >
                 {t('nav.add_wish', 'Add Wish')}
               </span>
             </div>
@@ -134,12 +148,15 @@ export const MainLayout = () => {
             <Button
               variant="ghost"
               size="sm"
-              className={`flex flex-col items-center gap-1 h-auto py-2 ${
+              className={`flex flex-col items-center gap-1 h-auto py-2 -mt-4 ${
                 isActive("/events") ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <Calendar className="h-7 w-7" />
-              <span className="text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">
+              <Calendar className="h-10 w-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]" strokeWidth={2.4} />
+              <span
+                className="text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+              >
                 {t('nav.events', 'Events')}
               </span>
             </Button>
@@ -149,7 +166,7 @@ export const MainLayout = () => {
             <Button
               variant="ghost"
               size="sm"
-              className={`flex flex-col items-center gap-1 h-auto py-2 ${
+              className={`flex flex-col items-center gap-1 h-auto py-2 -mt-2 ${
                 isActive("/profile") ? "text-primary" : "text-muted-foreground"
               }`}
             >
@@ -157,13 +174,16 @@ export const MainLayout = () => {
                 <img
                   src={avatarUrl}
                   alt="Profile"
-                  className="h-8 w-8 rounded-full object-cover ring-2 ring-white/80"
+                  className="h-9 w-9 rounded-full object-cover ring-2 ring-white/80"
                   onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
                 />
               ) : (
-                <User className="h-7 w-7" />
+                <User className="h-8 w-8" />
               )}
-              <span className="text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">
+              <span
+                className="text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+              >
                 {t('nav.profile', 'Profile')}
               </span>
             </Button>

@@ -9,6 +9,7 @@ import Counter from "@/components/Counter";
 import { useWishlists } from "@/hooks/use-wishlists";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
+import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, type CarouselApi } from "@/components/ui/carousel";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -38,6 +39,8 @@ const WishlistDetail = () => {
   const [owner, setOwner] = useState<{ full_name?: string | null; username?: string | null; avatar_url?: string | null; allow_friends_claim?: boolean | null; show_countdown_timer?: boolean | null } | null>(null);
   const [countdown, setCountdown] = useState<string | null>(null);
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
+  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
+  const [slide, setSlide] = useState(0);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["wishlist-detail", id],
@@ -133,6 +136,17 @@ const WishlistDetail = () => {
     const id = setInterval(fmt, 60000);
     return () => clearInterval(id);
   }, [data?.wishlist?.event_date]);
+
+  // Track carousel slide for paging hint
+  useEffect(() => {
+    if (!carouselApi) return;
+    const onSelect = () => setSlide(carouselApi.selectedScrollSnap());
+    onSelect();
+    carouselApi.on('select', onSelect);
+    return () => {
+      try { carouselApi.off('select', onSelect); } catch {}
+    };
+  }, [carouselApi]);
 
   if (isLoading) {
     return (
@@ -233,7 +247,12 @@ const WishlistDetail = () => {
               <div className="flex items-center gap-2">
                 {!isEditingTitle || isBirthdayWishlist ? (
                   <>
-                    <h2 className="text-2xl font-extrabold wl-card-title" style={{ textAlign: 'left' }}>{data?.wishlist?.title || "Wishlist"}</h2>
+                    <h2
+                      className="text-3xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_2px_2px_rgba(0,0,0,0.75)] wl-card-title"
+                      style={{ textAlign: 'left', WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+                    >
+                      {data?.wishlist?.title || "Wishlist"}
+                    </h2>
                     {!isBirthdayWishlist && !isGifterMode && (
                       <button
                         type="button"
@@ -296,163 +315,148 @@ const WishlistDetail = () => {
               </div>
               {!isGifterMode && (
                 <>
-                  <p className="mt-0.5 text-xs opacity-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{t('wishlist_detail.contains', 'This wishlist contains ({{count}}/10)', { count: items.length })}</p>
-                  {data?.wishlist?.description && (
-                    <p className="mt-1 text-sm opacity-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{data.wishlist.description}</p>
-                  )}
+                  <p className="mt-3 text-xs font-semibold opacity-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{t('wishlist_detail.contains', 'This wishlist contains ({{count}}/10)', { count: items.length })}</p>
                 </>
               )}
               {eventDateText && (
                 <div className="mt-1 flex items-center gap-2">
-                  <p className={`mt-1 text-xs opacity-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] ${isAr ? 'text-right' : ''}`}>{eventDateText}</p>
+                  <p className={`mt-2 text-xs font-semibold opacity-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] ${isAr ? 'text-right' : ''}`}>{eventDateText}</p>
                   <span className="inline-flex items-center rounded-full bg-white/80 px-2 py-0.5 text-[11px] ring-1 ring-black/10 text-blue-900">
                     {items.length} {t('giftr.items','items')}
                   </span>
                 </div>
               )}
 
-              <div
-                className="mt-3 bg-white/5 rounded-md p-3 w-full overscroll-contain"
-                style={{ maxHeight: 'min(65vh, 520px)', overflowY: 'auto' }}
-              >
+              <div className="mt-3 w-full">
                 <h3 className={`text-base font-semibold drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] ${isAr ? 'text-right' : ''}`}>{isAr ? 'العناصر' : t('wishlist_detail.items_title', 'Items')}</h3>
                 {items.length > 0 ? (
-                  <div className="mt-2 space-y-3">
-                    {items.map((it, idx) => (
-                      <div key={it.id} className="py-3">
-                        <div className="flex items-start gap-3">
-                          {it.image_url ? (
+                  <>
+                  <Carousel opts={{ align: 'start', loop: false }} className="mt-2" setApi={setCarouselApi}>
+                    <CarouselContent>
+                      {items.map((it) => (
+                        <CarouselItem key={it.id}>
+                          <div className="rounded-2xl p-[2px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_8px_18px_rgba(0,0,0,0.22)]">
+                            <div className="rounded-xl bg-black/30 backdrop-blur-sm px-3 py-3 flex items-start gap-3 select-none">
                             <button
                               type="button"
                               onClick={() => {
+                                if (!it.image_url) return;
                                 setPreviewSrc(it.image_url!);
                                 setPreviewOpen(true);
                               }}
                               className="focus:outline-none"
                               aria-label="Preview image"
                             >
-                              <img
-                                src={it.image_url}
-                                alt={it.title || 'Preview'}
-                                className="h-16 w-16 flex-none rounded-md object-cover ring-1 ring-white/30 shadow-sm"
-                                loading="lazy"
-                              />
+                              {it.image_url ? (
+                                <img
+                                  src={it.image_url}
+                                  alt={it.title || 'Preview'}
+                                  className="h-[80px] w-[80px] rounded-full object-cover ring-2 ring-white/40 shadow-[0_6px_18px_rgba(0,0,0,0.35)]"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div className="h-[80px] w-[80px] rounded-full bg-gradient-to-br from-white/20 to-white/10 ring-2 ring-white/30" />
+                              )}
                             </button>
-                          ) : null}
-                          <div className="flex min-w-0 flex-1 flex-col">
-                            <div className={`flex items-center gap-2 ${isAr ? 'justify-between' : ''}`}>
-                              <span className="text-lg leading-none">{desireEmoji((it as any).desire)}</span>
-                              <span className={`text-sm font-semibold text-white whitespace-nowrap truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] ${isAr ? 'text-right' : ''}`}>
-                                {it.title}
-                              </span>
+                            <div className={`min-w-0 flex-1 ${isAr ? 'text-right' : ''}`}>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="text-base sm:text-lg font-extrabold text-white truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{it.title || t('events.untitled','Untitled')}</div>
+                                <div className="text-lg" aria-hidden>{desireEmoji((it as any).desire)}</div>
+                              </div>
+                              {(it as any)?.brand && (
+                                <div className="mt-0.5 text-xs text-white/90 truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{(it as any).brand}</div>
+                              )}
+                              {it.description && (
+                                <div className="mt-1 text-sm text-white/95 line-clamp-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{it.description}</div>
+                              )}
+                              {it.item_url && (
+                                <a href={it.item_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[11px] text-blue-200 underline">
+                                  {t('giftr.view_link', 'View link')}
+                                </a>
+                              )}
+                              <div className={`mt-2 flex items-center gap-2 ${isAr ? 'justify-end' : ''}`}>
+                                {isGifterMode ? (
+                                  (owner?.allow_friends_claim ?? true) ? (
+                                    <Button
+                                      size="sm"
+                                      className="h-8 px-3"
+                                      onClick={() => {
+                                        toast.message(t('giftr.cta_title','Want to send a message or claim an item?'), {
+                                          description: t('giftr.cta_sub','See your friends\' wishlists too.'),
+                                          action: { label: t('giftr.cta_signup','Sign up'), onClick: () => navigate('/signup') },
+                                          cancel: { label: t('giftr.cta_login','Log in'), onClick: () => navigate('/login') },
+                                        } as any);
+                                      }}
+                                    >
+                                      {claimed[it.id] ? (isAr ? 'تم الحجز' : t('giftr.claimed_btn', 'Claimed')) : (isAr ? 'حجز' : t('giftr.claim_btn', 'Claim'))}
+                                    </Button>
+                                  ) : null
+                                ) : fromFriendsTab ? (
+                                  (owner?.allow_friends_claim ?? true) ? (
+                                    <Button
+                                      size="sm"
+                                      className="h-8 px-3"
+                                      onClick={async () => {
+                                        try {
+                                          const { data: { user } } = await supabase.auth.getUser();
+                                          if (!user) { navigate('/login'); return; }
+                                          toast.success(t('giftr.claim_soon','Claim reserved — coming soon'));
+                                        } catch {
+                                          toast.error(t('giftr.error','Something went wrong'));
+                                        }
+                                      }}
+                                    >
+                                      {isAr ? 'حجز' : t('giftr.claim_btn','Claim')}
+                                    </Button>
+                                  ) : null
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="text-white/90 hover:text-white transition"
+                                      onClick={() => {
+                                        setEditingItem(it);
+                                        setEditOpen(true);
+                                      }}
+                                      aria-label="Edit"
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="text-white/90 hover:text-white transition"
+                                      onClick={async () => {
+                                        const ok = window.confirm("Delete this item?");
+                                        if (!ok) return;
+                                        const { error } = await supabase.from("wishlist_items").delete().eq("id", it.id);
+                                        if (error) {
+                                          toast.error(error.message || "Failed to delete");
+                                        } else {
+                                          toast.success("Deleted");
+                                          await refetch();
+                                        }
+                                      }}
+                                      aria-label="Delete"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </div>
-                            {(it as any)?.brand ? (
-                              <span className={`text-xs opacity-90 ${isAr ? 'text-right' : ''}`}>{(it as any).brand}</span>
-                            ) : null}
-                            {it.description && (
-                              <span className={`text-xs opacity-90 ${isAr ? 'text-right' : ''}`}>{it.description}</span>
-                            )}
-                            {it.item_url && (
-                              <a href={it.item_url} target="_blank" className="text-[11px] underline" rel="noreferrer">
-                                {it.item_url}
-                              </a>
-                            )}
                           </div>
-                          {isGifterMode ? (
-                            <div className="flex items-center gap-2">
-                              {(owner?.allow_friends_claim ?? true) && (
-                                <Button
-                                  size="sm"
-                                  className="h-8 px-3"
-                                  variant="default"
-                                  onClick={() => {
-                                    toast.message(t('giftr.cta_title','Want to send a message or claim an item?'), {
-                                      description: t('giftr.cta_sub','See your friends\' wishlists too.'),
-                                      action: {
-                                        label: t('giftr.cta_signup','Sign up'),
-                                        onClick: () => navigate('/signup')
-                                      },
-                                      cancel: {
-                                        label: t('giftr.cta_login','Log in'),
-                                        onClick: () => navigate('/login')
-                                      }
-                                    } as any);
-                                  }}
-                                >
-                                  {claimed[it.id] ? (isAr ? 'تم الحجز' : t('giftr.claimed_btn', 'Claimed')) : (isAr ? 'حجز' : t('giftr.claim_btn', 'Claim'))}
-                                </Button>
-                              )}
-                              {it.item_url ? (
-                                <a href={it.item_url} target="_blank" rel="noreferrer" className="text-xs underline">
-                                  {t('giftr.view_link', 'View link')}
-                                </a>
-                              ) : null}
-                            </div>
-                          ) : fromFriendsTab ? (
-                            <div className="flex items-center gap-2">
-                              {(owner?.allow_friends_claim ?? true) && (
-                                <Button
-                                  size="sm"
-                                  className="h-8 px-3"
-                                  onClick={async () => {
-                                    try {
-                                      const { data: { user } } = await supabase.auth.getUser();
-                                      if (!user) { navigate('/login'); return; }
-                                      toast.success(t('giftr.claim_soon','Claim reserved — coming soon'));
-                                    } catch {
-                                      toast.error(t('giftr.error','Something went wrong'));
-                                    }
-                                  }}
-                                >
-                                  {isAr ? 'حجز' : t('giftr.claim_btn','Claim')}
-                                </Button>
-                              )}
-                              {it.item_url ? (
-                                <a href={it.item_url} target="_blank" rel="noreferrer" className="text-xs underline">
-                                  {t('giftr.view_link', 'View link')}
-                                </a>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                className="text-white/90 hover:text-white transition"
-                                onClick={() => {
-                                  setEditingItem(it);
-                                  setEditOpen(true);
-                                }}
-                                aria-label="Edit"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                className="text-white/90 hover:text-white transition"
-                                onClick={async () => {
-                                  const ok = window.confirm("Delete this item?");
-                                  if (!ok) return;
-                                  const { error } = await supabase.from("wishlist_items").delete().eq("id", it.id);
-                                  if (error) {
-                                    toast.error(error.message || "Failed to delete");
-                                  } else {
-                                    toast.success("Deleted");
-                                    await refetch();
-                                  }
-                                }}
-                                aria-label="Delete"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        {idx < items.length - 1 && (
-                          <div className="mt-3 h-[1px] w-full rounded-full bg-white/25 backdrop-blur-[2px]" />
-                        )}
-                      </div>
-                    ))}
+                          </div>
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    {/* Desktop arrows */}
+                    <CarouselPrevious className="hidden sm:flex" />
+                    <CarouselNext className="hidden sm:flex" />
+                  </Carousel>
+                  <div className="mt-2 text-center text-[11px] text-white/90">
+                    {slide + 1}/{items.length}
                   </div>
+                  </>
                 ) : (
                   <p className="text-sm opacity-80 mt-1">{t('wishlist_detail.no_items', 'No items yet.')}</p>
                 )}

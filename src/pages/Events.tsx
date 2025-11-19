@@ -232,6 +232,7 @@ const Events = () => {
                     sendToBackOnClick={false}
                     cardDimensions={{ width: cardSize.width, height: cardSize.height }}
                     cards={(myEvents || []).map((e) => ({ id: e.id, title: e.title || 'Untitled' }))}
+                    className="-translate-x-4 sm:-translate-x-6"
                   />
                 </div>
               )}

@@ -15,6 +15,7 @@ import Events from "./pages/Events";
 import Profile from "./pages/Profile";
 import FollowersFollowing from "./pages/FollowersFollowing";
 import WishlistDetail from "./pages/WishlistDetail";
+import ShortWishRedirect from "./pages/ShortWishRedirect";
 import Wishlists from "./pages/Wishlists";
 import Settings from "./pages/Settings";
 import Messages from "./pages/Messages";
@@ -36,6 +37,10 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          {/* Public shareable wishlist detail (supports ?mode=gifter) */}
+          <Route path="/wishlist/:id" element={<WishlistDetail />} />
+          {/* Short redirect link */}
+          <Route path="/w/:id" element={<ShortWishRedirect />} />
 
           {/* Authenticated app shell */}
           <Route
@@ -51,7 +56,6 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/followers" element={<FollowersFollowing />} />
             <Route path="/wishlists" element={<Wishlists />} />
-            <Route path="/wishlist/:id" element={<WishlistDetail />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/chat/:id" element={<Chat />} />

@@ -120,7 +120,7 @@ export default function WishlistStack({
     try {
       const publicBase = (import.meta as any).env?.VITE_PUBLIC_SITE_URL as string | undefined;
       const origin = (publicBase && /^https?:\/\//i.test(publicBase)) ? publicBase.replace(/\/$/, '') : window.location.origin;
-      const url = `${origin}/wishlist/${id}?mode=gifter`;
+      const url = `${origin}/w/${id}`;
       const shareTitle = title || 'Wishlist';
       const text = `${shareTitle} — ${url}`;
 
