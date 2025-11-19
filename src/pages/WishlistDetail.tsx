@@ -209,7 +209,7 @@ const WishlistDetail = () => {
 
   return (
     <div className={`container max-w-2xl mx-auto px-4 py-6 space-y-4 ${isGifterMode ? 'relative' : ''}`}>
-      {isGifterMode && (
+      {isGifterMode && !isMobile && (
         <div className="fixed inset-0 z-0">
           <FloatingLines
             enabledWaves={["top","middle","bottom"]}
@@ -217,10 +217,10 @@ const WishlistDetail = () => {
             lineDistance={[6,5,4] as any}
             bendRadius={5.0}
             bendStrength={-0.5}
-            interactive={!isMobile}
-            parallax={!isMobile}
-            animationSpeed={isMobile ? 0.35 : 0.85}
-            parallaxStrength={isMobile ? 0.05 : 0.12}
+            interactive={true}
+            parallax={true}
+            animationSpeed={0.85}
+            parallaxStrength={0.12}
             linesGradient={["#4f46e5","#06b6d4","#ec4899","#f59e0b"]}
             mixBlendMode="normal"
           />
@@ -507,6 +507,30 @@ const WishlistDetail = () => {
                   <div className="mt-2 text-center text-[11px] text-white/90">
                     {slide + 1}/{items.length}
                   </div>
+                  {isGifterMode && items.length > 1 && (
+                    <div className="mt-1 text-center text-[10px] text-white/80 tracking-wide">
+                      <span className="inline-flex items-center justify-center gap-1 px-3 py-[2px] rounded-full bg-white/15 border border-white/25">
+                        <span>{"<"}-----{" >"}</span>
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 14 14"
+                          aria-hidden="true"
+                          className="overflow-visible"
+                        >
+                          <circle cx="3" cy="7" r="3" fill="white" fillOpacity="0.9">
+                            <animateTransform
+                              attributeName="transform"
+                              type="translate"
+                              dur="1.2s"
+                              values="0 0; 4 0; 0 0"
+                              repeatCount="indefinite"
+                            />
+                          </circle>
+                        </svg>
+                      </span>
+                    </div>
+                  )}
                   </>
                 ) : (
                   <p className="text-sm opacity-80 mt-1">{t('wishlist_detail.no_items', 'No items yet.')}</p>
