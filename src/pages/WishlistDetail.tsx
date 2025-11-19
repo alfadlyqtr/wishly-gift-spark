@@ -90,12 +90,29 @@ const WishlistDetail = () => {
         if (joined) { if (!cancelled) setOwner(joined as any); return; }
         const ownerId = (data?.wishlist as any)?.user_id;
         if (!ownerId) return;
-        const { data: prof } = await supabase
+        const { data: prof, error: profErr } = await supabase
           .from('user_profiles' as any)
           .select('full_name, username, avatar_url, allow_friends_claim, show_countdown_timer')
           .eq('id', ownerId)
           .maybeSingle();
-        if (!cancelled) setOwner((prof as any) || null);
+        if (!cancelled && prof) { setOwner((prof as any) || null); return; }
+        // If RLS blocked or no row returned, try direct REST with public env keys
+        try {
+          const supabaseUrl = (import.meta as any)?.env?.VITE_SUPABASE_URL as string | undefined;
+          const supabaseKey = ((import.meta as any)?.env?.VITE_SUPABASE_PUBLISHABLE_KEY || (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY) as string | undefined;
+          if (!supabaseUrl || !supabaseKey) return;
+          const resp = await fetch(`${supabaseUrl.replace(/\/$/, '')}/rest/v1/user_profiles?id=eq.${encodeURIComponent(ownerId)}&select=full_name,username,avatar_url,allow_friends_claim,show_countdown_timer`, {
+            headers: {
+              apikey: supabaseKey,
+              Authorization: `Bearer ${supabaseKey}`,
+              Accept: 'application/json',
+            },
+          });
+          if (!resp.ok) return;
+          const arr = (await resp.json()) as any[];
+          const row = Array.isArray(arr) && arr[0] ? arr[0] : null;
+          if (!cancelled && row) setOwner(row);
+        } catch {}
       } catch {
         if (!cancelled) setOwner(null);
       }
