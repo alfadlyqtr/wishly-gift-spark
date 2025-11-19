@@ -106,7 +106,13 @@ const WishlistDetail = () => {
   // Fallback fetch for public (gifter) mode when Supabase client can't access user_profiles due to RLS
   useEffect(() => {
     if (!isGifterMode) return;
-    if (owner?.full_name || owner?.username || !id) return;
+    if (!id) return;
+    const uid = (data?.wishlist as any)?.user_id as string | undefined;
+    const looksPlaceholder = owner?.username ? /^user-[a-z0-9]{4,}$/i.test(owner.username) : false;
+    const hasName = Boolean(owner?.full_name || owner?.username);
+    const hasAvatar = Boolean(owner?.avatar_url);
+    // Trigger fallback if missing name OR looks like placeholder OR missing avatar
+    if (hasName && !looksPlaceholder && hasAvatar) return;
     let cancelled = false;
     (async () => {
       try {
@@ -127,7 +133,7 @@ const WishlistDetail = () => {
     return () => {
       cancelled = true;
     };
-  }, [id, isGifterMode, owner?.full_name, owner?.username]);
+  }, [id, isGifterMode, owner?.full_name, owner?.username, owner?.avatar_url, data?.wishlist?.user_id]);
 
   const eventDateText = (() => {
     const d = data?.wishlist?.event_date ? new Date(data.wishlist.event_date) : null;

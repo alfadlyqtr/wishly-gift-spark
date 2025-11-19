@@ -4,24 +4,42 @@ export default async function handler(req: any, res: any) {
     if (!id) return res.status(400).json({ error: 'missing id' });
 
     const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-    const supabaseAnon = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !supabaseAnon) return res.status(200).json({ owner: {} });
+    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const publicKey =
+      process.env.SUPABASE_ANON_KEY ||
+      process.env.VITE_SUPABASE_ANON_KEY ||
+      process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const key = serviceRole || publicKey;
+    if (!supabaseUrl || !key) return res.status(200).json({ owner: {} });
 
-    // Fetch wishlist with joined owner profile (public, read-only via anon key).
-    const endpoint = `${supabaseUrl.replace(/\/$/, '')}/rest/v1/wishlists?id=eq.${encodeURIComponent(
-      id
-    )}&select=owner:user_profiles(full_name,username,avatar_url,allow_friends_claim,show_countdown_timer)`;
-    const r = await fetch(endpoint, {
+    const base = supabaseUrl.replace(/\/$/, '');
+    // Step 1: get wishlist to read user_id
+    const wlResp = await fetch(`${base}/rest/v1/wishlists?id=eq.${encodeURIComponent(id)}&select=user_id`, {
       headers: {
-        apikey: supabaseAnon,
-        Authorization: `Bearer ${supabaseAnon}`,
+        apikey: key,
+        Authorization: `Bearer ${key}`,
         Accept: 'application/json',
       },
     });
+    if (!wlResp.ok) return res.status(200).json({ owner: {} });
+    const wlArr = (await wlResp.json()) as any[];
+    const userId = Array.isArray(wlArr) && wlArr[0]?.user_id ? wlArr[0].user_id : null;
+    if (!userId) return res.status(200).json({ owner: {} });
 
-    if (!r.ok) return res.status(200).json({ owner: {} });
-    const arr = (await r.json()) as any[];
-    const owner = arr && arr[0] && arr[0].owner ? arr[0].owner : {};
+    // Step 2: read public profile fields by id
+    const profResp = await fetch(
+      `${base}/rest/v1/user_profiles?id=eq.${encodeURIComponent(userId)}&select=full_name,username,avatar_url,allow_friends_claim,show_countdown_timer`,
+      {
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          Accept: 'application/json',
+        },
+      }
+    );
+    if (!profResp.ok) return res.status(200).json({ owner: {} });
+    const profArr = (await profResp.json()) as any[];
+    const owner = Array.isArray(profArr) && profArr[0] ? profArr[0] : {};
     return res.status(200).json({ owner });
   } catch (e) {
     return res.status(200).json({ owner: {} });
