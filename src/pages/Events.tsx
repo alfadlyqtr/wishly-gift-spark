@@ -226,7 +226,7 @@ const Events = () => {
             <CardContent className="pt-2">
               {(myEvents?.length ?? 0) > 0 && (
                 <>
-                  <div className="w-full flex justify-center py-4 sm:py-6">
+                  <div className="w-full flex justify-center py-4 sm:py-6 relative">
                     <WishlistStack
                       randomRotation={true}
                       sensitivity={180}
@@ -237,10 +237,34 @@ const Events = () => {
                     />
                   </div>
                   {(myEvents?.length ?? 0) > 1 && (
-                    <div className="mt-6 flex justify-center gap-1.5 text-muted-foreground/80">
-                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                    <div className="absolute bottom-[-2.5rem] left-1/2 -translate-x-1/2 text-center text-[11px] text-muted-foreground z-10">
+                      <span className="inline-flex items-center justify-center gap-1 px-4 py-[3px] rounded-full bg-muted/40 border border-border/60 shadow-sm">
+                        <span className="tracking-wide text-[10px]">{"<"} Swipe cards {">"}</span>
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 16 16"
+                          aria-hidden="true"
+                          className="overflow-visible"
+                        >
+                          <g>
+                            <animateTransform
+                              attributeName="transform"
+                              type="translate"
+                              dur="1.1s"
+                              values="0 0; 3 0; 0 0"
+                              repeatCount="indefinite"
+                            />
+                            <text
+                              x="2"
+                              y="11"
+                              fontSize="10"
+                            >
+                              🤚
+                            </text>
+                          </g>
+                        </svg>
+                      </span>
                     </div>
                   )}
                 </>

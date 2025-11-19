@@ -78,13 +78,13 @@ export const MainLayout = () => {
       )}
 
       {/* Main Content */}
-      <main className={`flex-1 overflow-y-auto ${isGifterShared ? '' : 'pb-20'}`}>
+      <main className={`flex-1 overflow-y-auto ${isGifterShared ? '' : 'pb-28 sm:pb-24'}`}>
         <Outlet />
       </main>
 
       {/* Bottom Navigation (hidden on shared gifter view) */}
       {!isGifterShared && (
-      <nav className="fixed bottom-3 left-0 right-0 z-50">
+      <nav className="fixed bottom-6 sm:bottom-4 left-0 right-0 z-50">
         <div className="mx-auto w-[min(720px,92%)]">
           <div className="flex items-center justify-around px-3 py-2 rounded-2xl bg-white/75 backdrop-blur ring-1 ring-white/70 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
           <Link to="/dashboard">
