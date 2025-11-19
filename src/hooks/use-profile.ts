@@ -62,6 +62,21 @@ export function useProfileData() {
       if (statsError) console.error(statsError);
       if (wishlistsError) console.error(wishlistsError);
 
+      // If user_profiles.country is empty but auth metadata has a country from signup,
+      // sync it once so the profile displays the correct Country/Region.
+      try {
+        const currentCountry = (countryData as any)?.country as string | null | undefined;
+        const metaCountry = (user?.user_metadata as any)?.country as string | null | undefined;
+        if (!currentCountry && metaCountry) {
+          await (supabase as any)
+            .from("user_profiles")
+            .update({ country: metaCountry })
+            .eq("id", user.id);
+        }
+      } catch (e) {
+        console.error("Failed to sync country from auth metadata", e);
+      }
+
       let wishesCount = 0;
       const wishlistIds = (wishlists ?? []).map((w) => w.id);
       if (wishlistIds.length > 0) {
@@ -77,7 +92,7 @@ export function useProfileData() {
         stats: (statsData as GiverStats) ?? null,
         wishesCount,
         authEmail: user.email ?? null,
-        country: (countryData as any)?.country ?? null,
+        country: ((countryData as any)?.country ?? (user?.user_metadata as any)?.country ?? null) as string | null,
       } as {
         profile: UserProfile | null;
         stats: GiverStats | null;
