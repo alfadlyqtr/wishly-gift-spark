@@ -504,31 +504,14 @@ const WishlistDetail = () => {
                     <CarouselPrevious className="hidden sm:flex" />
                     <CarouselNext className="hidden sm:flex" />
                   </Carousel>
-                  <div className="mt-2 text-center text-[11px] text-white/90">
+                  <div className="mt-2 text-center text-[11px] text-white/90 relative z-10">
                     {slide + 1}/{items.length}
                   </div>
                   {isGifterMode && items.length > 1 && (
-                    <div className="mt-1 text-center text-[10px] text-white/80 tracking-wide">
-                      <span className="inline-flex items-center justify-center gap-1 px-3 py-[2px] rounded-full bg-white/15 border border-white/25">
-                        <span>{"<"}-----{" >"}</span>
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 14 14"
-                          aria-hidden="true"
-                          className="overflow-visible"
-                        >
-                          <circle cx="3" cy="7" r="3" fill="white" fillOpacity="0.9">
-                            <animateTransform
-                              attributeName="transform"
-                              type="translate"
-                              dur="1.2s"
-                              values="0 0; 4 0; 0 0"
-                              repeatCount="indefinite"
-                            />
-                          </circle>
-                        </svg>
-                      </span>
+                    <div className="mt-4 flex justify-center gap-1.5 text-white/85 relative z-10">
+                      <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
                     </div>
                   )}
                   </>

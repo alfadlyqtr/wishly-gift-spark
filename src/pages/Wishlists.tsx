@@ -29,7 +29,7 @@ const Wishlists: React.FC = () => {
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : cards.length > 0 ? (
-        <div className="w-full flex flex-col items-center py-10 mt-16 sm:mt-24 space-y-2">
+        <div className="w-full flex flex-col items-center py-10 mt-16 sm:mt-24 space-y-2 relative">
           <WishlistStack
             randomRotation={true}
             sensitivity={180}
@@ -38,9 +38,9 @@ const Wishlists: React.FC = () => {
             cards={cards}
           />
           {cards.length > 1 && (
-            <div className="mt-2 text-center text-[11px] text-muted-foreground">
-              <span className="inline-flex items-center justify-center gap-1 px-3 py-[2px] rounded-full bg-muted/40 border border-border/60">
-                <span>{"<"}-----{" >"}</span>
+            <div className="mt-4 text-center text-[11px] text-muted-foreground relative z-10">
+              <span className="inline-flex items-center justify-center gap-1 px-4 py-[3px] rounded-full bg-muted/40 border border-border/60 shadow-sm">
+                <span className="tracking-wide text-[10px]">{"<"} Swipe cards {">"}</span>
                 <svg
                   width="14"
                   height="14"

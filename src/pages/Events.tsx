@@ -225,16 +225,25 @@ const Events = () => {
             </CardHeader>
             <CardContent className="pt-2">
               {(myEvents?.length ?? 0) > 0 && (
-                <div className="w-full flex justify-center py-4 sm:py-6">
-                  <WishlistStack
-                    randomRotation={true}
-                    sensitivity={180}
-                    sendToBackOnClick={false}
-                    cardDimensions={{ width: cardSize.width, height: cardSize.height }}
-                    cards={(myEvents || []).map((e) => ({ id: e.id, title: e.title || 'Untitled' }))}
-                    className="-translate-x-4 sm:-translate-x-6"
-                  />
-                </div>
+                <>
+                  <div className="w-full flex justify-center py-4 sm:py-6">
+                    <WishlistStack
+                      randomRotation={true}
+                      sensitivity={180}
+                      sendToBackOnClick={false}
+                      cardDimensions={{ width: cardSize.width, height: cardSize.height }}
+                      cards={(myEvents || []).map((e) => ({ id: e.id, title: e.title || 'Untitled' }))}
+                      className="-translate-x-4 sm:-translate-x-6"
+                    />
+                  </div>
+                  {(myEvents?.length ?? 0) > 1 && (
+                    <div className="mt-6 flex justify-center gap-1.5 text-muted-foreground/80">
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                    </div>
+                  )}
+                </>
               )}
               {loadingMy ? (
                 <p className="text-sm text-muted-foreground">{t('common.loading', 'Loading...')}</p>
