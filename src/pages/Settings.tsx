@@ -28,6 +28,8 @@ const Settings = () => {
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [loadingVisibility, setLoadingVisibility] = useState<boolean>(false);
   const [savingPrefs, setSavingPrefs] = useState(false);
+  const [country, setCountry] = useState<string>("");
+  const [savingCountry, setSavingCountry] = useState<boolean>(false);
   const [visibilitySupported, setVisibilitySupported] = useState<boolean>(true);
   const [followMode, setFollowMode] = useState<"open" | "approval">("open");
   const [followSupported, setFollowSupported] = useState<boolean>(true);
@@ -55,6 +57,35 @@ const Settings = () => {
       toast.error(err?.message || "Failed to change password");
     } finally {
       setChangingPassword(false);
+    }
+  };
+
+  const saveCountrySetting = async () => {
+    try {
+      setSavingCountry(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const normalized = country.trim();
+      const { error } = await (supabase as any)
+        .from("user_profiles")
+        .update({ country: normalized || null })
+        .eq("id", user.id);
+      if (error) throw error;
+      try {
+        await supabase.auth.updateUser({
+          data: { ...(user.user_metadata || {}), country: normalized || null },
+        } as any);
+      } catch {
+        // non-fatal if metadata update fails
+      }
+      toast.success(t("settings.country_saved", "Country updated"));
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save country");
+    } finally {
+      setSavingCountry(false);
     }
   };
 
@@ -134,7 +165,7 @@ const Settings = () => {
         if (!user) return;
         const { data, error } = await (supabase as any)
           .from("user_profiles")
-          .select("is_searchable, require_follow_approval, allow_wishlist_sharing, allow_friends_claim, show_countdown_timer")
+          .select("is_searchable, require_follow_approval, allow_wishlist_sharing, allow_friends_claim, show_countdown_timer, country")
           .eq("id", user.id)
           .single();
         if (!error && data) {
@@ -149,6 +180,7 @@ const Settings = () => {
           if (typeof (data as any).allow_wishlist_sharing === 'boolean') setAllowSharing((data as any).allow_wishlist_sharing);
           if (typeof (data as any).allow_friends_claim === 'boolean') setAllowFriendsClaim((data as any).allow_friends_claim);
           if (typeof (data as any).show_countdown_timer === 'boolean') setShowCountdown((data as any).show_countdown_timer);
+          setCountry(((data as any).country || (user.user_metadata as any)?.country || "") as string);
         } else if (error) {
           setVisibilitySupported(false);
           setFollowSupported(false);
@@ -419,6 +451,27 @@ const Settings = () => {
               )}
             </div>
           </div>
+
+          <div className="space-y-4 pt-4">
+            <Label className="flex items-center gap-2"><Globe2 className="h-4 w-4" /> {t("settings.country", "Country/Region")}</Label>
+            <div className="flex gap-2 items-center max-w-md">
+              <Input
+                id="settings-country"
+                type="text"
+                placeholder={t("settings.country_placeholder", "e.g. Canada")}
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className="rounded-xl"
+              />
+              <Button variant="gradient" type="button" disabled={savingCountry} onClick={saveCountrySetting}>
+                {savingCountry ? t("common.saving", "Saving...") : t("common.save", "Save")}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground max-w-md">
+              {t("settings.country_help", "Used to show public holidays and experiences for your region.")}
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label className="flex items-center gap-2"><Bell className="h-4 w-4" /> {t("settings.notifications", "Notifications")}</Label>
             <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">

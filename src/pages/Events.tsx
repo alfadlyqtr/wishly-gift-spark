@@ -87,10 +87,43 @@ function usePublicEvents() {
     queryKey: ["events", "public"],
     queryFn: async (): Promise<PublicEvent[]> => {
       try {
+        const { data: auth } = await supabase.auth.getUser();
+        const user = auth.user;
+
         let query = (supabase as any)
           .from("events")
           .select("*")
           .eq("is_public_holiday", true);
+
+        // If we know the user's country (from auth metadata), narrow events to that country code
+        const metaCountry = (user?.user_metadata as any)?.country as string | null | undefined;
+        if (metaCountry) {
+          const n = metaCountry.toString().trim().toLowerCase();
+          const map: Record<string, string> = {
+            qatar: "QA",
+            "saudi arabia": "SA",
+            "united arab emirates": "AE",
+            uae: "AE",
+            bahrain: "BH",
+            kuwait: "KW",
+            oman: "OM",
+            egypt: "EG",
+            jordan: "JO",
+            lebanon: "LB",
+            canada: "CA",
+            "united states": "US",
+            usa: "US",
+            "united kingdom": "GB",
+            uk: "GB",
+          };
+          let cc: string | null = null;
+          if (/^[a-zA-Z]{2}$/.test(n)) cc = n.toUpperCase();
+          else cc = map[n] ?? null;
+          if (cc) {
+            query = query.eq("country_code", cc);
+          }
+        }
+
         const { data, error } = await query.order("date", { ascending: true });
         if (error) return [];
         return (data ?? []) as any[];
@@ -317,9 +350,14 @@ const Events = () => {
         <TabsContent value="public" className="pt-4">
           <Card className="border-0 rounded-2xl ring-1 ring-white/30 bg-gradient-to-br from-[#4158D0]/10 via-[#C850C0]/10 to-[#FFCC70]/10 shadow-[0_18px_40px_rgba(0,0,0,0.20)]">
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
-              <div className="flex flex-col">
+              <div className="flex flex-col gap-1">
                 <CardTitle className="text-base font-semibold">{t('events.tab_general', 'General Events')}</CardTitle>
                 <span className="text-xs text-muted-foreground">{t('events.public_holiday_disclaimer', 'Public holiday dates can vary.')}</span>
+                {!profileBundle?.country && (
+                  <span className="text-[11px] text-muted-foreground/80">
+                    {t('events.no_country_set', 'Set your Country/Region in your profile or Settings to see holidays for your country.')}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <select
