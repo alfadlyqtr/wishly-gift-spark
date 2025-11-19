@@ -103,6 +103,32 @@ const WishlistDetail = () => {
     return () => { cancelled = true; };
   }, [data?.wishlist?.id]);
 
+  // Fallback fetch for public (gifter) mode when Supabase client can't access user_profiles due to RLS
+  useEffect(() => {
+    if (!isGifterMode) return;
+    if (owner?.full_name || owner?.username || !id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await fetch(`/api/public-wishlist/${id}`);
+        if (!resp.ok) return;
+        const payload = await resp.json();
+        if (cancelled) return;
+        const apiOwner = payload?.owner || {};
+        setOwner((prev) => ({
+          full_name: apiOwner.full_name ?? prev?.full_name,
+          username: apiOwner.username ?? prev?.username,
+          avatar_url: apiOwner.avatar_url ?? prev?.avatar_url,
+          allow_friends_claim: typeof apiOwner.allow_friends_claim === 'boolean' ? apiOwner.allow_friends_claim : prev?.allow_friends_claim,
+          show_countdown_timer: typeof apiOwner.show_countdown_timer === 'boolean' ? apiOwner.show_countdown_timer : prev?.show_countdown_timer,
+        }));
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, isGifterMode, owner?.full_name, owner?.username]);
+
   const eventDateText = (() => {
     const d = data?.wishlist?.event_date ? new Date(data.wishlist.event_date) : null;
     if (!d || isNaN(d.getTime())) return null;
