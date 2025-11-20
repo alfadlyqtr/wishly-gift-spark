@@ -98,90 +98,92 @@ export const MainLayout = () => {
         style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.5rem)' }}
       >
         <div
-          className="mx-auto w-[min(720px,92%)]"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+          className="mx-auto w-[min(720px,90%)]"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 6px)' }}
         >
-          <div className="flex items-end justify-around gap-1 px-3 py-2 rounded-2xl bg-white/75 backdrop-blur ring-1 ring-white/70 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
+          <div className="flex items-end justify-between gap-2 px-3 py-2 rounded-3xl bg-white/85 backdrop-blur ring-1 ring-white/70 shadow-[0_12px_32px_rgba(0,0,0,0.12)]">
           <Link to="/dashboard" className="flex flex-1 justify-center min-w-0">
             <Button
               variant="ghost"
               size="sm"
-              className={`w-full max-w-[78px] sm:max-w-none flex flex-col items-center gap-1 h-auto py-2 -mt-2 ${
+              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-2 ${
                 isActive("/dashboard") ? "text-primary" : "text-muted-foreground"
               }`}
             >
               <img src={wishlyLogo} alt="Dash" className="h-8 w-8 rounded-full ring-1 ring-white/70 object-cover" />
               <span
-                className="text-xs sm:text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+                className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
               >
                 {t('nav.dash', 'Dash')}
               </span>
             </Button>
           </Link>
 
-          <Link to="/explore">
+          <Link to="/explore" className="flex flex-1 justify-center min-w-0">
             <Button
               variant="ghost"
               size="sm"
-              className={`flex flex-col items-center gap-1 h-auto py-2 -mt-4 ${
+              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 ${
                 isActive("/explore") ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <Store className="h-10 w-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]" strokeWidth={2.4} />
+              <Store className="h-9 w-9 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" strokeWidth={2.4} />
               <span
-                className="text-xs sm:text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+                className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
               >
                 {t('nav.explore', 'Explore')}
               </span>
             </Button>
           </Link>
 
-          <Button
-            onClick={() => setAddOpen(true)}
-            size="lg"
-            className="relative -mt-10 px-3 py-2 bg-transparent shadow-none ring-0 transition-all"
-          >
-            <div className="flex flex-col items-center">
-              <span
-                className="text-3xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
-              >
-                +
-              </span>
-              <span
-                className="text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
-              >
-                {t('nav.add_wish', 'Add Wish')}
-              </span>
-            </div>
-          </Button>
+          <div className="flex flex-1 justify-center min-w-0">
+            <Button
+              onClick={() => setAddOpen(true)}
+              size="lg"
+              className="relative w-full max-w-[92px] sm:max-w-none -mt-9 px-3 py-2 bg-transparent shadow-none ring-0 transition-all"
+            >
+              <div className="flex flex-col items-center">
+                <span
+                  className="text-[30px] font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                  style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+                >
+                  +
+                </span>
+                <span
+                  className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                  style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
+                >
+                  {t('nav.add_wish', 'Add Wish')}
+                </span>
+              </div>
+            </Button>
+          </div>
 
-          <Link to="/events">
+          <Link to="/events" className="flex flex-1 justify-center min-w-0">
             <Button
               variant="ghost"
               size="sm"
-              className={`flex flex-col items-center gap-1 h-auto py-2 -mt-4 ${
+              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 ${
                 isActive("/events") ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <Calendar className="h-10 w-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]" strokeWidth={2.4} />
+              <Calendar className="h-9 w-9 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" strokeWidth={2.4} />
               <span
-                className="text-xs sm:text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+                className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
               >
                 {t('nav.events', 'Events')}
               </span>
             </Button>
           </Link>
 
-          <Link to="/profile">
+          <Link to="/profile" className="flex flex-1 justify-center min-w-0">
             <Button
               variant="ghost"
               size="sm"
-              className={`flex flex-col items-center gap-1 h-auto py-2 -mt-2 ${
+              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-2 ${
                 isActive("/profile") ? "text-primary" : "text-muted-foreground"
               }`}
             >
