@@ -101,18 +101,18 @@ export const MainLayout = () => {
           className="mx-auto w-[min(720px,92%)]"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
-          <div className="flex items-center justify-around px-3 py-2 rounded-2xl bg-white/75 backdrop-blur ring-1 ring-white/70 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
-          <Link to="/dashboard">
+          <div className="flex items-end justify-around gap-1 px-3 py-2 rounded-2xl bg-white/75 backdrop-blur ring-1 ring-white/70 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
+          <Link to="/dashboard" className="flex flex-1 justify-center min-w-0">
             <Button
               variant="ghost"
               size="sm"
-              className={`flex flex-col items-center gap-1 h-auto py-2 -mt-2 ${
+              className={`w-full max-w-[78px] sm:max-w-none flex flex-col items-center gap-1 h-auto py-2 -mt-2 ${
                 isActive("/dashboard") ? "text-primary" : "text-muted-foreground"
               }`}
             >
               <img src={wishlyLogo} alt="Dash" className="h-8 w-8 rounded-full ring-1 ring-white/70 object-cover" />
               <span
-                className="text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                className="text-xs sm:text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
                 style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
               >
                 {t('nav.dash', 'Dash')}
@@ -130,7 +130,7 @@ export const MainLayout = () => {
             >
               <Store className="h-10 w-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]" strokeWidth={2.4} />
               <span
-                className="text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                className="text-xs sm:text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
                 style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
               >
                 {t('nav.explore', 'Explore')}
@@ -169,7 +169,7 @@ export const MainLayout = () => {
             >
               <Calendar className="h-10 w-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]" strokeWidth={2.4} />
               <span
-                className="text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                className="text-xs sm:text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
                 style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
               >
                 {t('nav.events', 'Events')}
@@ -196,7 +196,7 @@ export const MainLayout = () => {
                 <User className="h-8 w-8" />
               )}
               <span
-                className="text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                className="text-xs sm:text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
                 style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
               >
                 {t('nav.profile', 'Profile')}
