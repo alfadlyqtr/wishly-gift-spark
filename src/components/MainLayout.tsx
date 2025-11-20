@@ -59,12 +59,10 @@ export const MainLayout = () => {
           <Link to="/notifications">
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
-              {pendingCount > 0 ? (
+              {pendingCount > 0 && (
                 <span className="absolute -right-1 -top-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-[10px] leading-[18px] text-white text-center ring-1 ring-white/70 shadow-[0_6px_14px_rgba(0,0,0,0.15)]">
                   {Math.min(pendingCount, 9)}{pendingCount > 9 ? "+" : ""}
                 </span>
-              ) : (
-                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-secondary" />
               )}
             </Button>
           </Link>

@@ -133,7 +133,16 @@
     "empty_brands": "Search brands, stores, or products.",
     "empty_users": "Type a name, username, or email to search users.",
     "loading": "Loading",
-    "no_results": "No results."
+    "no_results": "No results.",
+    "follow": "Follow",
+    "follow_me": "Follow me",
+    "follow_requested": "Requested",
+    "following": "Following",
+    "cannot_follow_self": "You can't follow yourself.",
+    "follow_already_requested": "You already requested to follow this user.",
+    "already_following": "You are already following this user.",
+    "follow_request_sent": "Follow request sent. You'll be notified when they approve.",
+    "follow_started": "You are now following this user."
   }
   ,
   "dashboard": {

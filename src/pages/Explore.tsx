@@ -3,39 +3,123 @@ import { useTranslation } from "react-i18next";
 import { Store, Search, Filter, Users } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { requestFollow } from "@/lib/follow";
 
 const Explore = () => {
   const { t } = useTranslation();
   const [mode, setMode] = useState<"brands" | "users">("brands");
   const [q, setQ] = useState("");
   const debouncedQ = useMemo(() => q.trim(), [q]);
+  const [requestedIds, setRequestedIds] = useState<string[]>([]);
 
   const usersQuery = useQuery({
     queryKey: ["explore", "users", debouncedQ],
     queryFn: async () => {
       const s = debouncedQ;
       if (!s) return [];
-      // Try email + username + full_name; if email column doesn't exist, fallback
-      try {
-        const { data } = await (supabase as any)
-          .from("user_profiles")
-          .select("id, username, full_name, avatar_url")
-          .eq("is_searchable", true)
-          .or(`username.ilike.%${s}%,full_name.ilike.%${s}%,email.ilike.%${s}%`)
-          .limit(20);
-        return data ?? [];
-      } catch {
-        const { data } = await (supabase as any)
-          .from("user_profiles")
-          .select("id, username, full_name, avatar_url")
-          .eq("is_searchable", true)
-          .or(`username.ilike.%${s}%,full_name.ilike.%${s}%`)
-          .limit(20);
-        return data ?? [];
+      // Search only public / searchable profiles (profile visibility toggle)
+      const { data: auth } = await supabase.auth.getUser();
+      const me = auth.user?.id as string | undefined;
+
+      const { data: profiles } = await (supabase as any)
+        .from("user_profiles")
+        .select("id, username, full_name, avatar_url, email, require_follow_approval")
+        .eq("is_searchable", true)
+        .or(`username.ilike.%${s}%,full_name.ilike.%${s}%,email.ilike.%${s}%`)
+        .limit(20);
+
+      const base = (profiles ?? []) as any[];
+      if (!me || base.length === 0) return base;
+
+      // Fetch existing follow relationships for these users to hydrate button state
+      const ids = base.map((p) => p.id);
+      const { data: relations } = await (supabase as any)
+        .from("followers")
+        .select("following_id,status")
+        .eq("user_id", me)
+        .in("following_id", ids);
+
+      const statusById: Record<string, string> = {};
+      for (const row of (relations ?? []) as any[]) {
+        statusById[String(row.following_id)] = String(row.status || "");
       }
+
+      return base.map((p) => ({
+        ...p,
+        follow_status: statusById[p.id] ?? null,
+      }));
     },
     enabled: mode === "users" && debouncedQ.length > 0,
   });
+
+  const handleFollow = async (u: any) => {
+    try {
+      // First check if a follow relationship already exists
+      const { data: auth } = await supabase.auth.getUser();
+      const me = auth.user?.id;
+      if (!me) {
+        toast.error(t("common.error_generic", "Something went wrong. Please try again."));
+        return;
+      }
+
+      const { data: existing, error: existingErr } = await (supabase as any)
+        .from("followers")
+        .select("status")
+        .eq("user_id", me)
+        .eq("following_id", u.id)
+        .maybeSingle();
+
+      if (!existingErr && existing) {
+        const status = String((existing as any).status || "");
+        setRequestedIds((prev) => (prev.includes(u.id) ? prev : [...prev, u.id]));
+        if (status === "pending") {
+          toast.success(
+            t(
+              "explore.follow_already_requested",
+              "You already requested to follow this user.",
+            ),
+          );
+        } else if (status === "accepted") {
+          toast.success(
+            t("explore.already_following", "You are already following this user."),
+          );
+        }
+        return;
+      }
+
+      await requestFollow(u.id);
+      setRequestedIds((prev) => (prev.includes(u.id) ? prev : [...prev, u.id]));
+      if (u.require_follow_approval) {
+        toast.success(
+          t(
+            "explore.follow_request_sent",
+            "Follow request sent. You'll be notified when they approve.",
+          ),
+        );
+      } else {
+        toast.success(
+          t("explore.follow_started", "You are now following this user."),
+        );
+      }
+    } catch (e: any) {
+      const msg = e?.message || "";
+      if (msg.includes("Cannot follow yourself")) {
+        toast.error(
+          t("explore.cannot_follow_self", "You can't follow yourself."),
+        );
+      } else if (msg.toLowerCase().includes("duplicate")) {
+        setRequestedIds((prev) => (prev.includes(u.id) ? prev : [...prev, u.id]));
+        toast.success(
+          t("explore.already_following", "You are already following this user."),
+        );
+      } else {
+        toast.error(
+          msg || t("common.error_generic", "Something went wrong. Please try again."),
+        );
+      }
+    }
+  };
 
   const brandsQuery = useQuery({
     queryKey: ["explore", "brands", debouncedQ],
@@ -168,17 +252,70 @@ const Explore = () => {
             <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4 text-sm text-muted-foreground">{t('explore.no_results', 'No results.')}</div>
           ) : (
             <div className="space-y-3">
-              {usersQuery.data!.map((u: any) => (
-                <div key={u.id} className="flex items-center gap-3 rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4">
-                  <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white ring-1 ring-white/60 shadow-[0_6px_14px_rgba(200,80,192,0.28)]">
-                    <Users className="h-4 w-4" />
+              {usersQuery.data!.map((u: any) => {
+                const requestedLocal = requestedIds.includes(u.id);
+                const statusFromDb = String((u.follow_status || "")).toLowerCase();
+                let effectiveStatus: string | null = null;
+
+                if (statusFromDb === "pending" || statusFromDb === "accepted") {
+                  effectiveStatus = statusFromDb;
+                } else if (requestedLocal) {
+                  effectiveStatus = u.require_follow_approval ? "pending" : "accepted";
+                }
+
+                const label = !effectiveStatus
+                  ? t("explore.follow", "Follow")
+                  : effectiveStatus === "pending"
+                  ? t("explore.follow_requested", "Requested")
+                  : t("explore.following", "Following");
+                return (
+                  <div
+                    key={u.id}
+                    className="flex items-center justify-between gap-3 rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {u.avatar_url ? (
+                        <span className="relative flex shrink-0 overflow-hidden rounded-full h-9 w-9 ring-2 ring-white/80">
+                          <img
+                            src={u.avatar_url}
+                            alt={u.full_name || u.username || "avatar"}
+                            className="h-full w-full object-cover"
+                            onError={(e: any) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        </span>
+                      ) : (
+                        <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white ring-1 ring-white/60 shadow-[0_6px_14px_rgba(200,80,192,0.28)]">
+                          <Users className="h-4 w-4" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{u.full_name || u.username || "User"}</div>
+                        {u.username && (
+                          <div className="text-sm text-muted-foreground">@{u.username}</div>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="explore-follow-btn shrink-0 disabled:opacity-70 disabled:cursor-default"
+                      onClick={() => handleFollow(u)}
+                      disabled={!!effectiveStatus}
+                    >
+                      <span className="explore-follow-btn-fold" aria-hidden="true" />
+                      <span className="explore-follow-btn-points" aria-hidden="true">
+                        {Array.from({ length: 10 }).map((_, i) => (
+                          <span key={i} className="explore-follow-btn-point" />
+                        ))}
+                      </span>
+                      <span className="explore-follow-btn-inner">
+                        {label === t("explore.follow", "Follow") ? t("explore.follow_me", "Follow me") : label}
+                      </span>
+                    </button>
                   </div>
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{u.full_name || u.username || "User"}</div>
-                    {u.username && <div className="text-sm text-muted-foreground">@{u.username}</div>}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )
         )}

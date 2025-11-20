@@ -24,9 +24,11 @@ const Notifications = () => {
     queryKey: ["activities", uid],
     enabled: !!supabase && !!uid,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("activities")
-        .select("id, activity_type, target_id, created_at")
+        .select(
+          "id, activity_type, target_id, created_at, user_profiles:target_id(id, username, full_name, email, avatar_url)"
+        )
         .eq("user_id", uid as string)
         .order("created_at", { ascending: false })
         .limit(30);
@@ -116,34 +118,58 @@ const Notifications = () => {
         ) : (
           (data as any[]).map((a: any) => (
             <div key={a.id} className="flex items-center justify-between rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-3">
-              <div className="min-w-0">
-                <div className="font-medium truncate">
-                  {(() => {
-                    const type = String(a.activity_type || "");
-                    switch (type) {
-                      case "wish_added":
-                        return t('notifications.activity_wish_added', 'You added a new wish');
-                      case "wishlist_created":
-                        return t('notifications.activity_wishlist_created', 'You created a new wishlist');
-                      case "wishlist_updated":
-                        return t('notifications.activity_wishlist_updated', 'You updated a wishlist');
-                      case "follow_accepted":
-                        return t('notifications.activity_follow_accepted', 'You accepted a follow request');
-                      case "new_follower":
-                        return t('notifications.activity_new_follower', 'You have a new follower');
-                      default:
-                        return t('notifications.activity_update', 'Update');
-                    }
-                  })()}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {(() => {
-                    const d = new Date(a.created_at);
-                    if (i18n.language === 'ar') {
-                      return d.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
-                    }
-                    return d.toLocaleString();
-                  })()}
+              <div className="flex items-center gap-3 min-w-0">
+                {a.user_profiles ? (
+                  <span className="relative flex shrink-0 overflow-hidden rounded-full h-9 w-9 ring-2 ring-white/80">
+                    <img
+                      className="h-full w-full object-cover"
+                      src={a.user_profiles.avatar_url || "/avatar.svg"}
+                      alt={a.user_profiles.full_name || a.user_profiles.username || "user"}
+                    />
+                  </span>
+                ) : null}
+                <div className="min-w-0">
+                  <div className="font-medium truncate">
+                    {(() => {
+                      const type = String(a.activity_type || "");
+                      const profile = a.user_profiles as any | undefined;
+                      const displayName = profile?.full_name || profile?.username || "";
+                      if (type === "new_follower") {
+                        return displayName
+                          ? t('notifications.activity_new_follower', 'You have a new follower') + ` · ${displayName}`
+                          : t('notifications.activity_new_follower', 'You have a new follower');
+                      }
+                      if (type === "follow_accepted") {
+                        return displayName
+                          ? t('notifications.activity_follow_accepted', 'You accepted a follow request') + ` · ${displayName}`
+                          : t('notifications.activity_follow_accepted', 'You accepted a follow request');
+                      }
+                      switch (type) {
+                        case "wish_added":
+                          return t('notifications.activity_wish_added', 'You added a new wish');
+                        case "wishlist_created":
+                          return t('notifications.activity_wishlist_created', 'You created a new wishlist');
+                        case "wishlist_updated":
+                          return t('notifications.activity_wishlist_updated', 'You updated a wishlist');
+                        default:
+                          return t('notifications.activity_update', 'Update');
+                      }
+                    })()}
+                  </div>
+                  {a.user_profiles && (
+                    <div className="text-xs text-muted-foreground truncate">
+                      {`${a.user_profiles.username ? `@${a.user_profiles.username}` : ''}${a.user_profiles.email ? (a.user_profiles.username ? ' · ' : '') + a.user_profiles.email : ''}`}
+                    </div>
+                  )}
+                  <div className="text-xs text-muted-foreground">
+                    {(() => {
+                      const d = new Date(a.created_at);
+                      if (i18n.language === 'ar') {
+                        return d.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
+                      }
+                      return d.toLocaleString();
+                    })()}
+                  </div>
                 </div>
               </div>
             </div>
