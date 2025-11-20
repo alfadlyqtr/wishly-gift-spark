@@ -27,6 +27,185 @@ type MyEvent = {
 
 type PublicEvent = any;
 
+const resolveCountryCode = (input?: string | null): string | null => {
+  if (!input) return null;
+  const raw = input.toString().trim();
+  if (!raw) return null;
+  if (/^[a-zA-Z]{2}$/.test(raw)) return raw.toUpperCase();
+  const n = raw.toLowerCase();
+  const map: Record<string, string> = {
+    // GCC & MENA core
+    qatar: "QA",
+    "state of qatar": "QA",
+    "saudi arabia": "SA",
+    ksa: "SA",
+    "kingdom of saudi arabia": "SA",
+    "united arab emirates": "AE",
+    uae: "AE",
+    dubai: "AE",
+    bahrain: "BH",
+    kuwait: "KW",
+    oman: "OM",
+    "sultanate of oman": "OM",
+    egypt: "EG",
+    "arab republic of egypt": "EG",
+    jordan: "JO",
+    "hashemite kingdom of jordan": "JO",
+    lebanon: "LB",
+    iraq: "IQ",
+    syria: "SY",
+    "syrian arab republic": "SY",
+    yemen: "YE",
+    "state of palestine": "PS",
+    palestine: "PS",
+    "west bank": "PS",
+
+    // North Africa
+    morocco: "MA",
+    "kingdom of morocco": "MA",
+    algeria: "DZ",
+    tunisia: "TN",
+    libya: "LY",
+    sudan: "SD",
+
+    // Europe
+    france: "FR",
+    germany: "DE",
+    spain: "ES",
+    italy: "IT",
+    "united kingdom": "GB",
+    uk: "GB",
+    "great britain": "GB",
+    england: "GB",
+    scotland: "GB",
+    wales: "GB",
+    "northern ireland": "GB",
+    ireland: "IE",
+    "republic of ireland": "IE",
+    netherlands: "NL",
+    holland: "NL",
+    belgium: "BE",
+    switzerland: "CH",
+    austria: "AT",
+    sweden: "SE",
+    norway: "NO",
+    denmark: "DK",
+    finland: "FI",
+    iceland: "IS",
+    portugal: "PT",
+    greece: "GR",
+    poland: "PL",
+    romania: "RO",
+    bulgaria: "BG",
+    croatia: "HR",
+    serbia: "RS",
+    "czech republic": "CZ",
+    czechia: "CZ",
+    slovakia: "SK",
+    slovenia: "SI",
+    hungary: "HU",
+    "bosnia and herzegovina": "BA",
+    albania: "AL",
+    macedonia: "MK",
+    "north macedonia": "MK",
+    estonia: "EE",
+    latvia: "LV",
+    lithuania: "LT",
+
+    // Americas
+    canada: "CA",
+    "united states": "US",
+    "united states of america": "US",
+    usa: "US",
+    us: "US",
+    america: "US",
+    mexico: "MX",
+    brazil: "BR",
+    argentina: "AR",
+    chile: "CL",
+    peru: "PE",
+    colombia: "CO",
+    venezuela: "VE",
+    uruguay: "UY",
+    paraguay: "PY",
+    bolivia: "BO",
+    ecuador: "EC",
+    panama: "PA",
+    "costa rica": "CR",
+    guatemala: "GT",
+    honduras: "HN",
+    nicaragua: "NI",
+    salvador: "SV",
+    "el salvador": "SV",
+    "dominican republic": "DO",
+    jamaica: "JM",
+    cuba: "CU",
+    haiti: "HT",
+    "puerto rico": "PR",
+
+    // Asia
+    india: "IN",
+    pakistan: "PK",
+    bangladesh: "BD",
+    sri_lanka: "LK",
+    "sri lanka": "LK",
+    nepal: "NP",
+    bhutan: "BT",
+    maldives: "MV",
+    china: "CN",
+    "people's republic of china": "CN",
+    taiwan: "TW",
+    "hong kong": "HK",
+    macau: "MO",
+    japan: "JP",
+    "south korea": "KR",
+    korea: "KR",
+    "republic of korea": "KR",
+    "north korea": "KP",
+    "democratic people's republic of korea": "KP",
+    singapore: "SG",
+    malaysia: "MY",
+    thailand: "TH",
+    vietnam: "VN",
+    laos: "LA",
+    cambodia: "KH",
+    indonesia: "ID",
+    philippines: "PH",
+    "united arab emirates (uae)": "AE",
+
+    // Africa (selected)
+    nigeria: "NG",
+    ghana: "GH",
+    kenya: "KE",
+    tanzania: "TZ",
+    uganda: "UG",
+    rwanda: "RW",
+    ethiopia: "ET",
+    somalia: "SO",
+    senegal: "SN",
+    "south africa": "ZA",
+    "cote d'ivoire": "CI",
+    "côte d'ivoire": "CI",
+    cameroon: "CM",
+    "democratic republic of the congo": "CD",
+    "dr congo": "CD",
+    congo: "CG",
+
+    // Oceania
+    australia: "AU",
+    "new zealand": "NZ",
+    "new caledonia": "NC",
+    fiji: "FJ",
+    samoa: "WS",
+    "papua new guinea": "PG",
+
+    // Generic / aliases
+    "holy see": "VA",
+    "vatican city": "VA",
+  };
+  return map[n] ?? null;
+};
+
 function useMyEvents() {
   return useQuery({
     queryKey: ["events", "me"],
@@ -90,43 +269,216 @@ function usePublicEvents() {
         const { data: auth } = await supabase.auth.getUser();
         const user = auth.user;
 
+        const resolveCountryCode = (input?: string | null): string | null => {
+          if (!input) return null;
+          const raw = input.toString().trim();
+          if (!raw) return null;
+          if (/^[a-zA-Z]{2}$/.test(raw)) return raw.toUpperCase();
+          const n = raw.toLowerCase();
+          const map: Record<string, string> = {
+            // GCC & MENA core
+            qatar: "QA",
+            "state of qatar": "QA",
+            "saudi arabia": "SA",
+            ksa: "SA",
+            "kingdom of saudi arabia": "SA",
+            "united arab emirates": "AE",
+            uae: "AE",
+            dubai: "AE",
+            bahrain: "BH",
+            kuwait: "KW",
+            oman: "OM",
+            "sultanate of oman": "OM",
+            egypt: "EG",
+            "arab republic of egypt": "EG",
+            jordan: "JO",
+            "hashemite kingdom of jordan": "JO",
+            lebanon: "LB",
+            iraq: "IQ",
+            syria: "SY",
+            "syrian arab republic": "SY",
+            yemen: "YE",
+            "state of palestine": "PS",
+            palestine: "PS",
+            "west bank": "PS",
+
+            // North Africa
+            morocco: "MA",
+            "kingdom of morocco": "MA",
+            algeria: "DZ",
+            tunisia: "TN",
+            libya: "LY",
+            sudan: "SD",
+
+            // Europe
+            france: "FR",
+            germany: "DE",
+            spain: "ES",
+            italy: "IT",
+            "united kingdom": "GB",
+            uk: "GB",
+            "great britain": "GB",
+            england: "GB",
+            scotland: "GB",
+            wales: "GB",
+            "northern ireland": "GB",
+            ireland: "IE",
+            "republic of ireland": "IE",
+            netherlands: "NL",
+            holland: "NL",
+            belgium: "BE",
+            switzerland: "CH",
+            austria: "AT",
+            sweden: "SE",
+            norway: "NO",
+            denmark: "DK",
+            finland: "FI",
+            iceland: "IS",
+            portugal: "PT",
+            greece: "GR",
+            poland: "PL",
+            romania: "RO",
+            bulgaria: "BG",
+            croatia: "HR",
+            serbia: "RS",
+            "czech republic": "CZ",
+            czechia: "CZ",
+            slovakia: "SK",
+            slovenia: "SI",
+            hungary: "HU",
+            "bosnia and herzegovina": "BA",
+            albania: "AL",
+            macedonia: "MK",
+            "north macedonia": "MK",
+            estonia: "EE",
+            latvia: "LV",
+            lithuania: "LT",
+
+            // Americas
+            canada: "CA",
+            "united states": "US",
+            "united states of america": "US",
+            usa: "US",
+            us: "US",
+            america: "US",
+            mexico: "MX",
+            brazil: "BR",
+            argentina: "AR",
+            chile: "CL",
+            peru: "PE",
+            colombia: "CO",
+            venezuela: "VE",
+            uruguay: "UY",
+            paraguay: "PY",
+            bolivia: "BO",
+            ecuador: "EC",
+            panama: "PA",
+            "costa rica": "CR",
+            guatemala: "GT",
+            honduras: "HN",
+            nicaragua: "NI",
+            salvador: "SV",
+            "el salvador": "SV",
+            "dominican republic": "DO",
+            jamaica: "JM",
+            cuba: "CU",
+            haiti: "HT",
+            "puerto rico": "PR",
+
+            // Asia
+            india: "IN",
+            pakistan: "PK",
+            bangladesh: "BD",
+            sri_lanka: "LK",
+            "sri lanka": "LK",
+            nepal: "NP",
+            bhutan: "BT",
+            maldives: "MV",
+            china: "CN",
+            "people's republic of china": "CN",
+            taiwan: "TW",
+            "hong kong": "HK",
+            macau: "MO",
+            japan: "JP",
+            "south korea": "KR",
+            korea: "KR",
+            "republic of korea": "KR",
+            "north korea": "KP",
+            "democratic people's republic of korea": "KP",
+            singapore: "SG",
+            malaysia: "MY",
+            thailand: "TH",
+            vietnam: "VN",
+            laos: "LA",
+            cambodia: "KH",
+            indonesia: "ID",
+            philippines: "PH",
+            "united arab emirates (uae)": "AE",
+
+            // Africa (selected)
+            nigeria: "NG",
+            ghana: "GH",
+            kenya: "KE",
+            tanzania: "TZ",
+            uganda: "UG",
+            rwanda: "RW",
+            ethiopia: "ET",
+            somalia: "SO",
+            senegal: "SN",
+            "south africa": "ZA",
+            "cote d'ivoire": "CI",
+            "côte d'ivoire": "CI",
+            cameroon: "CM",
+            "democratic republic of the congo": "CD",
+            "dr congo": "CD",
+            congo: "CG",
+
+            // Oceania
+            australia: "AU",
+            "new zealand": "NZ",
+            "new caledonia": "NC",
+            fiji: "FJ",
+            samoa: "WS",
+            "papua new guinea": "PG",
+
+            // Generic / aliases
+            "holy see": "VA",
+            "vatican city": "VA",
+          };
+          return map[n] ?? null;
+        };
+
+        let targetCountry: string | null = resolveCountryCode((user?.user_metadata as any)?.country);
+
         let query = (supabase as any)
           .from("events")
           .select("*")
           .eq("is_public_holiday", true);
 
-        // If we know the user's country (from auth metadata), narrow events to that country code
-        const metaCountry = (user?.user_metadata as any)?.country as string | null | undefined;
-        if (metaCountry) {
-          const n = metaCountry.toString().trim().toLowerCase();
-          const map: Record<string, string> = {
-            qatar: "QA",
-            "saudi arabia": "SA",
-            "united arab emirates": "AE",
-            uae: "AE",
-            bahrain: "BH",
-            kuwait: "KW",
-            oman: "OM",
-            egypt: "EG",
-            jordan: "JO",
-            lebanon: "LB",
-            canada: "CA",
-            "united states": "US",
-            usa: "US",
-            "united kingdom": "GB",
-            uk: "GB",
-          };
-          let cc: string | null = null;
-          if (/^[a-zA-Z]{2}$/.test(n)) cc = n.toUpperCase();
-          else cc = map[n] ?? null;
-          if (cc) {
-            query = query.eq("country_code", cc);
-          }
+        if (!targetCountry && user?.id) {
+          const { data: profileRow } = await (supabase as any)
+            .from("user_profiles")
+            .select("country")
+            .eq("id", user.id)
+            .maybeSingle();
+          targetCountry = resolveCountryCode((profileRow as any)?.country);
+        }
+
+        if (targetCountry) {
+          query = query.eq("country_code", targetCountry);
         }
 
         const { data, error } = await query.order("date", { ascending: true });
         if (error) return [];
-        return (data ?? []) as any[];
+        const rows = (data ?? []) as any[];
+        if (targetCountry) {
+          return rows.filter((row) =>
+            String(row?.country_code || row?.country || "")
+              .toUpperCase()
+              .trim() === targetCountry
+          );
+        }
+        return rows;
       } catch {
         return [];
       }
@@ -356,14 +708,8 @@ const Events = () => {
                   {profileBundle?.country && (
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                       {(() => {
-                        const raw = (profileBundle.country || '').toString().trim();
-                        const n = raw.toLowerCase();
-                        const map: Record<string, string> = {
-                          qatar: 'QA', 'saudi arabia': 'SA', 'united arab emirates': 'AE', uae: 'AE',
-                          bahrain: 'BH', kuwait: 'KW', oman: 'OM', egypt: 'EG', jordan: 'JO', lebanon: 'LB',
-                          canada: 'CA', 'united states': 'US', usa: 'US', 'united kingdom': 'GB', uk: 'GB'
-                        };
-                        const cc = /^[A-Za-z]{2}$/.test(raw) ? raw.toUpperCase() : (map[n] ?? '');
+                        const raw = (profileBundle.country || '').toString();
+                        const cc = resolveCountryCode(raw) ?? '';
                         return cc ? (
                           <ReactCountryFlag svg countryCode={cc} style={{ width: '16px', height: '12px' }} aria-label={cc} />
                         ) : null;
@@ -525,19 +871,8 @@ const Events = () => {
                               {(() => {
                                 const raw = (e?.name || e?.title || '').toString();
                                 const name = raw.toLowerCase();
-                                const countryRaw = (e?.country_code || e?.country || '').toString().trim();
-                                const normalize = (s: string) => s.trim().toLowerCase();
-                                const toIso2 = (s: string): string => {
-                                  const n = normalize(s);
-                                  const map: Record<string, string> = {
-                                    qatar: 'QA', 'saudi arabia': 'SA', 'united arab emirates': 'AE', uae: 'AE',
-                                    bahrain: 'BH', kuwait: 'KW', oman: 'OM', egypt: 'EG', jordan: 'JO', lebanon: 'LB',
-                                    'united states': 'US', usa: 'US', 'united kingdom': 'GB', uk: 'GB'
-                                  };
-                                  if (/^[A-Za-z]{2}$/.test(s)) return s.toUpperCase();
-                                  return map[n] ? map[n] : '';
-                                };
-                                const cc = toIso2(countryRaw);
+                                const countryRaw = (e?.country_code || e?.country || '').toString();
+                                const cc = resolveCountryCode(countryRaw) ?? '';
                                 let iconNode: any = <span>📅</span>;
                                 let text = 'Mark the date';
                                 // prioritize sports before national so National Sports Day shows sports remark
@@ -567,20 +902,9 @@ const Events = () => {
                                 );
                               })()}
                               {(() => {
-                                const countryRaw = (e?.country_code || e?.country || '').toString().trim();
-                                if (!countryRaw) return null;
-                                const normalize = (s: string) => s.trim().toLowerCase();
-                                const toIso2 = (s: string): string => {
-                                  const n = normalize(s);
-                                  const map: Record<string, string> = {
-                                    qatar: 'QA', 'saudi arabia': 'SA', 'united arab emirates': 'AE', uae: 'AE',
-                                    bahrain: 'BH', kuwait: 'KW', oman: 'OM', egypt: 'EG', jordan: 'JO', lebanon: 'LB',
-                                    canada: 'CA', 'united states': 'US', usa: 'US', 'united kingdom': 'GB', uk: 'GB'
-                                  };
-                                  if (/^[A-Za-z]{2}$/.test(s)) return s.toUpperCase();
-                                  return map[n] ? map[n] : '';
-                                };
-                                const cc = toIso2(countryRaw);
+                                const countryRaw = (e?.country_code || e?.country || '').toString();
+                                if (!countryRaw.trim()) return null;
+                                const cc = resolveCountryCode(countryRaw) ?? '';
                                 return (
                                   <div className="text-sm text-muted-foreground flex items-center gap-1">
                                     {cc && (
