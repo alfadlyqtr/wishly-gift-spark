@@ -11,9 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import WishlistStack from "@/components/wishes/WishlistStack";
 import CreateWishlistModal from "@/components/wishes/CreateWishlistModal";
+import FriendEventsList, { FriendEventsListFriend } from "@/components/events/FriendEventsList";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import AddButton from "@/components/AddButton";
 import ReactCountryFlag from "react-country-flag";
 import { useProfileData } from "@/hooks/use-profile";
+import BackButton from "@/components/BackButton";
+import { useNavigate } from "react-router-dom";
 // General events will be filtered by user's country and is_public_holiday
 
 type MyEvent = {
@@ -26,6 +30,15 @@ type MyEvent = {
 };
 
 type PublicEvent = any;
+
+type FriendProfileRow = {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  allow_followers_view: boolean | null;
+  enforce_wishlist_privacy: boolean | null;
+};
 
 const resolveCountryCode = (input?: string | null): string | null => {
   if (!input) return null;
@@ -235,31 +248,119 @@ function useMyEvents() {
 function useFriendsEvents() {
   return useQuery({
     queryKey: ["events", "friends"],
-    queryFn: async (): Promise<MyEvent[]> => {
+    queryFn: async (): Promise<FriendEventsListFriend[]> => {
       const { data: auth } = await supabase.auth.getUser();
       const user = auth.user;
       if (!user) return [];
-      try {
-        // Attempt to resolve following IDs from a plausible relationships table.
-        // If the table doesn't exist, this will throw and we'll gracefully return [].
-        const { data: following, error: relErr } = await (supabase as any)
-          .from("user_followers")
-          .select("following_id")
-          .eq("follower_id", user.id);
-        if (relErr || !following || following.length === 0) return [];
-        const followingIds = following.map((r: any) => r.following_id);
-        const { data, error } = await (supabase as any)
-          .from("wishlists")
-          .select("id, title, event_date, user_id, privacy_level, description")
-          .in("user_id", followingIds)
-          .neq("privacy_level", "private")
-          .not("event_date", "is", null)
-          .order("event_date", { ascending: true });
-        if (error) return [];
-        return (data ?? []) as MyEvent[];
-      } catch {
-        return [];
+
+      const { data: followingRows, error: relErr } = await supabase
+        .from("followers")
+        .select("following_id, status")
+        .eq("user_id", user.id)
+        .eq("status", "accepted");
+      if (relErr || !followingRows || followingRows.length === 0) return [];
+
+      const followingIds = followingRows.map((row) => row.following_id as string);
+      if (followingIds.length === 0) return [];
+
+      const { data: reciprocalRows } = await supabase
+        .from("followers")
+        .select("user_id")
+        .eq("status", "accepted")
+        .eq("following_id", user.id)
+        .in("user_id", followingIds);
+
+      const mutualIds = new Set<string>((reciprocalRows ?? []).map((row) => row.user_id as string));
+
+      const profileResponse = await (supabase as any)
+        .from("user_profiles")
+        .select("id, username, full_name, avatar_url, allow_followers_view, enforce_wishlist_privacy")
+        .in("id", followingIds);
+      const profileRows = (profileResponse?.data as any[]) ?? [];
+      const profileErr = profileResponse?.error as Error | null;
+
+      let fallbackWithoutPrefs = false;
+      let resolvedProfileRows: any[] = profileRows ?? [];
+
+      if (profileErr) {
+        const missingPrefColumns = profileErr.message?.includes("allow_followers_view") || profileErr.message?.includes("enforce_wishlist_privacy");
+        if (missingPrefColumns) {
+          const fallbackResponse = await (supabase as any)
+            .from("user_profiles")
+            .select("id, username, full_name, avatar_url")
+            .in("id", followingIds);
+          const fallbackRows = (fallbackResponse?.data as any[]) ?? [];
+          const fallbackErr = fallbackResponse?.error as Error | null;
+          if (fallbackErr) return [];
+          resolvedProfileRows = fallbackRows ?? [];
+          fallbackWithoutPrefs = true;
+        } else {
+          return [];
+        }
       }
+
+      const profileMap = new Map<string, FriendProfileRow>();
+      (resolvedProfileRows ?? []).forEach((row) => {
+        profileMap.set(row.id, row as FriendProfileRow);
+      });
+
+      const visibilityPrefs = new Map<string, { allowFollowersView: boolean; respectPerWishlist: boolean }>();
+
+      const friendMap = new Map<string, FriendEventsListFriend>();
+      for (const id of followingIds) {
+        const profile = profileMap.get(id);
+        const username = profile?.username?.trim();
+        const displayName = profile?.full_name?.trim() || username || "Friend";
+        const allowFollowersView = !fallbackWithoutPrefs && Boolean(profile?.allow_followers_view);
+        const respectPerWishlist = fallbackWithoutPrefs
+          ? true
+          : profile?.enforce_wishlist_privacy !== false && !allowFollowersView;
+        visibilityPrefs.set(id, {
+          allowFollowersView,
+          respectPerWishlist,
+        });
+        friendMap.set(id, {
+          friendId: id,
+          avatarUrl: profile?.avatar_url ?? null,
+          displayName,
+          handle: username ? `@${username}` : displayName,
+          wishlists: [],
+        });
+      }
+
+      const { data, error } = await supabase
+        .from("wishlists")
+        .select("id, title, event_date, user_id, privacy_level, description")
+        .in("user_id", followingIds)
+        .not("event_date", "is", null)
+        .order("event_date", { ascending: true });
+
+      if (error) return [];
+
+      for (const wl of (data ?? []) as MyEvent[]) {
+        if (!wl.event_date) continue;
+        const prefs = visibilityPrefs.get(wl.user_id) ?? { allowFollowersView: false, respectPerWishlist: true };
+        const shouldRespectPrivacy = prefs.respectPerWishlist || !prefs.allowFollowersView;
+
+        if (shouldRespectPrivacy) {
+          const requiresMutual = wl.privacy_level === "private" || wl.privacy_level === "friends_only";
+          if (requiresMutual && !mutualIds.has(wl.user_id)) continue;
+        }
+
+        const targetFriend = friendMap.get(wl.user_id);
+        if (!targetFriend) continue;
+
+        targetFriend.wishlists.push({
+          id: wl.id,
+          title: wl.title,
+          event_date: wl.event_date,
+          description: wl.description,
+        });
+      }
+
+      return Array.from(friendMap.values()).sort((a, b) =>
+        a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" })
+      );
     },
     staleTime: 60_000,
   });
@@ -494,6 +595,7 @@ function usePublicEvents() {
 const Events = () => {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { data: myEvents, isLoading: loadingMy } = useMyEvents();
   const { data: friendsEvents, isLoading: loadingFriends } = useFriendsEvents();
   // Profile no longer needed for public holiday display
@@ -507,6 +609,15 @@ const Events = () => {
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [cardSize, setCardSize] = useState<{ width: number; height: number }>({ width: 300, height: 170 });
+  const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!friendsEvents || friendsEvents.length === 0) return;
+  }, [friendsEvents]);
+
+  const selectedFriend = useMemo(() => {
+    if (!selectedFriendId || !friendsEvents) return null;
+    return friendsEvents.find((f) => f.friendId === selectedFriendId) ?? null;
+  }, [selectedFriendId, friendsEvents]);
 
   const today = useMemo(() => new Date(), []);
 
@@ -545,17 +656,19 @@ const Events = () => {
       const title = 'My Birthday Wishlist';
       const { data: exists, error: selErr } = await (supabase as any)
         .from('wishlists')
-        .select('id, event_date')
+        .select('id, event_date, privacy_level')
         .eq('user_id', user.id)
         .eq('title', title)
         .limit(1);
       if (selErr) return;
       if (exists && exists.length > 0) {
         const current = exists[0];
-        if ((current as any)?.event_date !== nextBirthdayIso) {
+        const needsDateUpdate = (current as any)?.event_date !== nextBirthdayIso;
+        const needsPrivacyUpdate = (current as any)?.privacy_level !== 'friends_only';
+        if (needsDateUpdate || needsPrivacyUpdate) {
           await (supabase as any)
             .from('wishlists')
-            .update({ event_date: nextBirthdayIso, description: 'My Birthday Wishlist' })
+            .update({ event_date: nextBirthdayIso, description: 'My Birthday Wishlist', privacy_level: 'friends_only' })
             .eq('id', (current as any).id);
         }
       } else {
@@ -566,7 +679,7 @@ const Events = () => {
             title,
             description: 'My Birthday Wishlist',
             event_date: nextBirthdayIso,
-            privacy_level: 'private'
+            privacy_level: 'friends_only'
           });
       }
       await queryClient.invalidateQueries({ queryKey: ['events', 'me'] });
@@ -669,35 +782,61 @@ const Events = () => {
 
         <TabsContent value="friends" className="pt-4">
           <Card className="border-0 rounded-2xl ring-1 ring-white/30 bg-gradient-to-br from-[#4158D0]/10 via-[#C850C0]/10 to-[#FFCC70]/10 shadow-[0_18px_40px_rgba(0,0,0,0.20)]">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold">{t('events.tab_friends', "Friends' Events")}</CardTitle>
+            <CardHeader className="pb-3 flex items-center justify-between">
+              {selectedFriend ? (
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-16 w-16 ring-2 ring-white/60">
+                    <AvatarImage src={selectedFriend.avatarUrl || undefined} alt={selectedFriend.displayName} />
+                    <AvatarFallback>{selectedFriend.displayName?.charAt(0) || 'F'}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <CardTitle
+                      className="text-lg font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                      style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+                    >
+                      {selectedFriend.displayName}
+                    </CardTitle>
+                    <span
+                      className="text-base sm:text-lg font-semibold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                      style={{ WebkitTextStroke: '0.4px rgba(0,0,0,0.8)' }}
+                    >
+                      {selectedFriend.handle}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <CardTitle className="text-base font-semibold">{t('events.tab_friends', "Friends' Events")}</CardTitle>
+              )}
             </CardHeader>
             <CardContent>
               {loadingFriends ? (
                 <p className="text-sm text-muted-foreground">{t('common.loading', 'Loading...')}</p>
               ) : (friendsEvents?.length ?? 0) === 0 ? (
                 <p className="text-sm text-muted-foreground">{t('events.empty_friends', "No friends' events.")}</p>
-              ) : (
-                <div className="divide-y divide-white/20">
-                  {friendsEvents!.map((e) => (
-                    <div key={e.id} className="py-2">
-                      <div className="flex items-center justify-between rounded-xl bg-white/50 backdrop-blur px-3 py-2 ring-1 ring-white/60 shadow-sm">
-                        <div className="flex items-center gap-3 min-w-0">
-                          {eventBadge(e.title)}
-                          <div className="min-w-0">
-                            <div className="font-medium truncate">{e.title || t('events.untitled', 'Untitled')}</div>
-                            {e.description && (
-                              <div className="text-sm text-muted-foreground line-clamp-1">{e.description}</div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {e.event_date ? new Date(e.event_date).toLocaleDateString(undefined, { weekday: 'long', month: 'numeric', day: 'numeric', year: 'numeric' }) : ''}
-                        </div>
-                      </div>
+              ) : selectedFriend ? (
+                <div className="space-y-4">
+                  <BackButton onClick={() => setSelectedFriendId(null)}>{t('common.back', 'Back')}</BackButton>
+                  {selectedFriend.wishlists.length > 0 ? (
+                    <div className="flex justify-center py-2">
+                      <WishlistStack
+                        viewerMode
+                        cardDimensions={{ width: cardSize.width, height: cardSize.height }}
+                        cards={selectedFriend.wishlists.map((wl) => ({ id: wl.id, title: wl.title || 'Wishlist' }))}
+                        className="-translate-x-2"
+                        onCardOpen={(id) => navigate(`/wishlist/${id}`)}
+                      />
                     </div>
-                  ))}
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center">
+                      {t('events.friend_no_wishlists', 'This friend has no upcoming wishlists yet.')}
+                    </p>
+                  )}
                 </div>
+              ) : (
+                <FriendEventsList
+                  friends={friendsEvents!}
+                  onSelect={(friendId) => setSelectedFriendId(friendId)}
+                />
               )}
             </CardContent>
           </Card>

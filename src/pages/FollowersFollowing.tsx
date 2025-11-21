@@ -1,17 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import BackButton from "@/components/BackButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
+import { cancelFollow, removeFollower, requestFollow, FollowStatus } from "@/lib/follow";
+import { toast } from "sonner";
 
-interface FollowerRow {
+interface ProfilePreview {
   id: string;
-  user_id: string;
-  following_id: string;
-  status: string | null;
+  username: string | null;
+  full_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+}
+
+interface ConnectionRow {
+  id: string;
+  fallbackId: string;
+  profile: ProfilePreview | null;
+  status: FollowStatus | null;
 }
 
 const FollowersFollowing = () => {
@@ -21,6 +31,8 @@ const FollowersFollowing = () => {
   const initialTab = (searchParams.get("tab") as "followers" | "following" | null) ?? "followers";
   const [tab, setTab] = useState<"followers" | "following">(initialTab);
 
+  const queryClient = useQueryClient();
+
   const { data: authData } = useQuery({
     queryKey: ["auth-user-for-followers"],
     queryFn: async () => {
@@ -29,39 +41,112 @@ const FollowersFollowing = () => {
     },
   });
 
+  const cancelRequestMutation = useMutation({
+    mutationFn: (targetId: string) => cancelFollow(targetId),
+    onSuccess: () => {
+      invalidateConnections();
+      toast.success(t("followers.request_canceled", "Follow request canceled."));
+    },
+    onError: (error: any) => toast.error(error?.message || t("common.error", "Something went wrong")),
+  });
+
   const uid = authData?.id ?? null;
 
   const { data: lists, isLoading } = useQuery({
     queryKey: ["followers-following-list", uid],
     enabled: !!uid,
     queryFn: async () => {
-      if (!uid) return { followers: [] as FollowerRow[], following: [] as FollowerRow[] };
+      if (!uid) return { followers: [] as ConnectionRow[], following: [] as ConnectionRow[] };
+
+      const followerSelect = "id,user_id,following_id,status,user_profiles!followers_user_id_fkey(id,username,full_name,email,avatar_url)";
+      const followingSelect = "id,user_id,following_id,status,user_profiles!followers_following_id_fkey(id,username,full_name,email,avatar_url)";
 
       const [followersRes, followingRes] = await Promise.all([
         supabase
           .from("followers")
-          .select("id,user_id,following_id,status")
+          .select(followerSelect)
           .eq("following_id", uid)
           .eq("status", "accepted"),
         supabase
           .from("followers")
-          .select("id,user_id,following_id,status")
+          .select(followingSelect)
           .eq("user_id", uid)
-          .eq("status", "accepted"),
+          .in("status", ["pending", "accepted"]),
       ]);
 
       if (followersRes.error) throw followersRes.error;
       if (followingRes.error) throw followingRes.error;
 
+      const followersData = ((followersRes.data as any[]) ?? []).map((row) => ({
+        id: row.id as string,
+        fallbackId: row.user_id as string,
+        profile: (row.user_profiles ?? null) as ProfilePreview | null,
+        status: (row.status as FollowStatus) ?? null,
+      }));
+
+      const followingData = ((followingRes.data as any[]) ?? []).map((row) => ({
+        id: row.id as string,
+        fallbackId: row.following_id as string,
+        profile: (row.user_profiles ?? null) as ProfilePreview | null,
+        status: (row.status as FollowStatus) ?? null,
+      }));
+
       return {
-        followers: (followersRes.data as FollowerRow[]) ?? [],
-        following: (followingRes.data as FollowerRow[]) ?? [],
+        followers: followersData,
+        following: followingData,
       };
     },
   });
 
-  const followers = lists?.followers ?? [];
-  const following = lists?.following ?? [];
+  const followers: ConnectionRow[] = lists?.followers ?? [];
+  const allFollowing: ConnectionRow[] = lists?.following ?? [];
+  const following: ConnectionRow[] = allFollowing.filter((row) => row.status === "accepted");
+  const followingStatusMap = useMemo(() => {
+    const map = new Map<string, FollowStatus | null>();
+    allFollowing.forEach((row) => {
+      map.set(row.fallbackId, row.status ?? null);
+    });
+    return map;
+  }, [allFollowing]);
+
+  const invalidateConnections = () => {
+    queryClient.invalidateQueries({ queryKey: ["followers-following-list", uid] });
+  };
+
+  const unfollowMutation = useMutation({
+    mutationFn: (targetId: string) => cancelFollow(targetId),
+    onSuccess: () => {
+      invalidateConnections();
+      toast.success(t("followers.unfollowed", "You unfollowed this user."));
+    },
+    onError: (error: any) => toast.error(error?.message || t("common.error", "Something went wrong")),
+  });
+
+  const removeFollowerMutation = useMutation({
+    mutationFn: (followerId: string) => removeFollower(followerId),
+    onSuccess: () => {
+      invalidateConnections();
+      toast.success(t("followers.removed", "Follower removed."));
+    },
+    onError: (error: any) => toast.error(error?.message || t("common.error", "Something went wrong")),
+  });
+
+  const followBackMutation = useMutation({
+    mutationFn: (targetId: string) => requestFollow(targetId),
+    onSuccess: () => {
+      invalidateConnections();
+      toast.success(t("followers.follow_back_success", "Follow request sent (awaiting approval)."));
+    },
+    onError: (error: any) => {
+      const message = String(error?.message || "").toLowerCase();
+      if (message.includes("duplicate key")) {
+        invalidateConnections();
+        toast.info(t("followers.already_requested", "Already requested."));
+        return;
+      }
+      toast.error(error?.message || t("common.error", "Something went wrong"));
+    },
+  });
 
   const emptyText = useMemo(() => {
     return tab === "followers"
@@ -135,34 +220,118 @@ const FollowersFollowing = () => {
                       followers.length === 0 ? (
                         <div className="px-4 py-3 text-sm opacity-80">{emptyText}</div>
                       ) : (
-                        followers.map((row) => (
-                          <div key={row.id} className="px-4 py-3 flex items-center gap-3">
-                            <Avatar className="h-9 w-9">
-                              <AvatarImage src={undefined} alt="" />
-                              <AvatarFallback>{row.user_id.slice(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{row.user_id}</p>
-                              <p className="text-[11px] opacity-70">{t("followers.follows_you", "Follows you")}</p>
+                        followers.map((row) => {
+                          const profile = row.profile;
+                          const displayName = profile?.full_name || profile?.username || row.fallbackId;
+                          const identity = profile?.username
+                            ? `@${profile.username}${profile.email ? ` · ${profile.email}` : ""}`
+                            : profile?.email || "";
+                          const existingStatus = followingStatusMap.get(row.fallbackId);
+                          const isAlreadyFollowing = existingStatus === "accepted";
+                          const isPendingFollow = existingStatus === "pending";
+                          return (
+                            <div key={row.id} className="connections-row px-4 py-3 flex items-center gap-4">
+                              <Avatar className="h-14 w-14">
+                                <AvatarImage src={profile?.avatar_url || undefined} alt={displayName || "avatar"} />
+                                <AvatarFallback>{displayName?.slice(0, 2).toUpperCase() || "--"}</AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <p className="connections-name text-base font-semibold truncate">{displayName}</p>
+                                {identity && (
+                                  <p className="connections-identity text-[12px] opacity-70 truncate">{identity}</p>
+                                )}
+                              </div>
+                              <div className="shrink-0 connections-action-btn-wrapper">
+                                {isAlreadyFollowing ? (
+                                  <button
+                                    type="button"
+                                    className="connections-action-btn connections-action-btn--primary"
+                                    disabled
+                                  >
+                                    <span className="connections-fold" aria-hidden="true" />
+                                    <span className="connections-points" aria-hidden="true">
+                                      {Array.from({ length: 10 }).map((_, idx) => (
+                                        <span key={idx} className="connections-point" />
+                                      ))}
+                                    </span>
+                                    <span className="connections-inner">{t("followers.following", "Following")}</span>
+                                  </button>
+                                ) : isPendingFollow ? (
+                                  <button
+                                    type="button"
+                                    className="connections-action-btn connections-action-btn--primary"
+                                    onClick={() => cancelRequestMutation.mutate(row.fallbackId)}
+                                    disabled={cancelRequestMutation.isPending}
+                                  >
+                                    <span className="connections-fold" aria-hidden="true" />
+                                    <span className="connections-points" aria-hidden="true">
+                                      {Array.from({ length: 10 }).map((_, idx) => (
+                                        <span key={idx} className="connections-point" />
+                                      ))}
+                                    </span>
+                                    <span className="connections-inner">{t("followers.cancel_request", "Cancel request")}</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="connections-action-btn connections-action-btn--primary"
+                                    onClick={() => followBackMutation.mutate(row.fallbackId)}
+                                    disabled={followBackMutation.isPending}
+                                  >
+                                    <span className="connections-fold" aria-hidden="true" />
+                                    <span className="connections-points" aria-hidden="true">
+                                      {Array.from({ length: 10 }).map((_, idx) => (
+                                        <span key={idx} className="connections-point" />
+                                      ))}
+                                    </span>
+                                    <span className="connections-inner">{t("followers.follow_back", "Follow back")}</span>
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       )
                     ) : following.length === 0 ? (
                       <div className="px-4 py-3 text-sm opacity-80">{emptyText}</div>
                     ) : (
-                      following.map((row) => (
-                        <div key={row.id} className="px-4 py-3 flex items-center gap-3">
-                          <Avatar className="h-9 w-9">
-                            <AvatarImage src={undefined} alt="" />
-                            <AvatarFallback>{row.following_id.slice(0, 2).toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{row.following_id}</p>
-                            <p className="text-[11px] opacity-70">{t("followers.you_follow", "You follow")}</p>
+                      following.map((row) => {
+                        const profile = row.profile;
+                        const displayName = profile?.full_name || profile?.username || row.fallbackId;
+                        const identity = profile?.username
+                          ? `@${profile.username}${profile.email ? ` · ${profile.email}` : ""}`
+                          : profile?.email || "";
+                        return (
+                          <div key={row.id} className="connections-row px-4 py-3 flex items-center gap-4">
+                            <Avatar className="h-14 w-14">
+                              <AvatarImage src={profile?.avatar_url || undefined} alt={displayName || "avatar"} />
+                              <AvatarFallback>{displayName?.slice(0, 2).toUpperCase() || "--"}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="connections-name text-base font-semibold truncate">{displayName}</p>
+                              {identity && (
+                                <p className="connections-identity text-[12px] opacity-70 truncate">{identity}</p>
+                              )}
+                            </div>
+                            <div className="shrink-0 connections-action-btn-wrapper">
+                              <button
+                                type="button"
+                                className="connections-action-btn connections-action-btn--primary"
+                                onClick={() => unfollowMutation.mutate(row.fallbackId)}
+                                disabled={unfollowMutation.isPending}
+                              >
+                                <span className="connections-fold" aria-hidden="true" />
+                                <span className="connections-points" aria-hidden="true">
+                                  {Array.from({ length: 10 }).map((_, idx) => (
+                                    <span key={idx} className="connections-point" />
+                                  ))}
+                                </span>
+                                <span className="connections-inner">{t("followers.unfollow", "Unfollow")}</span>
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </Card>

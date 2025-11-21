@@ -15,15 +15,17 @@ type CardRotateProps = {
   children: React.ReactNode;
   onSendToBack: () => void;
   sensitivity: number;
+  draggable?: boolean;
 };
 
-function CardRotate({ children, onSendToBack, sensitivity }: CardRotateProps) {
+function CardRotate({ children, onSendToBack, sensitivity, draggable = true }: CardRotateProps) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotateX = useTransform(y, [-100, 100], [60, -60]);
   const rotateY = useTransform(x, [-100, 100], [-60, 60]);
 
   function handleDragEnd(_: any, info: any) {
+    if (!draggable) return;
     const offX = info?.offset?.x ?? 0;
     const offY = info?.offset?.y ?? 0;
     const velX = info?.velocity?.x ?? 0;
@@ -44,10 +46,10 @@ function CardRotate({ children, onSendToBack, sensitivity }: CardRotateProps) {
     <motion.div
       className="wl-card-rotate"
       style={{ x, y, rotateX, rotateY }}
-      drag
+      drag={draggable ? true : false}
       dragConstraints={{ top: 0, right: 0, bottom: 0, left: 0 }}
       dragElastic={0.7}
-      whileTap={{ cursor: 'grabbing' }}
+      whileTap={draggable ? { cursor: 'grabbing' } : undefined}
       onDragEnd={handleDragEnd}
     >
       {children}
@@ -63,6 +65,8 @@ export type WishlistStackProps = {
   animationConfig?: { stiffness: number; damping: number };
   sendToBackOnClick?: boolean;
   className?: string;
+  viewerMode?: boolean;
+  onCardOpen?: (id: string) => void;
 };
 
 export default function WishlistStack({
@@ -73,6 +77,8 @@ export default function WishlistStack({
   animationConfig = { stiffness: 260, damping: 20 },
   sendToBackOnClick = true,
   className = '',
+  viewerMode = false,
+  onCardOpen,
 }: WishlistStackProps) {
   const [stack, setStack] = useState(cards);
   const navigate = useNavigate();
@@ -80,6 +86,10 @@ export default function WishlistStack({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [target, setTarget] = useState<{ id: string; title: string } | null>(null);
   const [allowShare, setAllowShare] = useState<boolean>(true);
+
+  useEffect(() => {
+    setStack(cards);
+  }, [cards]);
 
   const sendToBack = (id: string) => {
     setStack((prev) => {
@@ -97,8 +107,17 @@ export default function WishlistStack({
     navigate(`/wishlist/${id}`);
   };
 
+  const handleOpen = (id: string) => {
+    if (onCardOpen) {
+      onCardOpen(id);
+    } else {
+      openWishlist(id);
+    }
+  };
+
   // Load user's share preference (hide share icon when disabled)
   useEffect(() => {
+    if (viewerMode) return;
     (async () => {
       try {
         const { data: auth } = await supabase.auth.getUser();
@@ -114,7 +133,7 @@ export default function WishlistStack({
         }
       } catch {}
     })();
-  }, []);
+  }, [viewerMode]);
 
   const shareWishlist = async (id: string, title: string) => {
     try {
@@ -174,10 +193,15 @@ export default function WishlistStack({
             key={card.id}
             onSendToBack={() => sendToBack(card.id)}
             sensitivity={sensitivity}
+            draggable={!viewerMode}
           >
             <motion.div
               className="wl-card"
               onClick={() => {
+                if (viewerMode) {
+                  handleOpen(card.id);
+                  return;
+                }
                 if (sendToBackOnClick) sendToBack(card.id);
               }}
               animate={{
@@ -191,7 +215,7 @@ export default function WishlistStack({
               style={{ width: cardDimensions.width, height: cardDimensions.height }}
             >
               <div className="wl-card-surface">
-                {allowShare && (
+                {!viewerMode && allowShare && (
                   <button
                     type="button"
                     className="wl-share-btn"
@@ -205,42 +229,44 @@ export default function WishlistStack({
                   </button>
                 )}
                 <div className="wl-card-title">{card.title}</div>
-                <div className="flex items-center gap-4">
-                  {card.title !== 'My Birthday Wishlist' && (
+                {!viewerMode && (
+                  <div className="flex items-center gap-4">
+                    {card.title !== 'My Birthday Wishlist' && (
+                      <button
+                        type="button"
+                        className="wl-delete-btn"
+                        aria-label="Delete wishlist"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (card.title === 'My Birthday Wishlist') {
+                            toast.error('Birthday wishlist cannot be deleted');
+                            return;
+                          }
+                          setTarget({ id: card.id, title: card.title });
+                          setDeleteOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                     <button
                       type="button"
-                      className="wl-delete-btn"
-                      aria-label="Delete wishlist"
+                      className="wl-open-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (card.title === 'My Birthday Wishlist') {
-                          toast.error('Birthday wishlist cannot be deleted');
-                          return;
-                        }
-                        setTarget({ id: card.id, title: card.title });
-                        setDeleteOpen(true);
+                        handleOpen(card.id);
                       }}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      Open
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    className="wl-open-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openWishlist(card.id);
-                    }}
-                  >
-                    Open
-                  </button>
-                </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           </CardRotate>
         );
       })}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <Dialog open={deleteOpen && !viewerMode} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Wishlist?</DialogTitle>

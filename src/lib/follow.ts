@@ -35,6 +35,19 @@ export async function requestFollow(targetUserId: string) {
   } as any);
 }
 
+export async function removeFollower(followerUserId: string) {
+  const { data: auth } = await supabase.auth.getUser();
+  const me = auth.user?.id;
+  if (!me) throw new Error("Not authenticated");
+
+  const { error } = await supabase
+    .from("followers")
+    .delete()
+    .eq("user_id", followerUserId)
+    .eq("following_id", me);
+  if (error) throw error;
+}
+
 export async function cancelFollow(targetUserId: string) {
   const { data: auth } = await supabase.auth.getUser();
   const userId = auth.user?.id;

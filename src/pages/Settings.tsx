@@ -39,7 +39,27 @@ const Settings = () => {
   const [allowSharing, setAllowSharing] = useState<boolean>(true);
   const [allowFriendsClaim, setAllowFriendsClaim] = useState<boolean>(true);
   const [showCountdown, setShowCountdown] = useState<boolean>(true);
+  const [allowFollowersView, setAllowFollowersView] = useState<boolean>(false);
+  const [respectPerWishlistPrivacy, setRespectPerWishlistPrivacy] = useState<boolean>(true);
   const [savingWishlistPrefs, setSavingWishlistPrefs] = useState<boolean>(false);
+
+  const handleAllowFollowersChange = (value: boolean) => {
+    setAllowFollowersView(value);
+    if (value) {
+      setRespectPerWishlistPrivacy(false);
+    } else {
+      setRespectPerWishlistPrivacy(true);
+    }
+  };
+
+  const handleRespectPrivacyChange = (value: boolean) => {
+    setRespectPerWishlistPrivacy(value);
+    if (value) {
+      setAllowFollowersView(false);
+    } else {
+      setAllowFollowersView(true);
+    }
+  };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +109,7 @@ const Settings = () => {
     }
   };
 
-  const saveWishlistPrefs = async (changes?: Partial<{ allow_wishlist_sharing: boolean; allow_friends_claim: boolean; show_countdown_timer: boolean }>) => {
+  const saveWishlistPrefs = async (changes?: Partial<{ allow_wishlist_sharing: boolean; allow_friends_claim: boolean; show_countdown_timer: boolean; allow_followers_view: boolean; enforce_wishlist_privacy: boolean }>) => {
     try {
       setSavingWishlistPrefs(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -101,6 +121,8 @@ const Settings = () => {
         allow_wishlist_sharing: allowSharing,
         allow_friends_claim: allowFriendsClaim,
         show_countdown_timer: showCountdown,
+        allow_followers_view: allowFollowersView,
+        enforce_wishlist_privacy: respectPerWishlistPrivacy,
         ...(changes || {})
       };
       const { error } = await (supabase as any)
@@ -165,7 +187,7 @@ const Settings = () => {
         if (!user) return;
         const { data, error } = await (supabase as any)
           .from("user_profiles")
-          .select("is_searchable, require_follow_approval, allow_wishlist_sharing, allow_friends_claim, show_countdown_timer, country")
+          .select("is_searchable, require_follow_approval, allow_wishlist_sharing, allow_friends_claim, show_countdown_timer, allow_followers_view, enforce_wishlist_privacy, country")
           .eq("id", user.id)
           .single();
         if (!error && data) {
@@ -180,6 +202,17 @@ const Settings = () => {
           if (typeof (data as any).allow_wishlist_sharing === 'boolean') setAllowSharing((data as any).allow_wishlist_sharing);
           if (typeof (data as any).allow_friends_claim === 'boolean') setAllowFriendsClaim((data as any).allow_friends_claim);
           if (typeof (data as any).show_countdown_timer === 'boolean') setShowCountdown((data as any).show_countdown_timer);
+
+          const allowFollowersPref = typeof (data as any).allow_followers_view === 'boolean' ? (data as any).allow_followers_view : false;
+          const enforcePrivacyPref = typeof (data as any).enforce_wishlist_privacy === 'boolean' ? (data as any).enforce_wishlist_privacy : !allowFollowersPref;
+
+          if (allowFollowersPref) {
+            setAllowFollowersView(true);
+            setRespectPerWishlistPrivacy(false);
+          } else {
+            setAllowFollowersView(false);
+            setRespectPerWishlistPrivacy(enforcePrivacyPref !== undefined ? enforcePrivacyPref : true);
+          }
           setCountry(((data as any).country || (user.user_metadata as any)?.country || "") as string);
         } else if (error) {
           setVisibilitySupported(false);
@@ -487,6 +520,14 @@ const Settings = () => {
           <div className="space-y-2 pt-2">
             <Label className="flex items-center gap-2"><Globe2 className="h-4 w-4" /> {t('settings.wishlist_sharing','Wishlist & Sharing')}</Label>
             <div className="space-y-2">
+              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
+                <span className="text-sm text-muted-foreground">{t('settings.allow_followers_view','Let followers see all my wishlists')}</span>
+                <Switch checked={allowFollowersView} onCheckedChange={handleAllowFollowersChange} />
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
+                <span className="text-sm text-muted-foreground">{t('settings.respect_per_wishlist','Respect each wishlist\'s privacy setting')}</span>
+                <Switch checked={respectPerWishlistPrivacy} onCheckedChange={handleRespectPrivacyChange} />
+              </div>
               <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
                 <span className="text-sm text-muted-foreground">{t('settings.allow_sharing','Show share icon on my wishlist cards')}</span>
                 <Switch checked={allowSharing} onCheckedChange={(v)=>{ setAllowSharing(v); }} />

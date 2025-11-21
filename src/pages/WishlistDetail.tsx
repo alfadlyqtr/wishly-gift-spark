@@ -8,10 +8,11 @@ import FloatingLines from "@/components/FloatingLines";
 import Counter from "@/components/Counter";
 import { useWishlists } from "@/hooks/use-wishlists";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, Lock } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, type CarouselApi } from "@/components/ui/carousel";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTranslation } from "react-i18next";
 import type { Database } from "@/integrations/supabase/types";
@@ -43,6 +44,10 @@ const WishlistDetail = () => {
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
   const [slide, setSlide] = useState(0);
   const isMobile = useIsMobile();
+  const [privacyLevel, setPrivacyLevel] = useState<string | null>(null);
+  const [privacyUpdating, setPrivacyUpdating] = useState(false);
+  const [viewerId, setViewerId] = useState<string | null>(null);
+  const [visibilityPrefs, setVisibilityPrefs] = useState<{ allowFollowersView: boolean; enforceWishlistPrivacy: boolean } | null>(null);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["wishlist-detail", id],
@@ -81,6 +86,77 @@ const WishlistDetail = () => {
     const arr = ["😐","😌","🙂","😊","😍"] as const;
     const idx = typeof d === "number" ? Math.max(0, Math.min(4, d)) : 3; // default to middle if missing
     return arr[idx];
+  };
+
+  useEffect(() => {
+    setPrivacyLevel(data?.wishlist?.privacy_level ?? null);
+  }, [data?.wishlist?.privacy_level]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        if (cancelled) return;
+        const uid = auth.user?.id ?? null;
+        setViewerId(uid);
+        if (uid && data?.wishlist?.user_id === uid) {
+          const { data: prefs } = await supabase
+            .from('user_profiles' as any)
+            .select('allow_followers_view, enforce_wishlist_privacy')
+            .eq('id', uid)
+            .maybeSingle();
+          if (!cancelled) {
+            setVisibilityPrefs({
+              allowFollowersView: Boolean((prefs as any)?.allow_followers_view),
+              enforceWishlistPrivacy: (prefs as any)?.enforce_wishlist_privacy !== false,
+            });
+          }
+        } else if (!cancelled) {
+          setVisibilityPrefs(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setViewerId(null);
+          setVisibilityPrefs(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [data?.wishlist?.user_id]);
+
+  const isOwner = !isGifterMode && viewerId && data?.wishlist?.user_id === viewerId;
+  const perWishlistRespected = visibilityPrefs ? (!visibilityPrefs.allowFollowersView && visibilityPrefs.enforceWishlistPrivacy) : true;
+  const privacyToggleDisabled = visibilityPrefs ? visibilityPrefs.allowFollowersView : false;
+
+  const handlePrivacyToggle = async (checked: boolean) => {
+    if (!id) return;
+    const nextLevel = checked ? 'private' : 'friends_only';
+    setPrivacyUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('wishlists')
+        .update({ privacy_level: nextLevel })
+        .eq('id', id);
+      if (error) throw error;
+      setPrivacyLevel(nextLevel);
+      await refetch();
+      await queryClient.invalidateQueries({ queryKey: ['wishlists'] });
+      await queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'events'
+      });
+      toast.success(
+        checked
+          ? t('wishlist_detail.privacy_toast_private', 'Wishlist set to private')
+          : t('wishlist_detail.privacy_toast_shared', 'Wishlist shared with followers')
+      );
+    } catch (e: any) {
+      toast.error(e?.message || t('wishlist_detail.privacy_toast_error', 'Failed to update privacy'));
+    } finally {
+      setPrivacyUpdating(false);
+    }
   };
 
   // Load owner profile for gifter landing (prefer joined owner, otherwise fetch from user_profiles)
@@ -375,6 +451,79 @@ const WishlistDetail = () => {
                   <span className="inline-flex items-center rounded-full bg-white/80 px-2 py-0.5 text-[11px] ring-1 ring-black/10 text-blue-900">
                     {items.length} {t('giftr.items','items')}
                   </span>
+                </div>
+              )}
+
+              {isOwner && (
+                <div className="mt-4 w-full space-y-1">
+                  <div className="flex items-center justify-between rounded-full border border-white/40 bg-black/15 px-3 py-1.5">
+                    <span className="text-xs font-semibold">
+                      {privacyLevel === 'private'
+                        ? t('wishlist_detail.privacy_label_private', 'Private wishlist')
+                        : t('wishlist_detail.privacy_label_shared', 'Shared with followers')}
+                    </span>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={privacyLevel === 'private'}
+                        onChange={(e) => handlePrivacyToggle(e.target.checked)}
+                        disabled={privacyUpdating || privacyToggleDisabled}
+                        aria-label={t('wishlist_detail.privacy_toggle_aria', 'Toggle wishlist privacy')}
+                      />
+                      <div className="group peer ring-0 bg-rose-400 rounded-full outline-none duration-300 after:duration-300 w-16 h-8 shadow-md peer-checked:bg-emerald-500 peer-focus:outline-none after:content-[''] after:rounded-full after:absolute after:bg-gray-50 after:outline-none after:h-7 after:w-7 after:top-0.5 after:left-0.5 after:flex after:justify-center after:items-center peer-checked:after:translate-x-8 peer-hover:after:scale-95">
+                        <svg
+                          className="absolute top-0.5 left-9 stroke-gray-900 w-7 h-7"
+                          height="100"
+                          preserveAspectRatio="xMidYMid meet"
+                          viewBox="0 0 100 100"
+                          width="100"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            className="fill-current"
+                            d="M50,18A19.9,19.9,0,0,0,30,38v8a8,8,0,0,0-8,8V74a8,8,0,0,0,8,8H70a8,8,0,0,0,8-8V54a8,8,0,0,0-8-8H38V38a12,12,0,0,1,23.6-3,4,4,0,1,0,7.8-2A20.1,20.1,0,0,0,50,18Z"
+                          />
+                        </svg>
+                        <svg
+                          className="absolute top-0.5 left-0.5 stroke-gray-900 w-7 h-7"
+                          height="100"
+                          preserveAspectRatio="xMidYMid meet"
+                          viewBox="0 0 100 100"
+                          width="100"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M30,46V38a20,20,0,0,1,40,0v8a8,8,0,0,1,8,8V74a8,8,0,0,1-8,8H30a8,8,0,0,1-8-8V54A8,8,0,0,1,30,46Zm32-8v8H38V38a12,12,0,0,1,24,0Z"
+                            fillRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-white/85 mt-1">
+                    {privacyToggleDisabled
+                      ? (
+                        <>
+                          {t('wishlist_detail.privacy_disabled_hint', 'Followers can currently see every wishlist because "Let followers see all my wishlists" is on.')}
+                          {' '}
+                          <Link to="/settings" className="underline text-white">
+                            {t('wishlist_detail.privacy_go_to_settings', 'Adjust in Settings')}
+                          </Link>
+                        </>
+                      )
+                      : perWishlistRespected
+                        ? t('wishlist_detail.privacy_hint', 'When "Respect each wishlist’s privacy setting" is on in Settings, this toggle keeps this wishlist private.')
+                        : (
+                          <>
+                            {t('wishlist_detail.privacy_hint_disabled', 'Turn on "Respect each wishlist’s privacy setting" in Settings to control this per wishlist.')}
+                            {' '}
+                            <Link to="/settings" className="underline text-white">
+                              {t('wishlist_detail.privacy_go_to_settings', 'Adjust in Settings')}
+                            </Link>
+                          </>
+                        )}
+                  </p>
                 </div>
               )}
 

@@ -22,30 +22,111 @@ export const MainLayout = () => {
   const isGifterShared = new URLSearchParams(location.search).get('mode')?.toLowerCase() === 'gifter';
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     let mounted = true;
-    (async () => {
+    let followersChannel: ReturnType<typeof supabase.channel> | null = null;
+    let activitiesChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    const fetchPendingCount = async (uid: string) => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        const uid = user?.id;
-        if (!uid) return;
         const { count } = await supabase
           .from("followers")
           .select("id", { count: "exact", head: true })
           .eq("following_id", uid)
           .eq("status", "pending");
         if (mounted) setPendingCount((count as number | null) ?? 0);
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('avatar_url')
-          .eq('id', uid)
-          .maybeSingle();
-        if (mounted) setAvatarUrl((profile as any)?.avatar_url || null);
       } catch {
         if (mounted) setPendingCount(0);
       }
-    })();
-    return () => { mounted = false; };
-  }, []);
+    };
+
+    const fetchAvatar = async (uid: string) => {
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("avatar_url")
+        .eq("id", uid)
+        .maybeSingle();
+      if (mounted) setAvatarUrl((profile as any)?.avatar_url || null);
+    };
+
+    const formatToastMessage = (type: string, name: string | null) => {
+      if (type === "new_follower") {
+        return name
+          ? `${t("notifications.activity_new_follower", "You have a new follower")} · ${name}`
+          : t("notifications.activity_new_follower", "You have a new follower");
+      }
+      if (type === "follow_accepted") {
+        return name
+          ? `${t("notifications.activity_follow_accepted", "Your follow request was accepted")} · ${name}`
+          : t("notifications.activity_follow_accepted", "Your follow request was accepted");
+      }
+      return null;
+    };
+
+    const ensureLastSeenInitialized = async (uid: string) => {
+      const storageKey = `wishly:lastSeenActivityId:${uid}`;
+      if (localStorage.getItem(storageKey)) return;
+      const { data } = await supabase
+        .from("activities")
+        .select("id")
+        .eq("user_id", uid)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (data && data[0]) {
+        localStorage.setItem(storageKey, data[0].id as string);
+      }
+    };
+
+    const subscribe = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const uid = user?.id;
+      if (!uid || !mounted) return;
+
+      await fetchPendingCount(uid);
+      await fetchAvatar(uid);
+      await ensureLastSeenInitialized(uid);
+
+      followersChannel = supabase
+        .channel(`followers-pending-${uid}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "followers", filter: `following_id=eq.${uid}` }, () => {
+          fetchPendingCount(uid);
+        })
+        .subscribe();
+
+      activitiesChannel = supabase
+        .channel(`activities-${uid}`)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "activities", filter: `user_id=eq.${uid}` }, async (payload) => {
+          const activity = payload.new as any;
+          const storageKey = `wishly:lastSeenActivityId:${uid}`;
+          if (localStorage.getItem(storageKey) === activity.id) return;
+
+          let name: string | null = null;
+          if (activity.target_id) {
+            const { data: profile } = await supabase
+              .from("user_profiles")
+              .select("full_name, username")
+              .eq("id", activity.target_id as string)
+              .maybeSingle();
+            name = (profile as any)?.full_name || (profile as any)?.username || null;
+          }
+
+          const message = formatToastMessage(String(activity.activity_type || ""), name);
+          if (message) {
+            toast(message);
+            localStorage.setItem(storageKey, activity.id as string);
+          }
+        })
+        .subscribe();
+    };
+
+    subscribe();
+
+    return () => {
+      mounted = false;
+      if (followersChannel) supabase.removeChannel(followersChannel);
+      if (activitiesChannel) supabase.removeChannel(activitiesChannel);
+    };
+  }, [t]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">

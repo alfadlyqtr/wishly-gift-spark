@@ -1,11 +1,62 @@
+import { useEffect } from "react";
 import { EventReminderCard } from "@/components/dashboard/EventReminderCard";
 import { SocialWishCard } from "@/components/dashboard/SocialWishCard";
 import { AIRecommendationCard } from "@/components/dashboard/AIRecommendationCard";
 import { LayoutDashboard } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Dashboard = () => {
   const { t } = useTranslation();
+
+  // Show a toast for the latest unseen social activity (e.g. new follower, follow accepted)
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const user = auth.user;
+        if (!user) return;
+
+        const { data, error } = await (supabase as any)
+          .from("activities")
+          .select(
+            "id, activity_type, created_at, user_profiles:target_id(id, username, full_name)"
+          )
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (error || !data || data.length === 0) return;
+
+        const activity = data[0] as any;
+        const storageKey = `wishly:lastSeenActivityId:${user.id}`;
+        const lastSeenId = localStorage.getItem(storageKey);
+        if (lastSeenId === activity.id) return;
+
+        const type = String(activity.activity_type || "");
+        const profile = activity.user_profiles as any | undefined;
+        const name = profile?.full_name || profile?.username || "";
+        let message: string | null = null;
+
+        if (type === "new_follower") {
+          message = name
+            ? t("notifications.activity_new_follower", "You have a new follower") + ` · ${name}`
+            : t("notifications.activity_new_follower", "You have a new follower");
+        } else if (type === "follow_accepted") {
+          message = name
+            ? t("notifications.activity_follow_accepted", "Your follow request was accepted") + ` · ${name}`
+            : t("notifications.activity_follow_accepted", "Your follow request was accepted");
+        }
+
+        if (message) {
+          toast(message);
+          localStorage.setItem(storageKey, activity.id as string);
+        }
+      } catch {
+        // fail silently; dashboard should still load
+      }
+    })();
+  }, [t]);
   return (
     <div className="container max-w-2xl mx-auto px-4 py-6 space-y-6">
       {/* Branded header */}

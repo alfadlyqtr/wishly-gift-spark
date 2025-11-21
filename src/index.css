@@ -389,3 +389,268 @@ All colors MUST be HSL.
   line-height: 1.5;
   transition: color 0.2s ease-in-out;
 }
+
+/* Follow request Approve button (inspired by Uiverse.io by Wendell47) */
+.notif-approve-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 22px;
+  border: 0;
+  position: relative;
+  overflow: hidden;
+  border-radius: 9999px;
+  transition: all 0.08s ease-out;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fdfbff;
+  z-index: 0;
+  background: linear-gradient(135deg,
+    rgba(222, 0, 75, 1) 0%,
+    rgba(191, 70, 255, 1) 45%,
+    rgba(0, 212, 255, 1) 100%
+  );
+  box-shadow:
+    0 14px 22px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+  font-size: 13px;
+  transform: translateY(-2px);
+}
+
+.notif-approve-btn:hover {
+  background: linear-gradient(135deg,
+    rgba(231, 72, 122, 1) 0%,
+    rgba(202, 106, 255, 1) 45%,
+    rgba(54, 219, 255, 1) 100%
+  );
+}
+
+.notif-approve-btn:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.35) inset;
+}
+
+.notif-approve-hoverEffect {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: -1;
+}
+
+.notif-approve-hoverEffect div {
+  background: linear-gradient(
+    90deg,
+    rgba(222, 0, 75, 1) 0%,
+    rgba(191, 70, 255, 1) 49%,
+    rgba(0, 212, 255, 1) 100%
+  );
+  border-radius: 9999px;
+  width: 8rem;
+  height: 8rem;
+  transition: 0.4s;
+  filter: blur(20px);
+  animation: notif-approve-effect infinite 3s linear;
+  opacity: 0.5;
+}
+
+.notif-approve-btn:hover .notif-approve-hoverEffect div {
+  width: 6.5rem;
+  height: 6.5rem;
+}
+
+@keyframes notif-approve-effect {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Follow request Decline button (inspired by Uiverse.io by UmangLadha) */
+.notif-decline-btn {
+  background: #38579b;
+  border-top: 1px solid #38538c;
+  border-right: 1px solid #1f2d4d;
+  border-bottom: 1px solid #151e33;
+  border-left: 1px solid #1f2d4d;
+  border-radius: 4px;
+  box-shadow: inset 0 1px 10px 1px #5c8bee,
+    0px 1px 0 #1d2c4d,
+    0 6px 0px #1f3053,
+    0 8px 4px 1px #111111;
+  color: #fff;
+  font: bold 13px "helvetica neue", helvetica, arial, sans-serif;
+  line-height: 1;
+  padding: 8px 16px 9px 16px;
+  text-align: center;
+  text-shadow: 0px -1px 1px #1e2d4d;
+  -webkit-background-clip: padding-box;
+  cursor: pointer;
+}
+
+.notif-decline-btn:hover {
+  box-shadow: inset 0 0px 20px 1px #87adff,
+    0px 1px 0 #1d2c4d,
+    0 6px 0px #1f3053,
+    0 8px 4px 1px #111111;
+}
+
+.notif-decline-btn:active {
+  box-shadow: inset 0 1px 10px 1px #5c8bee,
+    0 1px 0 #1d2c4d,
+    0 2px 0 #1f3053,
+    0 4px 3px 0 #111111;
+  transform: translateY(2px);
+}
+
+/* Gradient border wrapper for notifications sections */
+.notifications-card {
+  position: relative;
+  border-radius: 1rem;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.9)) padding-box,
+    linear-gradient(135deg,
+      hsl(var(--brand-cool-start)),
+      hsl(var(--brand-cool-end)),
+      hsl(var(--brand-warm-end))
+    ) border-box;
+}
+
+.connections-row {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.12);
+}
+
+.connections-action-btn-wrapper {
+  min-width: 112px;
+}
+
+.connections-action-btn {
+  --round: 0.85rem;
+  --btn-gradient: radial-gradient(65.28% 65.28% at 50% 100%, rgba(223, 113, 255, 0.8) 0%, rgba(223, 113, 255, 0) 100%),
+    linear-gradient(135deg, #a66cff, #f0a9ff);
+  min-width: 112px;
+  height: 46px;
+  border: none;
+  border-radius: var(--round);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0 18px;
+  background: var(--btn-gradient);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.connections-action-btn::before,
+.connections-action-btn::after {
+  content: "";
+  position: absolute;
+  inset: var(--space);
+  border-radius: calc(var(--round) - var(--space));
+  transition: all 0.5s ease-in-out;
+  z-index: 0;
+}
+
+.connections-action-btn::before {
+  --space: 1px;
+  background: linear-gradient(177.95deg, rgba(255, 255, 255, 0.19) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.connections-action-btn::after {
+  --space: 2px;
+  background: var(--btn-gradient);
+}
+
+.connections-action-btn:active {
+  transform: scale(0.95);
+}
+
+.connections-fold {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1rem;
+  height: 1rem;
+  border-bottom-left-radius: 0.5rem;
+  border-top-right-radius: var(--round);
+  background: radial-gradient(100% 75% at 55%, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 100%);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.35);
+  transition: all 0.5s ease-in-out;
+  z-index: 2;
+}
+
+.connections-fold::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 150%;
+  height: 150%;
+  transform: rotate(45deg) translateY(-18px);
+  background-color: #e8e8e8;
+}
+
+.connections-action-btn:hover .connections-fold {
+  margin-top: -1rem;
+  margin-right: -1rem;
+}
+
+.connections-points {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.connections-point {
+  position: absolute;
+  bottom: -10px;
+  width: 2px;
+  height: 2px;
+  border-radius: 9999px;
+  background-color: #fff;
+  animation: connections-floating infinite ease-in-out;
+}
+
+.connections-point:nth-child(1) { left: 10%; opacity: 1; animation-duration: 2.35s; animation-delay: 0.2s; }
+.connections-point:nth-child(2) { left: 30%; opacity: 0.7; animation-duration: 2.5s; animation-delay: 0.5s; }
+.connections-point:nth-child(3) { left: 25%; opacity: 0.8; animation-duration: 2.2s; animation-delay: 0.1s; }
+.connections-point:nth-child(4) { left: 44%; opacity: 0.6; animation-duration: 2.05s; }
+.connections-point:nth-child(5) { left: 50%; opacity: 1; animation-duration: 1.9s; }
+.connections-point:nth-child(6) { left: 75%; opacity: 0.5; animation-duration: 1.5s; animation-delay: 1.5s; }
+.connections-point:nth-child(7) { left: 88%; opacity: 0.9; animation-duration: 2.2s; animation-delay: 0.2s; }
+.connections-point:nth-child(8) { left: 58%; opacity: 0.8; animation-duration: 2.25s; animation-delay: 0.2s; }
+.connections-point:nth-child(9) { left: 98%; opacity: 0.6; animation-duration: 2.6s; animation-delay: 0.1s; }
+.connections-point:nth-child(10) { left: 65%; opacity: 1; animation-duration: 2.5s; animation-delay: 0.2s; }
+
+.connections-inner {
+  position: relative;
+  z-index: 2;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.connections-action-btn--remove {
+  --btn-gradient: linear-gradient(135deg, #354b8f, #1f2d4d);
+}
+
+.connections-action-btn--primary {
+  --btn-gradient: radial-gradient(65% 65% at 50% 100%, rgba(223, 113, 255, 0.8) 0%, rgba(223, 113, 255, 0) 100%),
+    linear-gradient(135deg, #a66cff, #f0a9ff);
+}
+
+@keyframes connections-floating {
+  0% { transform: translateY(0); opacity: 1; }
+  85% { opacity: 0; }
+  100% { transform: translateY(-55px); opacity: 0; }
+}

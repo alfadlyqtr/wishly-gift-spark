@@ -2,7 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import BackButton from "@/components/BackButton";
 import { MessageSquare, Search, Send, Users } from "lucide-react";
 import { openOrCreateDirectThread } from "@/lib/messages";

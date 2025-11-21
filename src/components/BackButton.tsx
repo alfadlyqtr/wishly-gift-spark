@@ -18,12 +18,7 @@ const BackButton: React.FC<BackButtonProps> = ({ onClick, children = "Back", cla
   const navigate = useNavigate();
   const handleClick = () => {
     if (onClick) return onClick();
-    try {
-      if (window.history.length > 1) navigate(-1);
-      else navigate("/dashboard");
-    } catch {
-      navigate("/dashboard");
-    }
+    navigate(-1);
   };
   return (
     <div className={[

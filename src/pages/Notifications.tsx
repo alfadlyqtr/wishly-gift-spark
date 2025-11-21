@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import BackButton from "@/components/BackButton";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,7 @@ const Notifications = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("followers")
-        .select("user_id, created_at, user_profiles!followers_user_id_fkey(id, username, full_name, avatar_url)")
+        .select("user_id, created_at, user_profiles!followers_user_id_fkey(id, username, full_name, email, avatar_url)")
         .eq("following_id", uid as string)
         .eq("status", "pending")
         .order("created_at", { ascending: false });
@@ -56,12 +57,14 @@ const Notifications = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications", "pending_follows"] });
       queryClient.invalidateQueries({ queryKey: ["profile", "social"] });
+      toast.success(t('settings.follow_request_approved', 'Follow request approved'));
     },
   });
   const decline = useMutation({
     mutationFn: (fromUserId: string) => declineFollowRequest(fromUserId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications", "pending_follows"] });
+      toast.success(t('settings.follow_request_declined', 'Follow request declined'));
     },
   });
 
@@ -83,7 +86,7 @@ const Notifications = () => {
 
       {/* Approvals Section */}
       <div className="space-y-2">
-        <div className="rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-3">
+        <div className="notifications-card rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-3">
           <div className="font-bold mb-2">{t('notifications.follow_requests_title', 'Follow Requests')}</div>
           {pendingLoading ? (
             <div className="text-sm text-muted-foreground">{t('common.loading', 'Loading...')}</div>
@@ -91,19 +94,43 @@ const Notifications = () => {
             <div className="text-xs text-muted-foreground">{t('notifications.no_pending_requests', 'No pending requests')}</div>
           ) : (
             (pendingFollowData as any[]).map((r: any) => (
-              <div key={`${r.user_id}-${r.created_at}`} className="flex items-center justify-between rounded-xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-2 mb-2">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="relative flex shrink-0 overflow-hidden rounded-full h-9 w-9 ring-2 ring-white/80">
+              <div key={`${r.user_id}-${r.created_at}`} className="flex items-center justify-between rounded-xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 mb-2">
+                <div className="flex items-center gap-4 min-w-0">
+                  <span className="relative flex shrink-0 overflow-hidden rounded-full h-16 w-16 ring-2 ring-white/80">
                     <img className="h-full w-full object-cover" src={r.user_profiles?.avatar_url || "/avatar.svg"} alt={r.user_profiles?.full_name || r.user_profiles?.username || "user"} />
                   </span>
                   <div className="leading-tight min-w-0">
                     <div className="font-semibold truncate max-w-[160px]">{r.user_profiles?.full_name || r.user_profiles?.username || r.user_id}</div>
-                    <div className="text-xs text-muted-foreground truncate max-w-[200px]">{t('notifications.requested_to_follow_you', 'Requested to follow you')}</div>
+                    <div className="text-xs text-muted-foreground truncate max-w-[220px]">{t('notifications.requested_to_follow_you', 'Requested to follow you')}</div>
+                    {r.user_profiles && (
+                      <div className="text-[11px] text-muted-foreground truncate max-w-[220px]">
+                        {`${r.user_profiles.username ? `@${r.user_profiles.username}` : ''}${r.user_profiles.email ? (r.user_profiles.username ? ' · ' : '') + r.user_profiles.email : ''}`}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="gradient" onClick={() => approve.mutate(r.user_id)} disabled={approve.isPending}>{t('notifications.approve', 'Approve')}</Button>
-                  <Button size="sm" variant="ghost" onClick={() => decline.mutate(r.user_id)} disabled={decline.isPending}>{t('notifications.decline', 'Decline')}</Button>
+                  <button
+                    type="button"
+                    className="notif-approve-btn"
+                    onClick={() => approve.mutate(r.user_id)}
+                    disabled={approve.isPending}
+                  >
+                    <span className="notif-approve-hoverEffect" aria-hidden="true">
+                      <div />
+                    </span>
+                    <span className="relative z-10">
+                      {t('notifications.ok', 'OK 👍')}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="notif-decline-btn"
+                    onClick={() => decline.mutate(r.user_id)}
+                    disabled={decline.isPending}
+                  >
+                    {t('notifications.no_thanks', 'No thanks')}
+                  </button>
                 </div>
               </div>
             ))
@@ -113,7 +140,7 @@ const Notifications = () => {
         {/* Activity Feed */}
         {isLoading ? (
           <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 text-sm text-muted-foreground">{t('common.loading', 'Loading...')}</div>
-        ) : (data as any[]).length === 0 ? (
+        ) : (data as any[]).length === 0 && (pendingFollowData as any[]).length === 0 ? (
           <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 text-sm text-muted-foreground">{t('notifications.all_caught_up', "You're all caught up.")}</div>
         ) : (
           (data as any[]).map((a: any) => (

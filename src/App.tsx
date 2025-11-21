@@ -42,9 +42,9 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          {/* Public shareable wishlist detail (supports ?mode=gifter) */}
-          <Route path="/wishlist/:id" element={<WishlistDetail />} />
-          {/* Short redirect link */}
+          {/* Short redirect link for public share (
+             keeps public entrypoint; authenticated users will typically use
+             the in-app route below which has the full MainLayout chrome. */}
           <Route path="/w/:id" element={<ShortWishRedirect />} />
 
           {/* Authenticated app shell */}
@@ -58,6 +58,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/explore" element={<Explore />} />
             <Route path="/events" element={<Events />} />
+            <Route path="/wishlist/:id" element={<WishlistDetail />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/followers" element={<FollowersFollowing />} />
             <Route path="/wishlists" element={<Wishlists />} />
