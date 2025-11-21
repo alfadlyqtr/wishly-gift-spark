@@ -38,6 +38,8 @@ const Settings = () => {
   // Wishlist preferences
   const [allowSharing, setAllowSharing] = useState<boolean>(true);
   const [allowFriendsClaim, setAllowFriendsClaim] = useState<boolean>(true);
+  const [autoApproveClaims, setAutoApproveClaims] = useState<boolean>(false);
+  const [autoApproveUnclaims, setAutoApproveUnclaims] = useState<boolean>(false);
   const [showCountdown, setShowCountdown] = useState<boolean>(true);
   const [allowFollowersView, setAllowFollowersView] = useState<boolean>(false);
   const [respectPerWishlistPrivacy, setRespectPerWishlistPrivacy] = useState<boolean>(true);
@@ -109,7 +111,7 @@ const Settings = () => {
     }
   };
 
-  const saveWishlistPrefs = async (changes?: Partial<{ allow_wishlist_sharing: boolean; allow_friends_claim: boolean; show_countdown_timer: boolean; allow_followers_view: boolean; enforce_wishlist_privacy: boolean }>) => {
+  const saveWishlistPrefs = async (changes?: Partial<{ allow_wishlist_sharing: boolean; allow_friends_claim: boolean; auto_approve_claims: boolean; auto_approve_unclaims: boolean; show_countdown_timer: boolean; allow_followers_view: boolean; enforce_wishlist_privacy: boolean }>) => {
     try {
       setSavingWishlistPrefs(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -120,10 +122,12 @@ const Settings = () => {
       const payload: any = {
         allow_wishlist_sharing: allowSharing,
         allow_friends_claim: allowFriendsClaim,
+        auto_approve_claims: autoApproveClaims,
+        auto_approve_unclaims: autoApproveUnclaims,
         show_countdown_timer: showCountdown,
         allow_followers_view: allowFollowersView,
         enforce_wishlist_privacy: respectPerWishlistPrivacy,
-        ...(changes || {})
+        ...changes,
       };
       const { error } = await (supabase as any)
         .from('user_profiles')
@@ -187,7 +191,7 @@ const Settings = () => {
         if (!user) return;
         const { data, error } = await (supabase as any)
           .from("user_profiles")
-          .select("is_searchable, require_follow_approval, allow_wishlist_sharing, allow_friends_claim, show_countdown_timer, allow_followers_view, enforce_wishlist_privacy, country")
+          .select("is_searchable, require_follow_approval, allow_wishlist_sharing, allow_friends_claim, auto_approve_claims, auto_approve_unclaims, show_countdown_timer, allow_followers_view, enforce_wishlist_privacy, country")
           .eq("id", user.id)
           .single();
         if (!error && data) {
@@ -201,6 +205,8 @@ const Settings = () => {
           }
           if (typeof (data as any).allow_wishlist_sharing === 'boolean') setAllowSharing((data as any).allow_wishlist_sharing);
           if (typeof (data as any).allow_friends_claim === 'boolean') setAllowFriendsClaim((data as any).allow_friends_claim);
+          if (typeof (data as any).auto_approve_claims === 'boolean') setAutoApproveClaims((data as any).auto_approve_claims);
+          if (typeof (data as any).auto_approve_unclaims === 'boolean') setAutoApproveUnclaims((data as any).auto_approve_unclaims);
           if (typeof (data as any).show_countdown_timer === 'boolean') setShowCountdown((data as any).show_countdown_timer);
 
           const allowFollowersPref = typeof (data as any).allow_followers_view === 'boolean' ? (data as any).allow_followers_view : false;
@@ -535,6 +541,14 @@ const Settings = () => {
               <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
                 <span className="text-sm text-muted-foreground">{t('settings.allow_friends_claim','Allow friends to claim items')}</span>
                 <Switch checked={allowFriendsClaim} onCheckedChange={(v)=>{ setAllowFriendsClaim(v); }} />
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
+                <span className="text-sm text-muted-foreground">{t('settings.auto_approve_claims','Auto-approve claim requests')}</span>
+                <Switch checked={autoApproveClaims} onCheckedChange={(v)=>{ setAutoApproveClaims(v); }} />
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
+                <span className="text-sm text-muted-foreground">{t('settings.auto_approve_unclaims','Auto-approve unclaim requests')}</span>
+                <Switch checked={autoApproveUnclaims} onCheckedChange={(v)=>{ setAutoApproveUnclaims(v); }} />
               </div>
               <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
                 <span className="text-sm text-muted-foreground">{t('settings.show_countdown','Show countdown timer on shared page')}</span>

@@ -8,7 +8,7 @@ import FloatingLines from "@/components/FloatingLines";
 import Counter from "@/components/Counter";
 import { useWishlists } from "@/hooks/use-wishlists";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Check, X, Lock } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, Lock, Loader2 } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, type CarouselApi } from "@/components/ui/carousel";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,9 +18,26 @@ import { useTranslation } from "react-i18next";
 import type { Database } from "@/integrations/supabase/types";
 import wishlyLogo from "@/assets/wishly-logo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { approveReservation, declineReservation } from "@/lib/reservations";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 
 type Wishlist = Database["public"]["Tables"]["wishlists"]["Row"];
 type WishlistItem = Database["public"]["Tables"]["wishlist_items"]["Row"];
+type ReservationStatus = "pending" | "approved" | "declined";
+type ReservationInfo = {
+  id: string;
+  item_id: string;
+  status: ReservationStatus;
+  approved_at: string | null;
+  created_at: string | null;
+  claimer: {
+    id: string | null;
+    full_name: string | null;
+    username: string | null;
+    avatar_url: string | null;
+  } | null;
+};
 
 const WishlistDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +55,7 @@ const WishlistDetail = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const [claimed, setClaimed] = useState<Record<string, boolean>>({});
+  const [reservationAction, setReservationAction] = useState<{ id: string; type: "approve" | "decline" } | null>(null);
   const [owner, setOwner] = useState<{ full_name?: string | null; username?: string | null; avatar_url?: string | null; allow_friends_claim?: boolean | null; show_countdown_timer?: boolean | null } | null>(null);
   const [countdown, setCountdown] = useState<string | null>(null);
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
@@ -77,6 +95,55 @@ const WishlistDetail = () => {
   const isAr = i18n.language?.startsWith('ar');
 
   const items = useMemo(() => data?.items ?? [], [data]);
+  const reservationKeyDeps = useMemo(() => items.map((item) => item.id).sort().join("|"), [items]);
+  const { data: reservationRows = [], isLoading: reservationsLoading } = useQuery({
+    queryKey: ["wishlist-detail", id, "reservations", reservationKeyDeps],
+    enabled: Boolean(id) && items.length > 0,
+    queryFn: async (): Promise<ReservationInfo[]> => {
+      if (!id) return [];
+      const itemIds = items.map((item) => item.id).filter(Boolean);
+      if (itemIds.length === 0) return [];
+      const { data: rows, error } = await (supabase as any)
+        .from('wishlist_reservations')
+        .select(`
+          id,
+          item_id,
+          status,
+          approved_at,
+          created_at,
+          reserved_by:user_profiles (
+            id,
+            full_name,
+            username,
+            avatar_url
+          )
+        `)
+        .in('item_id', itemIds);
+      if (error) throw error;
+      return (rows ?? []).map((row: any) => ({
+        id: row.id as string,
+        item_id: row.item_id as string,
+        status: row.status as ReservationStatus,
+        approved_at: row.approved_at ?? null,
+        created_at: row.created_at ?? null,
+        claimer: row?.reserved_by ? {
+          id: row.reserved_by.id ?? null,
+          full_name: row.reserved_by.full_name ?? null,
+          username: row.reserved_by.username ?? null,
+          avatar_url: row.reserved_by.avatar_url ?? null,
+        } : null,
+      }));
+    },
+  });
+
+  const reservationsByItem = useMemo(() => {
+    return reservationRows.reduce<Record<string, ReservationInfo[]>>((acc, reservation) => {
+      if (!reservation.item_id) return acc;
+      if (!acc[reservation.item_id]) acc[reservation.item_id] = [];
+      acc[reservation.item_id].push(reservation);
+      return acc;
+    }, {});
+  }, [reservationRows]);
   const wishlistsOptions = useMemo(
     () => (wishlistsData ?? []).map(w => ({ id: w.id, name: w.title || w.id })),
     [wishlistsData]
@@ -86,6 +153,59 @@ const WishlistDetail = () => {
     const arr = ["😐","😌","🙂","😊","😍"] as const;
     const idx = typeof d === "number" ? Math.max(0, Math.min(4, d)) : 3; // default to middle if missing
     return arr[idx];
+  };
+
+  const getClaimerName = (reservation?: ReservationInfo | null) => {
+    if (!reservation?.claimer) return t('giftr.friend_label', 'Friend');
+    return reservation.claimer.full_name || reservation.claimer.username || t('giftr.friend_label', 'Friend');
+  };
+
+  const formatClaimTime = (iso?: string | null) => {
+    if (!iso) return "";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "";
+    const diffMs = Date.now() - date.getTime();
+    if (diffMs < 60000) return t('events.time_just_now', 'Just now');
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 60) return t('events.time_minutes_ago', '{{count}}m ago', { count: mins });
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return t('events.time_hours_ago', '{{count}}h ago', { count: hours });
+    const days = Math.floor(hours / 24);
+    return t('events.time_days_ago', '{{count}}d ago', { count: days });
+  };
+
+  useEffect(() => {
+    if (!reservationRows || reservationRows.length === 0) {
+      setClaimed({});
+      return;
+    }
+    const nextClaimed: Record<string, boolean> = {};
+    reservationRows.forEach((reservation) => {
+      if (!reservation.item_id) return;
+      if (reservation.status === "approved") {
+        nextClaimed[reservation.item_id] = true;
+      }
+    });
+    setClaimed(nextClaimed);
+  }, [reservationRows]);
+
+  const handleReservationAction = async (reservationId: string, action: "approve" | "decline") => {
+    if (!reservationId) return;
+    setReservationAction({ id: reservationId, type: action });
+    try {
+      if (action === "approve") {
+        await approveReservation(reservationId);
+        toast.success(t('events.claim_approved_toast', 'Claim approved'));
+      } else {
+        await declineReservation(reservationId);
+        toast.success(t('events.claim_declined_toast', 'Claim declined'));
+      }
+      await queryClient.invalidateQueries({ queryKey: ["wishlist-detail", id, "reservations", reservationKeyDeps] });
+    } catch (err: any) {
+      toast.error(err?.message || t('events.claim_action_error', 'Unable to update claim. Please try again.'));
+    } finally {
+      setReservationAction(null);
+    }
   };
 
   useEffect(() => {
@@ -533,11 +653,21 @@ const WishlistDetail = () => {
                   <>
                   <Carousel opts={{ align: 'start', loop: false }} className="mt-2" setApi={setCarouselApi}>
                     <CarouselContent>
-                      {items.map((it) => (
-                        <CarouselItem key={it.id}>
-                          <div className="rounded-2xl p-[2px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_8px_18px_rgba(0,0,0,0.22)]">
-                            <div className="rounded-xl bg-black/30 backdrop-blur-sm px-3 py-3 flex items-start gap-3 select-none">
-                            <button
+                      {items.map((it) => {
+                        const itemReservations = reservationsByItem[it.id] ?? [];
+                        const pendingReservation = itemReservations.find((r) => r.status === "pending");
+                        const approvedReservation = itemReservations.find((r) => r.status === "approved");
+                        const isClaimedItem = Boolean(approvedReservation);
+                        const hasPending = Boolean(pendingReservation);
+                        const actingOnPending = pendingReservation && reservationAction?.id === pendingReservation.id;
+                        const actingApprove = actingOnPending && reservationAction?.type === "approve";
+                        const actingDecline = actingOnPending && reservationAction?.type === "decline";
+
+                        return (
+                          <CarouselItem key={it.id}>
+                            <div className="rounded-2xl p-[2px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_8px_18px_rgba(0,0,0,0.22)]">
+                              <div className="rounded-xl bg-black/30 backdrop-blur-sm px-3 py-3 flex items-start gap-3 select-none">
+                                <button
                               type="button"
                               onClick={() => {
                                 if (!it.image_url) return;
@@ -557,29 +687,41 @@ const WishlistDetail = () => {
                               ) : (
                                 <div className="h-[80px] w-[80px] rounded-full bg-gradient-to-br from-white/20 to-white/10 ring-2 ring-white/30" />
                               )}
-                            </button>
-                            <div className={`min-w-0 flex-1 ${isAr ? 'text-right' : ''}`}>
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="text-base sm:text-lg font-extrabold text-white truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{it.title || t('events.untitled','Untitled')}</div>
-                                <div className="text-lg" aria-hidden>{desireEmoji((it as any).desire)}</div>
-                              </div>
-                              {(it as any)?.brand && (
-                                <div className="mt-0.5 text-xs text-white/90 truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{(it as any).brand}</div>
-                              )}
-                              {it.description && (
-                                <div className="mt-1 text-sm text-white/95 line-clamp-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{it.description}</div>
-                              )}
-                              {it.item_url && (
-                                <a href={it.item_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[11px] text-blue-200 underline">
-                                  {t('giftr.view_link', 'View link')}
-                                </a>
-                              )}
-                              <div className={`mt-2 flex items-center gap-2 ${isAr ? 'justify-end' : ''}`}>
-                                {isGifterMode ? (
-                                  (owner?.allow_friends_claim ?? true) ? (
+                                </button>
+                                <div className={`min-w-0 flex-1 ${isAr ? 'text-right' : ''}`}>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="text-base sm:text-lg font-extrabold text-white truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{it.title || t('events.untitled','Untitled')}</div>
+                                    <div className="text-lg" aria-hidden>{desireEmoji((it as any).desire)}</div>
+                                  </div>
+                                  {(it as any)?.brand && (
+                                    <div className="mt-0.5 text-xs text-white/90 truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{(it as any).brand}</div>
+                                  )}
+                                  {it.description && (
+                                    <div className="mt-1 text-sm text-white/95 line-clamp-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{it.description}</div>
+                                  )}
+                                  {it.item_url && (
+                                    <a href={it.item_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[11px] text-blue-200 underline">
+                                      {t('giftr.view_link', 'View link')}
+                                    </a>
+                                  )}
+                                  {approvedReservation && (
+                                    <Badge variant="secondary" className="mt-2 bg-white/90 text-emerald-700 flex items-center gap-1">
+                                      <Check className="h-3 w-3" />
+                                      {t('wishlist_detail.claimed_by_badge', 'Claimed by {{name}}', { name: getClaimerName(approvedReservation) })}
+                                    </Badge>
+                                  )}
+                                  {!isOwner && hasPending && (
+                                    <Badge variant="secondary" className="mt-2 bg-white/80 text-amber-700">
+                                      {t('wishlist_detail.pending_claim_badge', 'Pending approval')}
+                                    </Badge>
+                                  )}
+                                  <div className={`mt-2 flex items-center gap-2 ${isAr ? 'justify-end' : ''}`}>
+                                    {isGifterMode ? (
+                                      (owner?.allow_friends_claim ?? true) ? (
                                     <Button
                                       size="sm"
                                       className="h-8 px-3"
+                                      disabled={isClaimedItem || hasPending}
                                       onClick={() => {
                                         toast.message(t('giftr.cta_title','Want to send a message or claim an item?'), {
                                           description: t('giftr.cta_sub','See your friends\' wishlists too.'),
@@ -588,14 +730,19 @@ const WishlistDetail = () => {
                                         } as any);
                                       }}
                                     >
-                                      {claimed[it.id] ? (isAr ? 'تم الحجز' : t('giftr.claimed_btn', 'Claimed')) : (isAr ? 'حجز' : t('giftr.claim_btn', 'Claim'))}
+                                      {isClaimedItem
+                                        ? (isAr ? 'تم الحجز' : t('giftr.claimed_btn', 'Claimed'))
+                                        : hasPending
+                                          ? t('wishlist_detail.pending_claim_badge', 'Pending approval')
+                                          : (isAr ? 'حجز' : t('giftr.claim_btn', 'Claim'))}
                                     </Button>
-                                  ) : null
-                                ) : fromFriendsTab ? (
-                                  (owner?.allow_friends_claim ?? true) ? (
+                                      ) : null
+                                    ) : fromFriendsTab ? (
+                                      (owner?.allow_friends_claim ?? true) ? (
                                     <Button
                                       size="sm"
                                       className="h-8 px-3"
+                                      disabled={isClaimedItem || hasPending}
                                       onClick={async () => {
                                         try {
                                           const { data: { user } } = await supabase.auth.getUser();
@@ -606,11 +753,15 @@ const WishlistDetail = () => {
                                         }
                                       }}
                                     >
-                                      {isAr ? 'حجز' : t('giftr.claim_btn','Claim')}
+                                      {isClaimedItem
+                                        ? (isAr ? 'تم الحجز' : t('giftr.claimed_btn', 'Claimed'))
+                                        : hasPending
+                                          ? t('wishlist_detail.pending_claim_badge', 'Pending approval')
+                                          : (isAr ? 'حجز' : t('giftr.claim_btn','Claim'))}
                                     </Button>
-                                  ) : null
-                                ) : (
-                                  <>
+                                      ) : null
+                                    ) : (
+                                      <>
                                     <button
                                       type="button"
                                       className="text-white/90 hover:text-white transition"
@@ -640,14 +791,51 @@ const WishlistDetail = () => {
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </button>
-                                  </>
-                                )}
+                                      </>
+                                    )}
+                                  </div>
+                                  {isOwner && pendingReservation && (
+                                <div className="mt-3 rounded-xl bg-white/90 text-foreground px-3 py-3 space-y-3">
+                                  <div className="flex items-center gap-3">
+                                    <Avatar className="h-10 w-10">
+                                      <AvatarImage src={pendingReservation.claimer?.avatar_url || undefined} alt={getClaimerName(pendingReservation)} />
+                                      <AvatarFallback>{getClaimerName(pendingReservation).charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="min-w-0">
+                                      <div className="font-semibold truncate">{getClaimerName(pendingReservation)}</div>
+                                      {pendingReservation.claimer?.username && (
+                                        <div className="text-xs text-muted-foreground truncate">@{pendingReservation.claimer.username}</div>
+                                      )}
+                                      <div className="text-xs text-muted-foreground">
+                                        {t('wishlist_detail.pending_request_since', 'Requested {{time}}', { time: formatClaimTime(pendingReservation.created_at) })}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-end gap-2 flex-wrap">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={Boolean(actingOnPending)}
+                                      onClick={() => pendingReservation.id && handleReservationAction(pendingReservation.id, 'decline')}
+                                    >
+                                      {actingDecline ? <Loader2 className="h-4 w-4 animate-spin" /> : t('notifications.decline', 'Decline')}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      disabled={Boolean(actingOnPending)}
+                                      onClick={() => pendingReservation.id && handleReservationAction(pendingReservation.id, 'approve')}
+                                    >
+                                      {actingApprove ? <Loader2 className="h-4 w-4 animate-spin" /> : t('notifications.approve', 'Approve')}
+                                    </Button>
+                                  </div>
+                                </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          </div>
-                        </CarouselItem>
-                      ))}
+                          </CarouselItem>
+                        );
+                      })}
                     </CarouselContent>
                     {/* Desktop arrows */}
                     <CarouselPrevious className="hidden sm:flex" />

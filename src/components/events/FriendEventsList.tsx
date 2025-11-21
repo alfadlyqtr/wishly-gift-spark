@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { motion, useInView } from "motion/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import "./friend-animated-list.css";
@@ -19,6 +19,7 @@ export type FriendEventsListFriend = {
 type FriendEventsListProps = {
   friends: FriendEventsListFriend[];
   onSelect?: (friendId: string) => void;
+  onScrollContainerReady?: (node: HTMLDivElement | null) => void;
 };
 
 type AnimatedFriendItemProps = {
@@ -40,6 +41,7 @@ const AnimatedFriendItem = ({ friend, index, onSelect }: AnimatedFriendItemProps
       type="button"
       className="friend-card"
       data-index={index}
+      data-friend-id={friend.friendId}
       onClick={() => onSelect?.(friend.friendId)}
       initial={{ scale: 0.9, opacity: 0 }}
       animate={inView ? { scale: 1, opacity: 1 } : { scale: 0.9, opacity: 0 }}
@@ -65,8 +67,15 @@ const AnimatedFriendItem = ({ friend, index, onSelect }: AnimatedFriendItemProps
   );
 };
 
-export const FriendEventsList = ({ friends, onSelect }: FriendEventsListProps) => {
+export const FriendEventsList = ({ friends, onSelect, onScrollContainerReady }: FriendEventsListProps) => {
   const listRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    onScrollContainerReady?.(listRef.current);
+    return () => {
+      onScrollContainerReady?.(null);
+    };
+  }, [onScrollContainerReady]);
 
   return (
     <div className="friends-scroll-list-container">

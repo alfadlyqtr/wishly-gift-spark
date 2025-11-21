@@ -1,10 +1,10 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Pencil, Trash2 } from "lucide-react";
+import { Calendar, Pencil, Trash2, Loader2, Hourglass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,10 @@ import AddButton from "@/components/AddButton";
 import ReactCountryFlag from "react-country-flag";
 import { useProfileData } from "@/hooks/use-profile";
 import BackButton from "@/components/BackButton";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, type CarouselApi } from "@/components/ui/carousel";
+import { toast } from "sonner";
+import { approveReservation, declineReservation, requestUnclaim, approveUnclaim, declineUnclaim } from "@/lib/reservations";
 // General events will be filtered by user's country and is_public_holiday
 
 type MyEvent = {
@@ -39,6 +42,51 @@ type FriendProfileRow = {
   allow_followers_view: boolean | null;
   enforce_wishlist_privacy: boolean | null;
 };
+
+type FriendWishlistItem = {
+  id: string;
+  title: string | null;
+  description: string | null;
+  image_url: string | null;
+  item_url: string | null;
+  brand?: string | null;
+  desire?: number | null;
+};
+
+type FriendWishlistPreviewPayload = {
+  wishlist: {
+    id: string;
+    user_id: string;
+    title: string | null;
+    event_date: string | null;
+    description: string | null;
+    owner?: {
+      full_name?: string | null;
+      username?: string | null;
+      avatar_url?: string | null;
+      allow_friends_claim?: boolean | null;
+      show_countdown_timer?: boolean | null;
+    } | null;
+  } | null;
+  items: FriendWishlistItem[];
+};
+
+type PendingReservation = {
+  id: string;
+  created_at: string | null;
+  itemId: string;
+  itemTitle: string | null;
+  wishlistId: string | null;
+  wishlistTitle: string | null;
+  claimer: {
+    id: string | null;
+    name: string;
+    username: string | null;
+    avatarUrl: string | null;
+  };
+};
+
+const pendingReservationsKey = ["wishlist-reservations", "pending"] as const;
 
 const resolveCountryCode = (input?: string | null): string | null => {
   if (!input) return null;
@@ -610,16 +658,445 @@ const Events = () => {
   const [editDesc, setEditDesc] = useState("");
   const [cardSize, setCardSize] = useState<{ width: number; height: number }>({ width: 300, height: 170 });
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const friendParam = searchParams.get("friend");
+  const [activeTab, setActiveTab] = useState<"mine" | "friends" | "public">(() =>
+    friendParam ? "friends" : "mine"
+  );
+  const [friendsScrollNode, setFriendsScrollNode] = useState<HTMLDivElement | null>(null);
+  const lastFriendsScrollRef = useRef(0);
+  const lastSelectedFriendRef = useRef<string | null>(null);
+  const shouldRestoreScrollRef = useRef(false);
+  const [previewWishlistId, setPreviewWishlistId] = useState<string | null>(null);
+  const [previewClaimedIds, setPreviewClaimedIds] = useState<Set<string>>(new Set());
+  const [previewClaimingId, setPreviewClaimingId] = useState<string | null>(null);
+  const [previewCarouselApi, setPreviewCarouselApi] = useState<CarouselApi | null>(null);
+  const [previewSlide, setPreviewSlide] = useState(0);
+  const [reservationAction, setReservationAction] = useState<{ id: string; type: "approve" | "decline" } | null>(null);
+  const [previewUserReservations, setPreviewUserReservations] = useState<Map<string, { id: string; status: string }>>(new Map());
+  const [previewUnclaimingId, setPreviewUnclaimingId] = useState<string | null>(null);
   useEffect(() => {
     if (!friendsEvents || friendsEvents.length === 0) return;
-  }, [friendsEvents]);
+    if (friendParam) {
+      setActiveTab("friends");
+    }
+  }, [friendsEvents, friendParam]);
 
   const selectedFriend = useMemo(() => {
     if (!selectedFriendId || !friendsEvents) return null;
     return friendsEvents.find((f) => f.friendId === selectedFriendId) ?? null;
   }, [selectedFriendId, friendsEvents]);
 
+  useEffect(() => {
+    if (!friendsEvents) return;
+    if (friendParam) {
+      if (selectedFriendId === friendParam) return;
+      const exists = friendsEvents.some((f) => f.friendId === friendParam);
+      if (exists) {
+        setSelectedFriendId(friendParam);
+        setActiveTab("friends");
+      }
+    } else if (!friendParam && selectedFriendId) {
+      setSelectedFriendId(null);
+    }
+  }, [friendParam, friendsEvents, selectedFriendId]);
+
+  useEffect(() => {
+    if (activeTab !== "friends" && selectedFriendId) {
+      setSelectedFriendId(null);
+      if (searchParams.has("friend")) {
+        const next = new URLSearchParams(searchParams);
+        next.delete("friend");
+        setSearchParams(next, { replace: true });
+      }
+    }
+  }, [activeTab, selectedFriendId, searchParams, setSearchParams]);
+
+  const handleFriendSelect = (friendId: string) => {
+    if (friendsScrollNode) {
+      lastFriendsScrollRef.current = friendsScrollNode.scrollTop;
+    }
+    lastSelectedFriendRef.current = friendId;
+    setSelectedFriendId(friendId);
+    setActiveTab("friends");
+    const next = new URLSearchParams(searchParams);
+    next.set("friend", friendId);
+    setSearchParams(next, { replace: true });
+  };
+
+  const handleFriendBack = () => {
+    shouldRestoreScrollRef.current = true;
+    setSelectedFriendId(null);
+    setActiveTab("friends");
+    if (searchParams.has("friend")) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("friend");
+      setSearchParams(next, { replace: true });
+    }
+  };
+
+  const handleWishlistPreview = (wishlistId: string) => {
+    setPreviewWishlistId(wishlistId);
+  };
+
+  useEffect(() => {
+    if (selectedFriendId || !shouldRestoreScrollRef.current) return;
+    let frame = requestAnimationFrame(() => {
+      if (friendsScrollNode) {
+        friendsScrollNode.scrollTop = lastFriendsScrollRef.current;
+        if (lastSelectedFriendRef.current) {
+          const target = friendsScrollNode.querySelector<HTMLButtonElement>(
+            `[data-friend-id="${lastSelectedFriendRef.current}"]`
+          );
+          target?.focus();
+        }
+      }
+      shouldRestoreScrollRef.current = false;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [selectedFriendId, friendsScrollNode]);
+
   const today = useMemo(() => new Date(), []);
+
+  const { data: pendingReservations = [], isLoading: pendingReservationsLoading } = useQuery<PendingReservation[]>({
+    queryKey: pendingReservationsKey,
+    queryFn: async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) return [];
+      const { data, error } = await (supabase as any)
+        .from('wishlist_reservations')
+        .select(`
+          id,
+          status,
+          created_at,
+          item_id,
+          wishlist_items!inner (
+            id,
+            title,
+            wishlist_id,
+            wishlists!inner (
+              id,
+              title,
+              user_id
+            )
+          ),
+          reserved_by:user_profiles (
+            id,
+            full_name,
+            username,
+            avatar_url
+          )
+        `)
+        .eq('status', 'pending')
+        .eq('wishlist_items.wishlists.user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((row: any) => {
+        const claimer = row?.reserved_by ?? {};
+        const item = row?.wishlist_items ?? {};
+        const wishlist = item?.wishlists ?? {};
+        return {
+          id: row.id as string,
+          created_at: row.created_at ?? null,
+          itemId: row.item_id as string,
+          itemTitle: item?.title ?? null,
+          wishlistId: item?.wishlist_id ?? wishlist?.id ?? null,
+          wishlistTitle: wishlist?.title ?? null,
+          claimer: {
+            id: claimer?.id ?? null,
+            name: claimer?.full_name || claimer?.username || 'Friend',
+            username: claimer?.username ?? null,
+            avatarUrl: claimer?.avatar_url ?? null,
+          },
+        } satisfies PendingReservation;
+      });
+    },
+  });
+
+  const { data: previewData, isLoading: previewLoading } = useQuery<FriendWishlistPreviewPayload | null>({
+    queryKey: ["wishlist-preview", previewWishlistId],
+    enabled: Boolean(previewWishlistId),
+    queryFn: async () => {
+      if (!previewWishlistId) return null;
+      const [{ data: wl, error: wlErr }, { data: items, error: itemsErr }] = await Promise.all([
+        (supabase as any)
+          .from("wishlists")
+          .select("id,user_id,title,description,event_date,owner:user_profiles(full_name,username,avatar_url,allow_friends_claim,show_countdown_timer)")
+          .eq("id", previewWishlistId)
+          .maybeSingle(),
+        supabase
+          .from("wishlist_items")
+          .select("id,title,description,image_url,item_url,brand,desire")
+          .eq("wishlist_id", previewWishlistId)
+          .order("added_at", { ascending: false }),
+      ]);
+      if (wlErr) throw wlErr;
+      if (itemsErr) throw itemsErr;
+      const typedItems = ((items ?? []) as unknown) as FriendWishlistItem[];
+      return {
+        wishlist: wl as FriendWishlistPreviewPayload["wishlist"],
+        items: typedItems,
+      };
+    },
+  });
+
+  const previewWishlist = previewData?.wishlist;
+  const previewOwner = previewWishlist?.owner;
+  const previewItems = previewData?.items ?? [];
+  const previewOpen = Boolean(previewWishlistId);
+  const previewEventDate = useMemo(() => {
+    if (!previewWishlist?.event_date) return null;
+    const d = new Date(previewWishlist.event_date);
+    if (Number.isNaN(d.getTime())) return null;
+    if (i18n.language === "ar") {
+      return d.toLocaleDateString("ar-EG", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      });
+    }
+    return d.toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+  }, [previewWishlist?.event_date, i18n.language]);
+  const handleClosePreview = () => setPreviewWishlistId(null);
+
+  const formatClaimTime = (iso?: string | null) => {
+    if (!iso) return "";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "";
+    const diffMs = Date.now() - date.getTime();
+    if (diffMs < 60000) return t('events.time_just_now', 'Just now');
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 60) return t('events.time_minutes_ago', '{{count}}m ago', { count: mins });
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return t('events.time_hours_ago', '{{count}}h ago', { count: hours });
+    const days = Math.floor(hours / 24);
+    return t('events.time_days_ago', '{{count}}d ago', { count: days });
+  };
+
+  const handleReservationAction = async (reservationId: string, action: "approve" | "decline") => {
+    if (!reservationId) return;
+    setReservationAction({ id: reservationId, type: action });
+    try {
+      if (action === "approve") {
+        await approveReservation(reservationId);
+        toast.success(t('events.claim_approved_toast', 'Claim approved'));
+      } else {
+        await declineReservation(reservationId);
+        toast.success(t('events.claim_declined_toast', 'Claim declined'));
+      }
+      await queryClient.invalidateQueries({ queryKey: pendingReservationsKey });
+    } catch (err: any) {
+      toast.error(err?.message || t('events.claim_action_error', 'Unable to update claim. Please try again.'));
+    } finally {
+      setReservationAction(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!previewOpen) {
+      setPreviewClaimingId(null);
+      setPreviewUnclaimingId(null);
+      setPreviewClaimedIds((prev) => (prev.size === 0 ? prev : new Set<string>()));
+      setPreviewUserReservations(new Map());
+    }
+  }, [previewOpen]);
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    const itemIds = previewItems.map((item) => item.id).filter(Boolean);
+    if (itemIds.length === 0) {
+      setPreviewClaimedIds((prev) => (prev.size === 0 ? prev : new Set<string>()));
+      setPreviewUserReservations(new Map());
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          if (!cancelled) {
+            setPreviewClaimedIds((prev) => (prev.size === 0 ? prev : new Set<string>()));
+            setPreviewUserReservations(new Map());
+          }
+          return;
+        }
+        const { data, error } = await (supabase as any)
+          .from('wishlist_reservations')
+          .select('item_id, id, status, reserved_by_id')
+          .in('item_id', itemIds);
+        if (error) throw error;
+        if (!cancelled) {
+          const nextIds = new Set<string>((data || []).map((row: any) => String(row.item_id)));
+          const userReservations = new Map<string, { id: string; status: string }>();
+          (data || []).forEach((row: any) => {
+            if (row.reserved_by_id === user.id) {
+              userReservations.set(String(row.item_id), { id: row.id, status: row.status });
+            }
+          });
+          setPreviewClaimedIds((prev) => {
+            if (prev.size === nextIds.size && Array.from(nextIds).every((id) => prev.has(id))) {
+              return prev;
+            }
+            return nextIds;
+          });
+          setPreviewUserReservations(userReservations);
+        }
+      } catch {
+        if (!cancelled) {
+          setPreviewClaimedIds((prev) => (prev.size === 0 ? prev : new Set<string>()));
+          setPreviewUserReservations(new Map());
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [previewOpen, previewItems]);
+
+  const previewCountdown = useMemo(() => {
+    if (!previewWishlist?.event_date) return null;
+    const target = new Date(previewWishlist.event_date);
+    if (Number.isNaN(target.getTime())) return null;
+    const diff = target.getTime() - Date.now();
+    if (diff <= 0) return null;
+    const mins = Math.floor(diff / 60000);
+    const days = Math.floor(mins / (60 * 24));
+    const hours = Math.floor((mins % (60 * 24)) / 60);
+    const minutes = mins % 60;
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  }, [previewWishlist?.event_date]);
+
+  const desireEmoji = (d?: number | null) => {
+    const arr = ["😐","😌","🙂","😊","😍"] as const;
+    const idx = typeof d === "number" ? Math.max(0, Math.min(4, d)) : 3;
+    return arr[idx];
+  };
+
+  useEffect(() => {
+    if (!previewCarouselApi) return;
+    const onSelect = () => setPreviewSlide(previewCarouselApi.selectedScrollSnap());
+    onSelect();
+    previewCarouselApi.on("select", onSelect);
+    return () => {
+      try {
+        previewCarouselApi.off("select", onSelect);
+      } catch {}
+    };
+  }, [previewCarouselApi]);
+
+  useEffect(() => {
+    setPreviewSlide(0);
+    if (previewCarouselApi) {
+      try {
+        previewCarouselApi.scrollTo(0, true);
+      } catch {}
+    }
+  }, [previewItems.length, previewCarouselApi]);
+
+  const handlePreviewClaim = async (itemId: string) => {
+    if (!itemId) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        if (previewWishlist?.user_id === user.id) {
+          toast.error(t('giftr.claim_own_error','You cannot claim your own wish.'));
+          return;
+        }
+        if (!(previewOwner?.allow_friends_claim ?? true)) {
+          toast.error(t('giftr.claim_disabled','This friend has disabled claiming.'));
+          return;
+        }
+        setPreviewClaimingId(itemId);
+        try {
+          const { error } = await (supabase as any)
+            .from('wishlist_reservations')
+            .insert({ item_id: itemId, reserved_by_id: user.id, is_anonymous: false, status: 'pending' });
+          if (error) {
+            if (error.code === '23505') {
+              toast.info(t('giftr.claim_already','Looks like someone already claimed this item.'));
+            } else {
+              throw error;
+            }
+          } else {
+            setPreviewClaimedIds((prev) => new Set(prev).add(itemId));
+            if (previewWishlist?.user_id && previewWishlist.user_id !== user.id) {
+              await supabase.from('activities').insert({
+                user_id: previewWishlist.user_id,
+                activity_type: 'wish_claimed',
+                target_id: user.id,
+              } as any);
+            }
+            toast.success(t('giftr.claim_success','Claim request sent — waiting for approval'));
+          }
+        } catch (err: any) {
+          if (!err?.code || err.code !== '23505') {
+            toast.error(err?.message || t('giftr.error','Something went wrong'));
+          }
+        } finally {
+          setPreviewClaimingId(null);
+        }
+        return;
+      }
+    } catch {
+      toast.error(t('giftr.error','Something went wrong'));
+      return;
+    }
+
+    toast.message(t('giftr.cta_title','Want to send a message or claim an item?'), {
+      description: t('giftr.cta_sub',"See your friends' wishlists too."),
+      action: { label: t('giftr.cta_signup','Sign up'), onClick: () => navigate('/signup') },
+      cancel: { label: t('giftr.cta_login','Log in'), onClick: () => navigate('/login') },
+    } as any);
+  };
+
+  const handlePreviewUnclaim = async (itemId: string) => {
+    if (!itemId) return;
+    const reservation = previewUserReservations.get(itemId);
+    if (!reservation) return;
+    
+    setPreviewUnclaimingId(itemId);
+    try {
+      const result = await requestUnclaim(reservation.id);
+      
+      if (result.autoApproved) {
+        // Auto-approved, remove from UI
+        setPreviewClaimedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(itemId);
+          return next;
+        });
+        setPreviewUserReservations((prev) => {
+          const next = new Map(prev);
+          next.delete(itemId);
+          return next;
+        });
+        toast.success(t('giftr.unclaim_success', 'Claim removed'));
+      } else {
+        // Pending approval, update status
+        setPreviewUserReservations((prev) => {
+          const next = new Map(prev);
+          next.set(itemId, { id: reservation.id, status: 'unclaim_requested' });
+          return next;
+        });
+        toast.success(t('giftr.unclaim_requested', 'Unclaim request sent — waiting for approval'));
+      }
+    } catch (err: any) {
+      toast.error(err?.message || t('giftr.error', 'Something went wrong'));
+    } finally {
+      setPreviewUnclaimingId(null);
+    }
+  };
 
   const eventBadge = (title?: string | null) => {
     const t = (title || '').toLowerCase();
@@ -710,7 +1187,7 @@ const Events = () => {
         <h2 className="text-xl sm:text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow">{t('events.title', 'Events')}</h2>
       </div>
 
-      <Tabs defaultValue="mine" className="w-full">
+      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "mine" | "friends" | "public")} className="w-full">
         <TabsList className="grid grid-cols-3 rounded-2xl bg-white/40 backdrop-blur px-1 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] ring-1 ring-white/50 h-10 sm:h-11">
           <TabsTrigger value="mine" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl transition px-3 py-2 text-xs sm:text-sm">{t('events.tab_my', 'My Events')}</TabsTrigger>
           <TabsTrigger value="friends" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl transition px-3 py-2 text-xs sm:text-sm">{t('events.tab_friends', "Friends' Events")}</TabsTrigger>
@@ -778,6 +1255,91 @@ const Events = () => {
               ) : null}
             </CardContent>
           </Card>
+          {(pendingReservationsLoading || pendingReservations.length > 0) && (
+            <Card className="mt-6 border-0 rounded-2xl ring-1 ring-white/40 bg-white/70 backdrop-blur shadow-[0_18px_40px_rgba(0,0,0,0.08)]">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">
+                  {t('events.pending_claims_title', 'Pending claim requests')}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {t('events.pending_claims_caption', 'Approve or decline to let friends know their claim status.')}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {pendingReservationsLoading ? (
+                  <p className="text-sm text-muted-foreground">{t('common.loading', 'Loading...')}</p>
+                ) : pendingReservations.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">{t('events.pending_claims_empty', 'No pending claims right now.')}</p>
+                ) : (
+                  pendingReservations.map((reservation) => {
+                    const isActing = reservationAction?.id === reservation.id;
+                    const actingApprove = isActing && reservationAction?.type === 'approve';
+                    const actingDecline = isActing && reservationAction?.type === 'decline';
+                    return (
+                      <div
+                        key={reservation.id}
+                        className="rounded-2xl bg-white/80 border border-white/60 px-3 py-3 shadow-sm space-y-3"
+                      >
+                        <div className="flex items-start gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={reservation.claimer.avatarUrl || undefined} alt={reservation.claimer.name} />
+                            <AvatarFallback>{reservation.claimer.name?.charAt(0) || 'F'}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-sm font-semibold truncate">
+                                {reservation.claimer.name}
+                                {reservation.claimer.username && (
+                                  <span className="ml-1 text-xs text-muted-foreground truncate">
+                                    @{reservation.claimer.username}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                                {formatClaimTime(reservation.created_at)}
+                              </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {t('events.claim_request_item', 'Item: {{item}}', { item: reservation.itemTitle || t('events.untitled', 'Untitled') })}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {t('events.claim_request_wishlist', 'Wishlist: {{wishlist}}', { wishlist: reservation.wishlistTitle || t('events.untitled', 'Untitled') })}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          {reservation.wishlistId && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/wishlist/${reservation.wishlistId}`)}
+                            >
+                              {t('events.view_wishlist', 'View wishlist')}
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isActing}
+                            onClick={() => handleReservationAction(reservation.id, 'decline')}
+                          >
+                            {actingDecline ? <Loader2 className="h-4 w-4 animate-spin" /> : t('notifications.decline', 'Decline')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={isActing}
+                            onClick={() => handleReservationAction(reservation.id, 'approve')}
+                          >
+                            {actingApprove ? <Loader2 className="h-4 w-4 animate-spin" /> : t('notifications.approve', 'Approve')}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="friends" className="pt-4">
@@ -815,7 +1377,7 @@ const Events = () => {
                 <p className="text-sm text-muted-foreground">{t('events.empty_friends', "No friends' events.")}</p>
               ) : selectedFriend ? (
                 <div className="space-y-4">
-                  <BackButton onClick={() => setSelectedFriendId(null)}>{t('common.back', 'Back')}</BackButton>
+                  <BackButton onClick={handleFriendBack}>{t('common.back', 'Back')}</BackButton>
                   {selectedFriend.wishlists.length > 0 ? (
                     <div className="flex justify-center py-2">
                       <WishlistStack
@@ -823,7 +1385,7 @@ const Events = () => {
                         cardDimensions={{ width: cardSize.width, height: cardSize.height }}
                         cards={selectedFriend.wishlists.map((wl) => ({ id: wl.id, title: wl.title || 'Wishlist' }))}
                         className="-translate-x-2"
-                        onCardOpen={(id) => navigate(`/wishlist/${id}`)}
+                        onCardOpen={handleWishlistPreview}
                       />
                     </div>
                   ) : (
@@ -835,7 +1397,8 @@ const Events = () => {
               ) : (
                 <FriendEventsList
                   friends={friendsEvents!}
-                  onSelect={(friendId) => setSelectedFriendId(friendId)}
+                  onSelect={handleFriendSelect}
+                  onScrollContainerReady={setFriendsScrollNode}
                 />
               )}
             </CardContent>
@@ -1080,6 +1643,181 @@ const Events = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      <Dialog open={previewOpen} onOpenChange={(state) => !state && handleClosePreview()}>
+        <DialogContent className="sm:max-w-lg border-0 bg-transparent shadow-none p-0" aria-describedby={undefined}>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t('wishlist_detail.wishlist','Wishlist')}</DialogTitle>
+          </DialogHeader>
+          {previewLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-label={t('common.loading', 'Loading...')} />
+            </div>
+          ) : previewWishlist ? (
+            <div className="mx-auto w-full max-w-[420px]">
+              <div className="wl-card w-full">
+                <div className="wl-card-surface p-5 text-white" style={{ alignItems: 'flex-start', justifyContent: 'flex-start' }}>
+                  <div className="w-full">
+                    <h2
+                      className="text-3xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_2px_2px_rgba(0,0,0,0.75)] wl-card-title"
+                      style={{ textAlign: 'left', WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+                    >
+                      {previewWishlist.title || t('wishlist_detail.wishlist', 'Wishlist')}
+                    </h2>
+                    {previewEventDate && (
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <p className="mt-2 text-xs font-semibold opacity-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{previewEventDate}</p>
+                        <span className="inline-flex items-center rounded-full bg-white/80 px-2 py-0.5 text-[11px] ring-1 ring-black/10 text-blue-900">
+                          {previewItems.length} {t('giftr.items', 'items')}
+                        </span>
+                        {(previewOwner?.show_countdown_timer ?? true) && previewCountdown && (
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold tracking-wide text-white ring-1 ring-white/30 shadow-[0_8px_18px_rgba(0,0,0,0.25)] bg-gradient-to-r from-[rgba(15,23,42,0.8)] via-[rgba(79,70,229,0.85)] to-[rgba(236,72,153,0.85)]"
+                            aria-label={t('giftr.days_left','days left')}
+                          >
+                            <Hourglass className="h-3.5 w-3.5 text-white/85" aria-hidden />
+                            <span>{previewCountdown}</span>
+                            <span className="text-[10px] text-white/80 uppercase tracking-[0.12em]">
+                              {t('giftr.days_left','days left')}
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {previewWishlist.description && (
+                      <p className="mt-3 text-sm text-white/90 drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{previewWishlist.description}</p>
+                    )}
+                    <div className="mt-4 w-full">
+                      <h3 className="text-base font-semibold drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{t('wishlist_detail.items_title', 'Items')}</h3>
+                      {previewItems.length > 0 ? (
+                        <>
+                          <Carousel opts={{ align: 'start', loop: false }} className="mt-2" setApi={setPreviewCarouselApi}>
+                            <CarouselContent>
+                              {previewItems.map((item) => (
+                                <CarouselItem key={item.id}>
+                                  <div className="rounded-2xl p-[2px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_8px_18px_rgba(0,0,0,0.22)]">
+                                    <div className="rounded-xl bg-black/30 backdrop-blur-sm px-3 py-3 flex items-start gap-3 select-none">
+                                      {item.image_url ? (
+                                        <img
+                                          src={item.image_url}
+                                          alt={item.title || 'Preview'}
+                                          className="h-[80px] w-[80px] rounded-full object-cover ring-2 ring-white/30 shadow-[0_6px_18px_rgba(0,0,0,0.35)]"
+                                        />
+                                      ) : (
+                                        <div className="h-[80px] w-[80px] rounded-full bg-white/20 ring-2 ring-white/30" />
+                                      )}
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <div className="text-base sm:text-lg font-extrabold text-white truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{item.title || t('events.untitled','Untitled')}</div>
+                                          <div className="text-lg" aria-hidden>{desireEmoji((item as any).desire)}</div>
+                                        </div>
+                                        {item.brand && (
+                                          <div className="mt-0.5 text-xs text-white/90 truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{item.brand}</div>
+                                        )}
+                                        {item.description && (
+                                          <div className="mt-1 text-sm text-white/95 line-clamp-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{item.description}</div>
+                                        )}
+                                        {item.item_url && (
+                                          <a href={item.item_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[11px] text-blue-200 underline">
+                                            {t('giftr.view_link', 'View link')}
+                                          </a>
+                                        )}
+                                        {(previewOwner?.allow_friends_claim ?? true) && (
+                                          <div className="mt-2 flex items-center justify-start gap-2">
+                                            {(() => {
+                                              const userReservation = previewUserReservations.get(item.id);
+                                              const isClaimed = previewClaimedIds.has(item.id);
+                                              const isClaiming = previewClaimingId === item.id;
+                                              const isUnclaiming = previewUnclaimingId === item.id;
+                                              
+                                              if (userReservation) {
+                                                return (
+                                                  <>
+                                                    {userReservation.status === 'pending' && (
+                                                      <span className="text-xs text-white/80 bg-white/10 px-2 py-1 rounded">
+                                                        {t('wishlist_detail.pending_claim_badge', 'Pending approval')}
+                                                      </span>
+                                                    )}
+                                                    {userReservation.status === 'approved' && (
+                                                      <>
+                                                        <span className="text-xs text-white/80 bg-emerald-500/20 px-2 py-1 rounded">
+                                                          {t('giftr.claimed_btn', 'Claimed')}
+                                                        </span>
+                                                        <Button
+                                                          size="sm"
+                                                          variant="outline"
+                                                          className="h-8 px-3 bg-white/10 text-white border-white/40"
+                                                          disabled={isUnclaiming}
+                                                          onClick={() => handlePreviewUnclaim(item.id)}
+                                                        >
+                                                          {isUnclaiming ? t('common.loading', 'Loading...') : t('giftr.request_unclaim_btn', 'Request Unclaim')}
+                                                        </Button>
+                                                      </>
+                                                    )}
+                                                    {userReservation.status === 'unclaim_requested' && (
+                                                      <span className="text-xs text-white/80 bg-amber-500/20 px-2 py-1 rounded">
+                                                        {t('giftr.unclaim_pending', 'Unclaim pending approval')}
+                                                      </span>
+                                                    )}
+                                                    {userReservation.status === 'pending' && (
+                                                      <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="h-8 px-3 bg-white/10 text-white border-white/40"
+                                                        disabled={isUnclaiming}
+                                                        onClick={() => handlePreviewUnclaim(item.id)}
+                                                      >
+                                                        {isUnclaiming ? t('common.loading', 'Loading...') : t('giftr.unclaim_btn', 'Unclaim')}
+                                                      </Button>
+                                                    )}
+                                                  </>
+                                                );
+                                              }
+                                              
+                                              return (
+                                                <Button
+                                                  size="sm"
+                                                  className="h-8 px-3 bg-white/20 text-white border border-white/40"
+                                                  disabled={isClaimed || isClaiming}
+                                                  onClick={() => handlePreviewClaim(item.id)}
+                                                >
+                                                  {isClaimed
+                                                    ? t('giftr.claimed_btn', 'Claimed')
+                                                    : isClaiming
+                                                      ? t('common.loading', 'Loading...')
+                                                      : t('giftr.claim_btn', 'Claim')}
+                                                </Button>
+                                              );
+                                            })()}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </CarouselItem>
+                              ))}
+                            </CarouselContent>
+                            <CarouselPrevious className="hidden sm:flex" />
+                            <CarouselNext className="hidden sm:flex" />
+                          </Carousel>
+                          <div className="mt-2 text-center text-[11px] text-white/90">
+                            {previewSlide + 1}/{previewItems.length}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-sm opacity-80 mt-1 text-white">{t('wishlist_detail.no_items', 'No items yet.')}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-sm text-muted-foreground">{t('wishlist_detail.load_error', 'Unable to load wishlist.')}</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

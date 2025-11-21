@@ -171,6 +171,11 @@ const Notifications = () => {
                           ? t('notifications.activity_follow_accepted', 'You accepted a follow request') + ` · ${displayName}`
                           : t('notifications.activity_follow_accepted', 'You accepted a follow request');
                       }
+                      if (type === 'wish_claimed') {
+                        return displayName
+                          ? t('notifications.activity_wish_claimed', 'New claim request') + ` · ${displayName}`
+                          : t('notifications.activity_wish_claimed', 'New claim request');
+                      }
                       switch (type) {
                         case "wish_added":
                           return t('notifications.activity_wish_added', 'You added a new wish');

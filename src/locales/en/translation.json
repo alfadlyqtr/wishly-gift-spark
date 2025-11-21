@@ -237,7 +237,19 @@
     "contains": "This wishlist contains ({{count}}/10)",
     "items_title": "Items",
     "no_items": "No items yet.",
-    "event_date_label": "Event Date"
+    "event_date_label": "Event Date",
+    "claimed_by_badge": "Claimed by {{name}}",
+    "pending_claim_badge": "Pending approval",
+    "pending_request_since": "Requested {{time}}",
+    "owner_pending_helper": "Approve or decline to let friends know their claim status.",
+    "privacy_toggle_aria": "Toggle wishlist privacy",
+    "privacy_disabled_hint": "Followers can currently see every wishlist because \"Let followers see all my wishlists\" is on.",
+    "privacy_go_to_settings": "Adjust in Settings",
+    "privacy_hint": "When \"Respect each wishlist’s privacy setting\" is on in Settings, this toggle keeps this wishlist private.",
+    "privacy_hint_disabled": "Turn on \"Respect each wishlist’s privacy setting\" in Settings to control this per wishlist.",
+    "privacy_toast_private": "Wishlist set to private",
+    "privacy_toast_shared": "Wishlist shared with followers",
+    "privacy_toast_error": "Failed to update privacy"
   }
   ,
   "notifications": {
@@ -254,6 +266,7 @@
     "activity_wishlist_updated": "You updated a wishlist",
     "activity_follow_accepted": "You accepted a follow request",
     "activity_new_follower": "You have a new follower",
+    "activity_wish_claimed": "New claim request",
     "ok": "OK 👍",
     "no_thanks": "No thanks"
   }

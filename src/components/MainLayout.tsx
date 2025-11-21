@@ -60,6 +60,10 @@ export const MainLayout = () => {
           ? `${t("notifications.activity_follow_accepted", "Your follow request was accepted")} · ${name}`
           : t("notifications.activity_follow_accepted", "Your follow request was accepted");
       }
+      if (type === "wish_claimed") {
+        const base = t('notifications.activity_wish_claimed', 'New claim request');
+        return name ? `${base} · ${name}` : base;
+      }
       return null;
     };
 

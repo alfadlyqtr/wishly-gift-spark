@@ -229,6 +229,19 @@ export default function WishlistStack({
                   </button>
                 )}
                 <div className="wl-card-title">{card.title}</div>
+                {viewerMode && (
+                  <button
+                    type="button"
+                    className="wl-viewer-open-btn"
+                    aria-label="Open wishlist"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpen(card.id);
+                    }}
+                  >
+                    Open
+                  </button>
+                )}
                 {!viewerMode && (
                   <div className="flex items-center gap-4">
                     {card.title !== 'My Birthday Wishlist' && (

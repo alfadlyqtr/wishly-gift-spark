@@ -84,6 +84,30 @@
   transform: translateY(-1px);
 }
 
+.wl-viewer-open-btn {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  background: rgba(8, 8, 12, 0.82);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0.35rem 0.85rem;
+  letter-spacing: 0.25px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.wl-viewer-open-btn:hover {
+  background: rgba(8, 8, 12, 0.92);
+  transform: translateY(-1px);
+}
+
 /* Small delete icon next to Open */
 .wl-delete-btn {
   position: absolute;

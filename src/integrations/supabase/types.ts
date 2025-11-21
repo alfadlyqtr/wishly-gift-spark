@@ -1247,21 +1247,27 @@ export type Database = {
           id: string
           is_anonymous: boolean | null
           item_id: string
+          approved_at: string | null
           reserved_by_id: string
+          status: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           is_anonymous?: boolean | null
           item_id: string
+          approved_at?: string | null
           reserved_by_id: string
+          status?: string
         }
         Update: {
           created_at?: string | null
           id?: string
           is_anonymous?: boolean | null
           item_id?: string
+          approved_at?: string | null
           reserved_by_id?: string
+          status?: string
         }
         Relationships: [
           {
