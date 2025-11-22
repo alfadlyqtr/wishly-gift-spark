@@ -1379,7 +1379,7 @@ const Events = () => {
                 <div className="space-y-4">
                   <BackButton onClick={handleFriendBack}>{t('common.back', 'Back')}</BackButton>
                   {selectedFriend.wishlists.length > 0 ? (
-                    <div className="flex justify-center py-2">
+                    <div className="w-full flex flex-col items-center py-2 space-y-2 relative">
                       <WishlistStack
                         viewerMode
                         cardDimensions={{ width: cardSize.width, height: cardSize.height }}
@@ -1387,6 +1387,37 @@ const Events = () => {
                         className="-translate-x-2"
                         onCardOpen={handleWishlistPreview}
                       />
+                      {selectedFriend.wishlists.length > 1 && (
+                        <div className="absolute bottom-[-2.5rem] left-1/2 -translate-x-1/2 text-center text-[11px] text-muted-foreground z-10">
+                          <span className="inline-flex items-center justify-center gap-1 px-4 py-[3px] rounded-full bg-muted/40 border border-border/60 shadow-sm">
+                            <span className="tracking-wide text-[10px]">{"<"} Swipe cards {">"}</span>
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 16 16"
+                              aria-hidden="true"
+                              className="overflow-visible"
+                            >
+                              <g>
+                                <animateTransform
+                                  attributeName="transform"
+                                  type="translate"
+                                  dur="1.1s"
+                                  values="0 0; 3 0; 0 0"
+                                  repeatCount="indefinite"
+                                />
+                                <text
+                                  x="2"
+                                  y="11"
+                                  fontSize="10"
+                                >
+                                  🤚
+                                </text>
+                              </g>
+                            </svg>
+                          </span>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center">
