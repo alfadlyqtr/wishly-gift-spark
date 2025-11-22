@@ -1196,11 +1196,18 @@ const Events = () => {
 
         <TabsContent value="mine" className="pt-4">
           <Card className="border-0 rounded-2xl ring-0 shadow-none bg-transparent sm:ring-1 sm:bg-gradient-to-br sm:from-[hsl(var(--brand-cool-start))]/10 sm:via-[hsl(var(--brand-cool-end))]/10 sm:to-[hsl(var(--brand-warm-end))]/10 sm:shadow-[0_18px_40px_rgba(0,0,0,0.20)] overflow-visible">
-            <CardHeader className="pb-2 sm:pb-3 flex items-center justify-between">
-              <CardTitle className="text-sm sm:text-base font-semibold">{t('events.tab_my', 'My Events')}</CardTitle>
-              <CreateWishlistModal>
-                <AddButton ariaLabel="Add Wishlist" />
-              </CreateWishlistModal>
+            <CardHeader className="pb-2 sm:pb-3">
+              <div className="flex items-center justify-between">
+                <CreateWishlistModal>
+                  <AddButton ariaLabel="Add Wishlist" />
+                </CreateWishlistModal>
+                <CardTitle 
+                  className="text-sm sm:text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                  style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
+                >
+                  {t('events.tab_my', 'My Events')}
+                </CardTitle>
+              </div>
             </CardHeader>
             <CardContent className="pt-2">
               {(myEvents?.length ?? 0) > 0 && (
