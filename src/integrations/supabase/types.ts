@@ -223,25 +223,40 @@ export type Database = {
       }
       events: {
         Row: {
+          country: string | null
+          country_code: string | null
           created_at: string | null
-          event_date: string
+          date: string | null
+          event_date: string | null
           id: string
-          title: string
-          user_id: string
+          is_public_holiday: boolean | null
+          name: string | null
+          title: string | null
+          user_id: string | null
         }
         Insert: {
+          country?: string | null
+          country_code?: string | null
           created_at?: string | null
-          event_date: string
+          date?: string | null
+          event_date?: string | null
           id?: string
-          title: string
-          user_id: string
+          is_public_holiday?: boolean | null
+          name?: string | null
+          title?: string | null
+          user_id?: string | null
         }
         Update: {
+          country?: string | null
+          country_code?: string | null
           created_at?: string | null
-          event_date?: string
+          date?: string | null
+          event_date?: string | null
           id?: string
-          title?: string
-          user_id?: string
+          is_public_holiday?: boolean | null
+          name?: string | null
+          title?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -867,6 +882,21 @@ export type Database = {
           },
         ]
       }
+      public_holiday_updates: {
+        Row: {
+          country_code: string
+          last_updated: string
+        }
+        Insert: {
+          country_code: string
+          last_updated?: string
+        }
+        Update: {
+          country_code?: string
+          last_updated?: string
+        }
+        Relationships: []
+      }
       reactions: {
         Row: {
           created_at: string | null
@@ -1136,30 +1166,66 @@ export type Database = {
       }
       user_profiles: {
         Row: {
+          allow_followers_view: boolean
+          allow_friends_claim: boolean
+          allow_wishlist_sharing: boolean
+          auto_approve_claims: boolean | null
+          auto_approve_unclaims: boolean | null
           avatar_url: string | null
+          country: string | null
           created_at: string | null
           dob: string | null
+          email: string | null
+          enforce_wishlist_privacy: boolean
           full_name: string | null
           id: string
           is_brand: boolean | null
+          is_searchable: boolean
+          receive_notifications: boolean
+          require_follow_approval: boolean
+          show_countdown_timer: boolean
           username: string
         }
         Insert: {
+          allow_followers_view?: boolean
+          allow_friends_claim?: boolean
+          allow_wishlist_sharing?: boolean
+          auto_approve_claims?: boolean | null
+          auto_approve_unclaims?: boolean | null
           avatar_url?: string | null
+          country?: string | null
           created_at?: string | null
           dob?: string | null
+          email?: string | null
+          enforce_wishlist_privacy?: boolean
           full_name?: string | null
           id: string
           is_brand?: boolean | null
+          is_searchable?: boolean
+          receive_notifications?: boolean
+          require_follow_approval?: boolean
+          show_countdown_timer?: boolean
           username: string
         }
         Update: {
+          allow_followers_view?: boolean
+          allow_friends_claim?: boolean
+          allow_wishlist_sharing?: boolean
+          auto_approve_claims?: boolean | null
+          auto_approve_unclaims?: boolean | null
           avatar_url?: string | null
+          country?: string | null
           created_at?: string | null
           dob?: string | null
+          email?: string | null
+          enforce_wishlist_privacy?: boolean
           full_name?: string | null
           id?: string
           is_brand?: boolean | null
+          is_searchable?: boolean
+          receive_notifications?: boolean
+          require_follow_approval?: boolean
+          show_countdown_timer?: boolean
           username?: string
         }
         Relationships: []
@@ -1200,7 +1266,9 @@ export type Database = {
       wishlist_items: {
         Row: {
           added_at: string | null
+          brand: string | null
           description: string | null
+          desire: number | null
           id: string
           image_url: string | null
           item_url: string | null
@@ -1211,7 +1279,9 @@ export type Database = {
         }
         Insert: {
           added_at?: string | null
+          brand?: string | null
           description?: string | null
+          desire?: number | null
           id?: string
           image_url?: string | null
           item_url?: string | null
@@ -1222,7 +1292,9 @@ export type Database = {
         }
         Update: {
           added_at?: string | null
+          brand?: string | null
           description?: string | null
+          desire?: number | null
           id?: string
           image_url?: string | null
           item_url?: string | null
@@ -1243,31 +1315,34 @@ export type Database = {
       }
       wishlist_reservations: {
         Row: {
+          approved_at: string | null
           created_at: string | null
           id: string
           is_anonymous: boolean | null
           item_id: string
-          approved_at: string | null
           reserved_by_id: string
           status: string
+          unclaim_requested_at: string | null
         }
         Insert: {
+          approved_at?: string | null
           created_at?: string | null
           id?: string
           is_anonymous?: boolean | null
           item_id: string
-          approved_at?: string | null
           reserved_by_id: string
           status?: string
+          unclaim_requested_at?: string | null
         }
         Update: {
+          approved_at?: string | null
           created_at?: string | null
           id?: string
           is_anonymous?: boolean | null
           item_id?: string
-          approved_at?: string | null
           reserved_by_id?: string
           status?: string
+          unclaim_requested_at?: string | null
         }
         Relationships: [
           {
