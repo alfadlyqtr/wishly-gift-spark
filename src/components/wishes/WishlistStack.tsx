@@ -23,6 +23,14 @@ function CardRotate({ children, onSendToBack, sensitivity, draggable = true }: C
   const y = useMotionValue(0);
   const rotateX = useTransform(y, [-100, 100], [60, -60]);
   const rotateY = useTransform(x, [-100, 100], [-60, 60]);
+  const [isDragging, setIsDragging] = React.useState(false);
+  
+  // Visual feedback based on drag distance
+  const opacity = useTransform(
+    x,
+    [-sensitivity, 0, sensitivity],
+    [0.5, 1, 0.5]
+  );
 
   function handleDragEnd(_: any, info: any) {
     if (!draggable) return;
@@ -64,14 +72,20 @@ function CardRotate({ children, onSendToBack, sensitivity, draggable = true }: C
   return (
     <motion.div
       className="wl-card-rotate"
-      style={{ x, y, rotateX, rotateY }}
+      style={{ x, y, rotateX, rotateY, opacity }}
       drag={draggable ? true : false}
       dragConstraints={{ top: 0, right: 0, bottom: 0, left: 0 }}
       dragElastic={0.6}
       dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
       whileTap={draggable ? { cursor: 'grabbing', scale: 1.02 } : undefined}
       whileDrag={{ scale: 1.05, zIndex: 10 }}
-      onDragEnd={handleDragEnd}
+      onDragStart={() => setIsDragging(true)}
+      onDragEnd={(e, info) => {
+        handleDragEnd(e, info);
+        // Small delay to prevent click from firing after drag
+        setTimeout(() => setIsDragging(false), 100);
+      }}
+      data-dragging={isDragging}
     >
       {children}
     </motion.div>
@@ -218,7 +232,13 @@ export default function WishlistStack({
           >
             <motion.div
               className="wl-card"
-              onClick={() => {
+              onClick={(e) => {
+                // Check if we were dragging - if so, don't open
+                const wasDragging = (e.currentTarget.closest('[data-dragging]') as HTMLElement)?.dataset.dragging === 'true';
+                if (wasDragging) {
+                  return;
+                }
+                
                 if (viewerMode) {
                   handleOpen(card.id);
                   return;
