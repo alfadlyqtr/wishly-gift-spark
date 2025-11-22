@@ -230,8 +230,18 @@ const Profile = () => {
                     onChange={handleAvatarChange}
                   />
                   <div className="leading-tight">
-                    <div className="text-xl sm:text-2xl md:text-3xl font-extrabold drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]">{data?.profile?.full_name || data?.profile?.username || "Profile"}</div>
-                    <div className="text-xs sm:text-sm md:text-base opacity-95 drop-shadow-[0_2px_3px_rgba(0,0,0,0.85)]">@{data?.profile?.username}</div>
+                    <div 
+                      className="text-xl sm:text-2xl md:text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/95 drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]"
+                      style={{ WebkitTextStroke: '0.6px rgba(255,255,255,0.9)' }}
+                    >
+                      {data?.profile?.full_name || data?.profile?.username || "Profile"}
+                    </div>
+                    <div 
+                      className="text-sm sm:text-base md:text-lg font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/95 drop-shadow-[0_2px_3px_rgba(0,0,0,0.85)]"
+                      style={{ WebkitTextStroke: '0.4px rgba(255,255,255,0.85)' }}
+                    >
+                      @{data?.profile?.username}
+                    </div>
                   </div>
                   </div>
                   <div className="mt-2 w-full sm:w-auto">
@@ -293,7 +303,10 @@ const Profile = () => {
                       return `${weekday}, ${day}${ord(day)} ${month} ${dob.getFullYear()}`;
                     })()}
                   </div>
-                  <div className="text-3xl sm:text-4xl md:text-6xl font-extrabold drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)]">
+                  <div 
+                    className="text-3xl sm:text-4xl md:text-6xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/95 drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)]"
+                    style={{ WebkitTextStroke: '0.8px rgba(255,255,255,0.9)' }}
+                  >
                     {(() => {
                       const dob = data?.profile?.dob ? new Date(data.profile.dob) : null;
                       if (!dob || isNaN(dob.getTime())) return '';
