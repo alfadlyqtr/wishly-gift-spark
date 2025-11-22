@@ -1376,8 +1376,14 @@ const Events = () => {
                   </div>
                 </div>
               ) : (
-                <CardTitle className="text-base font-semibold">{t('events.tab_friends', "Friends' Events")}</CardTitle>
+                <CardTitle 
+                  className="text-base sm:text-lg font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                  style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
+                >
+                  {t('events.tab_friends', "Friends' Events")}
+                </CardTitle>
               )}
+
             </CardHeader>
             <CardContent>
               {loadingFriends ? (
@@ -1450,7 +1456,12 @@ const Events = () => {
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
-                  <CardTitle className="text-base font-semibold">{t('events.tab_general', 'General Events')}</CardTitle>
+                  <CardTitle 
+                    className="text-base sm:text-lg font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                    style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
+                  >
+                    {t('events.tab_general', 'General Events')}
+                  </CardTitle>
                   {profileBundle?.country && (
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                       {(() => {
