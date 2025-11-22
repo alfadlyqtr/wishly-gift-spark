@@ -30,11 +30,30 @@ function CardRotate({ children, onSendToBack, sensitivity, draggable = true }: C
     const offY = info?.offset?.y ?? 0;
     const velX = info?.velocity?.x ?? 0;
     const velY = info?.velocity?.y ?? 0;
+    
+    // Calculate total distance and speed
     const distance = Math.hypot(offX, offY);
     const speed = Math.hypot(velX, velY);
-    const velocityThreshold = 400;
+    
+    // Improved thresholds for mobile swipe gestures
+    const velocityThreshold = 300; // Lower threshold for easier swipes
+    const distanceThreshold = sensitivity * 0.8; // 80% of sensitivity for better responsiveness
+    
+    // Directional swipe detection
+    const isHorizontalSwipe = Math.abs(velX) > Math.abs(velY);
+    const isVerticalSwipe = Math.abs(velY) > Math.abs(velX);
+    
+    // Trigger card change on:
+    // 1. Fast swipe (high velocity)
+    // 2. Long drag (distance threshold)
+    // 3. Directional swipe with moderate speed
+    const shouldSendToBack = 
+      speed > velocityThreshold ||
+      distance > distanceThreshold ||
+      (isHorizontalSwipe && Math.abs(velX) > 200) ||
+      (isVerticalSwipe && Math.abs(velY) > 200);
 
-    if (distance > sensitivity || speed > velocityThreshold) {
+    if (shouldSendToBack) {
       onSendToBack();
     } else {
       x.set(0);
@@ -48,8 +67,10 @@ function CardRotate({ children, onSendToBack, sensitivity, draggable = true }: C
       style={{ x, y, rotateX, rotateY }}
       drag={draggable ? true : false}
       dragConstraints={{ top: 0, right: 0, bottom: 0, left: 0 }}
-      dragElastic={0.7}
-      whileTap={draggable ? { cursor: 'grabbing' } : undefined}
+      dragElastic={0.6}
+      dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
+      whileTap={draggable ? { cursor: 'grabbing', scale: 1.02 } : undefined}
+      whileDrag={{ scale: 1.05, zIndex: 10 }}
       onDragEnd={handleDragEnd}
     >
       {children}
