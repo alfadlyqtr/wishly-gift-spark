@@ -214,7 +214,7 @@ export default function WishlistStack({
             key={card.id}
             onSendToBack={() => sendToBack(card.id)}
             sensitivity={sensitivity}
-            draggable={!viewerMode}
+            draggable={true}
           >
             <motion.div
               className="wl-card"
