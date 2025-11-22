@@ -147,7 +147,10 @@ const Explore = () => {
               <Store className="h-5 w-5 text-white drop-shadow" />
               <span className="absolute -inset-1 rounded-[14px] blur-md bg-gradient-to-br from-[#ffcc70]/20 to-[#c850c0]/10" aria-hidden="true" />
             </div>
-            <h2 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow">
+            <h2 
+              className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+              style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
+            >
               {t('explore.title', 'Explore')}
             </h2>
           </div>
