@@ -231,14 +231,14 @@ const Profile = () => {
                   />
                   <div className="leading-tight">
                     <div 
-                      className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]"
-                      style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.3)' }}
+                      className="text-xl sm:text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]"
+                      style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.85)' }}
                     >
                       {data?.profile?.full_name || data?.profile?.username || "Profile"}
                     </div>
                     <div 
-                      className="text-sm sm:text-base md:text-lg font-extrabold text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.85)]"
-                      style={{ WebkitTextStroke: '0.4px rgba(0,0,0,0.3)' }}
+                      className="text-sm sm:text-base md:text-lg font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_2px_3px_rgba(0,0,0,0.85)]"
+                      style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
                     >
                       @{data?.profile?.username}
                     </div>
@@ -304,8 +304,8 @@ const Profile = () => {
                     })()}
                   </div>
                   <div 
-                    className="text-3xl sm:text-4xl md:text-6xl font-extrabold text-white drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)]"
-                    style={{ WebkitTextStroke: '0.8px rgba(0,0,0,0.3)' }}
+                    className="text-3xl sm:text-4xl md:text-6xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)]"
+                    style={{ WebkitTextStroke: '0.8px rgba(0,0,0,0.85)' }}
                   >
                     {(() => {
                       const dob = data?.profile?.dob ? new Date(data.profile.dob) : null;
