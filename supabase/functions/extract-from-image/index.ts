@@ -1,7 +1,7 @@
 // supabase/functions/extract-from-image/index.ts - GEMINI 2.5 FLASH-LITE CLEAN VERSION
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-// Import the Google Generative AI SDK via npm specifier (supported by Deno)
-import { GoogleGenerativeAI } from 'npm:@google/generative-ai@0.11.3';
+// Import the Google Generative AI SDK via esm.sh CDN (Deno-compatible)
+import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.21.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
