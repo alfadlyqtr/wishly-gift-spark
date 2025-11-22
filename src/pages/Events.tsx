@@ -1184,7 +1184,12 @@ const Events = () => {
           <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-white drop-shadow" />
           <span className="absolute -inset-1 rounded-[14px] blur-md bg-gradient-to-br from-[hsl(var(--brand-warm-end))]/20 to-[hsl(var(--brand-cool-end))]/10" aria-hidden="true" />
         </div>
-        <h2 className="text-xl sm:text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow">{t('events.title', 'Events')}</h2>
+        <h2 
+          className="text-xl sm:text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+          style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
+        >
+          {t('events.title', 'Events')}
+        </h2>
       </div>
 
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "mine" | "friends" | "public")} className="w-full">
