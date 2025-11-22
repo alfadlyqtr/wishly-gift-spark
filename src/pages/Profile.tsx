@@ -237,7 +237,7 @@ const Profile = () => {
                       {data?.profile?.full_name || data?.profile?.username || "Profile"}
                     </div>
                     <div 
-                      className="text-sm sm:text-base md:text-lg font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_2px_3px_rgba(0,0,0,0.85)]"
+                      className="text-base sm:text-lg md:text-xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_2px_3px_rgba(0,0,0,0.85)]"
                       style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
                     >
                       @{data?.profile?.username}
@@ -304,8 +304,8 @@ const Profile = () => {
                     })()}
                   </div>
                   <div 
-                    className="text-3xl sm:text-4xl md:text-6xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)]"
-                    style={{ WebkitTextStroke: '0.8px rgba(0,0,0,0.85)' }}
+                    className="text-4xl sm:text-5xl md:text-7xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)] leading-none"
+                    style={{ WebkitTextStroke: '1px rgba(0,0,0,0.85)' }}
                   >
                     {(() => {
                       const dob = data?.profile?.dob ? new Date(data.profile.dob) : null;
@@ -427,7 +427,22 @@ const Profile = () => {
                   <div className="h-[2px] bg-muted" />
                   <div className="flex items-center justify-between px-5 py-3 text-sm">
                     <p className="text-muted-foreground">{t('auth.country', 'Country/Region')}</p>
-                    <p className="font-medium flex items-center gap-1">{(data?.country || '').toString()}</p>
+                    <p className="font-medium flex items-center gap-2">
+                      {data?.country && (
+                        <ReactCountryFlag 
+                          svg 
+                          countryCode={(() => {
+                            const m: Record<string, string> = { qatar: 'QA', uae: 'AE', 'united arab emirates': 'AE', 'saudi arabia': 'SA', bahrain: 'BH', kuwait: 'KW', oman: 'OM', egypt: 'EG', jordan: 'JO', lebanon: 'LB', 'united states': 'US', usa: 'US', 'united kingdom': 'GB', uk: 'GB', canada: 'CA' };
+                            const n = (data?.country || '').toString().trim().toLowerCase();
+                            if (/^[A-Za-z]{2}$/.test(n)) return n.toUpperCase();
+                            return m[n] ?? '';
+                          })()} 
+                          style={{ width: '18px', height: '14px' }} 
+                          aria-label="country" 
+                        />
+                      )}
+                      <span>{(data?.country || t('common.not_set', 'Not set')).toString()}</span>
+                    </p>
                   </div>
                 </div>
               )}
