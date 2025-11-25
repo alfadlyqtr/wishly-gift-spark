@@ -1,15 +1,18 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import AddButton from "@/components/AddButton";
-import { MessageSquare, Search } from "lucide-react";
+import { MessageSquare, Search, Trash } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Messages = () => {
   const [q, setQ] = useState("");
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const qc = useQueryClient();
+
   const { data } = useQuery({
     queryKey: ["threads"],
     queryFn: async () => {
@@ -17,33 +20,101 @@ const Messages = () => {
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id;
       if (!uid) return [] as any[];
-      // Fetch threads where current user participates, include participants and latest message
+
+      // Fetch all threads current user can see; RLS on threads limits to
+      // threads where auth.uid() is a participant via thread_participants.
       const { data: rows, error } = await supabase
         .from("threads")
         .select(
-          "id,title,created_at, thread_participants!inner(user_id, user_profiles(id, username, full_name, avatar_url)), messages(id, content, user_id, created_at)"
+          "id,title,created_at, thread_participants(user_id, user_profiles(id, username, full_name, avatar_url)), messages(id, content, user_id, created_at)"
         )
-        .eq("thread_participants.user_id", uid)
         .order("created_at", { foreignTable: "messages", ascending: false })
         .limit(1, { foreignTable: "messages" });
-      if (error) throw error;
-      return (rows || []).map((t: any) => {
-        const others = (t.thread_participants || []).map((p: any) => p.user_profiles).filter((u: any) => u?.id && u.id !== uid);
-        const other = others[0] || (t.thread_participants?.[0]?.user_profiles ?? null);
-        const last = (t.messages && t.messages[0]) || null;
+
+      if (error) {
+        console.error("Error loading threads rows:", error);
+        throw error;
+      }
+
+      console.log("Messages.tsx threads raw rows for uid", uid, rows);
+
+      return await Promise.all((rows || []).map(async (row: any) => {
+        const participants = (row.thread_participants || [])
+          .map((p: any) => p.user_profiles)
+          .filter(Boolean);
+        const others = participants.filter((u: any) => u.id !== uid);
+
+        // Prefer an explicit other participant
+        let other: any = others[0] || null;
+
+        // Fallback: if no other participant, infer from messages
+        if (!other && row.messages && (row.messages as any[]).length > 0) {
+          const otherMsg = (row.messages as any[]).find((m: any) => m.user_id && m.user_id !== uid);
+          if (otherMsg) {
+            other = {
+              id: otherMsg.user_id,
+              full_name: null,
+              username: null,
+              avatar_url: null,
+            };
+          }
+        }
+
+        // If we only know the other user's id, fetch their profile so we can show their name
+        if (other && !other.full_name && !other.username && other.id) {
+          try {
+            const { data: prof } = await supabase
+              .from("user_profiles")
+              .select("id, username, full_name, avatar_url")
+              .eq("id", other.id)
+              .maybeSingle();
+            if (prof) {
+              other = prof as any;
+            }
+          } catch {
+            // ignore profile fetch errors; we'll fall back to generic label
+          }
+        }
+
+        let name = "Conversation";
+        let avatar_url: string | null = null;
+
+        if (other) {
+          name = other.full_name || other.username || t('messages.unknown_user', 'Unknown User');
+          avatar_url = other.avatar_url ?? null;
+        } else {
+          // Truly only you in this thread
+          name = t('messages.just_you', 'Just You');
+          avatar_url = null;
+        }
+
+        const last = (row.messages && row.messages[0]) || null;
         return {
-          id: t.id,
-          name: other?.full_name || other?.username || t.title || "Conversation",
+          id: row.id,
+          name: name || row.title || "Conversation",
+          avatar_url,
           last: last?.content || "",
-          time: last?.created_at ? new Date(last.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "",
+          time: last?.created_at
+            ? new Date(last.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            : "",
           unread: 0,
         };
-      });
+      }));
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (threadId: string) => {
+      if (!supabase) return;
+      await supabase.from("threads").delete().eq("id", threadId);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["threads"] });
     },
   });
 
   const threads = useMemo(() => {
-    const list = (data || []) as Array<{ id: string; name: string; last: string; time: string; unread: number }>;
+    const list = (data || []) as Array<{ id: string; name: string; avatar_url?: string; last: string; time: string; unread: number }>;
     if (!q.trim()) return list;
     const k = q.toLowerCase();
     return list.filter((t) =>
@@ -85,30 +156,54 @@ const Messages = () => {
         </div>
       </div>
 
-      <div className="space-y-2">
-        {threads.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => navigate(`/chat/${t.id}`)}
-            className="w-full flex items-center justify-between rounded-xl bg-white/70 backdrop-blur px-3 py-2 ring-1 ring-white/70 hover:shadow-sm"
+      <div className="space-y-3">
+        {threads.map((thread) => {
+          const handleDelete = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (!window.confirm(t('messages.delete_confirm', 'Delete this conversation?'))) return;
+            deleteMutation.mutate(thread.id);
+          };
+
+          return (
+          <div
+            key={thread.id}
+            onClick={() => navigate(`/chat/${thread.id}`)}
+            className="w-full flex items-center justify-between rounded-3xl bg-[rgba(200,80,192,0.04)] backdrop-blur px-5 py-3 border border-[hsl(var(--brand-cool-start))]/35 shadow-md hover:border-[hsl(var(--brand-cool-start))]/70 hover:shadow-lg hover:bg-[rgba(200,80,192,0.08)] transition-all duration-150 cursor-pointer"
           >
-            <div className="flex items-center gap-3">
-              <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white ring-1 ring-white/60">{t.name[0]}</div>
-              <div className="text-left">
-                <div className="font-medium">{t.name}</div>
-                <div className="text-xs text-muted-foreground line-clamp-1">{t.last}</div>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="relative inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] ring-2 ring-white shadow-sm">
+                <Avatar className="h-9 w-9 bg-background">
+                  <AvatarImage src={thread.avatar_url} />
+                  <AvatarFallback className="bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white text-sm font-semibold">
+                    {thread.name[0]}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+              <div className="text-left min-w-0">
+                <div className="font-semibold truncate max-w-[180px] sm:max-w-xs text-foreground">{thread.name}</div>
+                <div className="text-xs text-muted-foreground line-clamp-1">
+                  {thread.last || thread.time
+                    ? thread.last
+                    : thread.name && `Say hi to ${thread.name.split(" ")[0]}`}
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {t.unread > 0 && (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-black text-white text-[11px] px-1">{t.unread}</span>
-              )}
-              <span className="text-xs text-muted-foreground">{t.time}</span>
+            <div className="flex items-center gap-2 shrink-0 ml-2">
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap">{thread.time}</span>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-200 text-red-500 bg-white/80 hover:bg-red-50 hover:border-red-400 text-[11px]"
+              >
+                ×
+              </button>
             </div>
-          </button>
-        ))}
+          </div>
+          );
+        })}
         {threads.length === 0 && (
-          <div className="rounded-2xl bg-white/60 px-3 py-2 text-sm text-muted-foreground">{t('messages.empty_state', 'No conversations yet.')}</div>
+          <div className="rounded-2xl bg-white/60 px-3 py-4 text-center text-sm text-muted-foreground">{t('messages.empty_state', 'No conversations yet.')}</div>
         )}
       </div>
     </div>

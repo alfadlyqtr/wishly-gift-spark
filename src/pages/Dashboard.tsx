@@ -20,9 +20,7 @@ const Dashboard = () => {
 
         const { data, error } = await (supabase as any)
           .from("activities")
-          .select(
-            "id, activity_type, created_at, user_profiles:target_id(id, username, full_name)"
-          )
+          .select("id, activity_type, created_at, target_id")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(1);
@@ -34,8 +32,13 @@ const Dashboard = () => {
         if (lastSeenId === activity.id) return;
 
         const type = String(activity.activity_type || "");
-        const profile = activity.user_profiles as any | undefined;
-        const name = profile?.full_name || profile?.username || "";
+        let name = "";
+        if (activity.target_id) {
+           try {
+             const { data: p } = await supabase.from("user_profiles").select("full_name, username").eq("id", activity.target_id).maybeSingle();
+             if (p) name = (p as any).full_name || (p as any).username || "";
+           } catch {}
+        }
         let message: string | null = null;
 
         if (type === "new_follower") {

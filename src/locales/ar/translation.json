@@ -273,7 +273,21 @@
     "contains": "تحتوي هذه القائمة على ({{count}}/10)",
     "items_title": "العناصر",
     "no_items": "لا توجد عناصر حتى الآن.",
-    "event_date_label": "تاريخ المناسبة"
+    "event_date_label": "تاريخ المناسبة",
+    "privacy_label_shared": "مشاركة مع المتابعين",
+    "privacy_label_private": "قائمة أمنيات خاصة",
+    "privacy_toggle_aria": "تبديل خصوصية القائمة",
+    "privacy_disabled_hint": "يمكن للمتابعين رؤية جميع القوائم حاليًا لأن خيار 'السماح للمتابعين برؤية كل قوائمي' مفعل.",
+    "privacy_go_to_settings": "تعديل في الإعدادات",
+    "privacy_hint": "عند تفعيل 'احترام خصوصية كل قائمة' في الإعدادات، هذا الزر يجعل القائمة خاصة.",
+    "privacy_hint_disabled": "فعل خيار 'احترام خصوصية كل قائمة' في الإعدادات للتحكم في كل قائمة على حدة.",
+    "privacy_toast_private": "تم تعيين القائمة كخاصة",
+    "privacy_toast_shared": "تمت مشاركة القائمة مع المتابعين",
+    "privacy_toast_error": "فشل تحديث الخصوصية",
+    "items_badge": "{{count}} عنصر",
+    "my_birthday_wishlist": "قائمة أمنيات عيد ميلادي",
+    "claimed_by_badge": "تم حجزه من قبل {{name}}",
+    "pending_claim_badge": "بانتظار الموافقة"
   }
   ,
   "notifications": {

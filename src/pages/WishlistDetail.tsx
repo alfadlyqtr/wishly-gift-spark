@@ -94,6 +94,12 @@ const WishlistDetail = () => {
   const fromFriendsTab = Boolean((location as any)?.state?.from === 'friends');
   const isAr = i18n.language?.startsWith('ar');
 
+  const carouselOpts = useMemo(() => ({
+    align: "start" as const,
+    loop: false,
+    direction: isAr ? "rtl" : "ltr",
+  }), [isAr]);
+
   const items = useMemo(() => data?.items ?? [], [data]);
   const reservationKeyDeps = useMemo(() => items.map((item) => item.id).sort().join("|"), [items]);
   const { data: reservationRows = [], isLoading: reservationsLoading } = useQuery({
@@ -445,7 +451,7 @@ const WishlistDetail = () => {
                 const wlTitle = (data?.wishlist?.title || t('wishlist_detail.wishlist','Wishlist')) as string;
                 const possessive = /s$/i.test(name) ? `${name}'` : `${name}'s`;
                 const welcome = isAr
-                  ? `${t('giftr.welcome_to','مرحبًا بكم في')} ${'قائمة أمنيات'} ${name}`
+                  ? `${t('giftr.welcome_to','مرحبًا بكم في')} ${wlTitle} ${name}`
                   : `${t('giftr.welcome_to','Welcome to')} ${possessive} ${wlTitle}`;
                 return (
                   <>
@@ -482,7 +488,7 @@ const WishlistDetail = () => {
             borderRadius={8}
             horizontalPadding={6}
           />
-          <span className="mt-1 text-xs text-white drop-shadow-sm">{isAr ? 'أيام متبقية' : t('giftr.days_left','days left')}</span>
+          <span className="mt-1 text-xs text-white drop-shadow-sm">{isAr ? t('giftr.days_left_ar','أيام متبقية') : t('giftr.days_left','days left')}</span>
         </div>
       )}
 
@@ -496,9 +502,11 @@ const WishlistDetail = () => {
                   <>
                     <h2
                       className="text-3xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_2px_2px_rgba(0,0,0,0.75)] wl-card-title"
-                      style={{ textAlign: 'left', WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+                      style={{ textAlign: isAr ? 'right' : 'left', WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
                     >
-                      {data?.wishlist?.title || "Wishlist"}
+                      {data?.wishlist?.title === "My Birthday Wishlist" 
+                        ? t('wishlist_detail.my_birthday_wishlist', 'My Birthday Wishlist')
+                        : (data?.wishlist?.title || t('wishlist_detail.wishlist','Wishlist'))}
                     </h2>
                     {!isBirthdayWishlist && !isGifterMode && (
                       <button
@@ -569,7 +577,7 @@ const WishlistDetail = () => {
                 <div className="mt-1 flex items-center gap-2">
                   <p className={`mt-2 text-xs font-semibold opacity-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] ${isAr ? 'text-right' : ''}`}>{eventDateText}</p>
                   <span className="inline-flex items-center rounded-full bg-white/80 px-2 py-0.5 text-[11px] ring-1 ring-black/10 text-blue-900">
-                    {items.length} {t('giftr.items','items')}
+                    {t('wishlist_detail.items_badge', '{{count}} items', { count: items.length })}
                   </span>
                 </div>
               )}
@@ -648,11 +656,11 @@ const WishlistDetail = () => {
               )}
 
               <div className="mt-3 w-full">
-                <h3 className={`text-base font-semibold drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] ${isAr ? 'text-right' : ''}`}>{isAr ? 'العناصر' : t('wishlist_detail.items_title', 'Items')}</h3>
+                <h3 className={`text-base font-semibold drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] ${isAr ? 'text-right' : ''}`}>{t('wishlist_detail.items_title', 'Items')}</h3>
                 {items.length > 0 ? (
                   <>
-                  <Carousel opts={{ align: 'start', loop: false }} className="mt-2" setApi={setCarouselApi}>
-                    <CarouselContent>
+                  <Carousel opts={carouselOpts} className="mt-2 relative" setApi={setCarouselApi}>
+                    <CarouselContent className={isAr ? 'ml-0' : '-ml-4'}>
                       {items.map((it) => {
                         const itemReservations = reservationsByItem[it.id] ?? [];
                         const pendingReservation = itemReservations.find((r) => r.status === "pending");
@@ -690,14 +698,14 @@ const WishlistDetail = () => {
                                 </button>
                                 <div className={`min-w-0 flex-1 ${isAr ? 'text-right' : ''}`}>
                                   <div className="flex items-center justify-between gap-2">
-                                    <div className="text-base sm:text-lg font-extrabold text-white truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{it.title || t('events.untitled','Untitled')}</div>
+                                    <div className="text-base sm:text-lg font-extrabold text-white truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]" dir="auto">{it.title || t('events.untitled','Untitled')}</div>
                                     <div className="text-lg" aria-hidden>{desireEmoji((it as any).desire)}</div>
                                   </div>
                                   {(it as any)?.brand && (
-                                    <div className="mt-0.5 text-xs text-white/90 truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{(it as any).brand}</div>
+                                    <div className="mt-0.5 text-xs text-white/90 truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]" dir="auto">{(it as any).brand}</div>
                                   )}
                                   {it.description && (
-                                    <div className="mt-1 text-sm text-white/95 line-clamp-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{it.description}</div>
+                                    <div className="mt-1 text-sm text-white/95 line-clamp-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]" dir="auto">{it.description}</div>
                                   )}
                                   {it.item_url && (
                                     <a href={it.item_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[11px] text-blue-200 underline">
@@ -837,13 +845,25 @@ const WishlistDetail = () => {
                         );
                       })}
                     </CarouselContent>
-                    {/* Desktop arrows */}
-                    <CarouselPrevious className="hidden sm:flex" />
-                    <CarouselNext className="hidden sm:flex" />
+                    <CarouselPrevious className={`absolute bg-black/20 border-none text-white hover:bg-black/40 z-10 ${isAr ? 'right-1 rotate-180' : 'left-1'}`} />
+                    <CarouselNext className={`absolute bg-black/20 border-none text-white hover:bg-black/40 z-10 ${isAr ? 'left-1 rotate-180' : 'right-1'}`} />
                   </Carousel>
                   <div className="mt-2 text-center text-[11px] text-white/90 relative z-10">
                     {slide + 1}/{items.length}
                   </div>
+                  {items.length > 1 && (
+                    <div className="mt-2 flex justify-center relative z-10">
+                      <span className="inline-flex items-center justify-center gap-1 px-3 py-0.5 rounded-full bg-black/20 border border-white/20 shadow-sm backdrop-blur-sm">
+                        <span className="tracking-wide text-[10px] text-white/90">{isAr ? "< اسحب >" : "< Swipe >"}</span>
+                        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" className="text-white/90">
+                          <g>
+                            <animateTransform attributeName="transform" type="translate" dur="1.5s" values="0 0; 3 0; 0 0" repeatCount="indefinite" />
+                            <text x="2" y="11" fontSize="10" fill="currentColor">🤚</text>
+                          </g>
+                        </svg>
+                      </span>
+                    </div>
+                  )}
                   {isGifterMode && items.length > 1 && (
                     <div className="mt-4 flex justify-center gap-1.5 text-white/85 relative z-10">
                       <span className="h-1.5 w-1.5 rounded-full bg-white/40" />

@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Heart, Repeat2, MessageCircle, Users } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
 
 export const SocialWishCard = () => {
@@ -26,9 +26,9 @@ export const SocialWishCard = () => {
       if (ids.length === 0) return [] as any[];
       const { data: items } = await supabase
         .from("wishlist_items")
-        .select("id, title, image_url, created_at, wishlists(id, title, user_profiles(id, username, full_name, avatar_url))")
+        .select("id, title, image_url, added_at, wishlists(id, title, user_profiles(id, username, full_name, avatar_url))")
         .in("wishlists.user_id", ids as any)
-        .order("created_at", { ascending: false })
+        .order("added_at", { ascending: false })
         .limit(3);
       return items || [];
     },
