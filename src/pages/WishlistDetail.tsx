@@ -354,7 +354,7 @@ const WishlistDetail = () => {
     return () => {
       cancelled = true;
     };
-  }, [id, isGifterMode, owner?.full_name, owner?.username, owner?.avatar_url, data?.wishlist?.user_id]);
+  }, [id, isGifterMode, data?.wishlist?.user_id]);
 
   const eventDateText = (() => {
     const d = data?.wishlist?.event_date ? new Date(data.wishlist.event_date) : null;

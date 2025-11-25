@@ -44,19 +44,32 @@ const Messages = () => {
           .filter(Boolean);
         const others = participants.filter((u: any) => u.id !== uid);
 
-        // Prefer an explicit other participant
+        // Prefer an explicit other participant from thread_participants
         let other: any = others[0] || null;
 
-        // Fallback: if no other participant, infer from messages
-        if (!other && row.messages && (row.messages as any[]).length > 0) {
-          const otherMsg = (row.messages as any[]).find((m: any) => m.user_id && m.user_id !== uid);
-          if (otherMsg) {
-            other = {
-              id: otherMsg.user_id,
-              full_name: null,
-              username: null,
-              avatar_url: null,
-            };
+        // Fallback: if no other participant, mirror Chat header logic and
+        // look at recent messages in this thread to find another sender.
+        if (!other) {
+          try {
+            const { data: msgs, error: msgErr } = await supabase
+              .from("messages")
+              .select("user_id")
+              .eq("thread_id", row.id as string)
+              .order("created_at", { ascending: false })
+              .limit(20);
+            if (!msgErr) {
+              const otherMsg = (msgs || []).find((m: any) => m.user_id && m.user_id !== uid);
+              if (otherMsg) {
+                other = {
+                  id: otherMsg.user_id,
+                  full_name: null,
+                  username: null,
+                  avatar_url: null,
+                };
+              }
+            }
+          } catch (e) {
+            console.warn("Messages.tsx: failed to infer other from messages", e);
           }
         }
 

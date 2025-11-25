@@ -27,6 +27,7 @@ const Chat = () => {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [audioPosition, setAudioPosition] = useState<Record<string, number>>({});
   const [audioRate, setAudioRate] = useState<Record<string, number>>({});
+  const [activeReactionFor, setActiveReactionFor] = useState<string | null>(null);
   const qc = useQueryClient();
   const { t, i18n } = useTranslation();
   const [isUploading, setIsUploading] = useState(false);
@@ -48,11 +49,60 @@ const Chat = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("messages")
-        .select("id, content, user_id, created_at, attachment_type, attachment_url, attachment_duration_seconds, attachment_size_bytes")
+        .select("id, content, user_id, created_at, pinned, attachment_type, attachment_url, attachment_duration_seconds, attachment_size_bytes")
         .eq("thread_id", id as string)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];
+    },
+  });
+
+  const [localPinned, setLocalPinned] = useState<Record<string, boolean>>({});
+
+  const pinMutation = useMutation({
+    mutationFn: async ({ messageId, pinned }: { messageId: string; pinned: boolean }) => {
+      if (!supabase) return;
+      const { error } = await supabase
+        .from("messages" as any)
+        .update({ pinned })
+        .eq("id", messageId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["messages", id] });
+    },
+    onError: (error: any, variables) => {
+      console.error("Failed to update pin state", error);
+      if (variables?.messageId) {
+        setLocalPinned((prev) => ({
+          ...prev,
+          [variables.messageId]: !variables.pinned,
+        }));
+      }
+      toast.error(error?.message || t("chat.error_pin", "Failed to save message"));
+    },
+  });
+
+  // Reactions for all messages in this thread
+  const { data: messageReactions = [] } = useQuery({
+    queryKey: ["message-reactions", id, messages.length],
+    enabled: !!supabase && !!id && id !== "new" && !!uid && (messages as any[]).length > 0,
+    queryFn: async () => {
+      try {
+        const ids = (messages as any[]).map((m: any) => m.id);
+        const { data, error } = await supabase
+          .from("message_reactions" as any)
+          .select("id, message_id, user_id, emoji, created_at")
+          .in("message_id", ids as any);
+        if (error) {
+          console.warn("message_reactions query failed", error);
+          return [] as any[];
+        }
+        return data || [];
+      } catch (e) {
+        console.warn("message_reactions query threw", e);
+        return [] as any[];
+      }
     },
   });
 
@@ -163,6 +213,51 @@ const Chat = () => {
     const r = s % 60;
     return `${m}:${r.toString().padStart(2, "0")}`;
   };
+
+  const allowedReactions = ["👍", "❤️", "😂", "😮", "😢", "😡", "🙏"] as const;
+
+  const reactionMutation = useMutation({
+    mutationFn: async ({ messageId, emoji }: { messageId: string; emoji: string }) => {
+      if (!supabase || !uid) return;
+
+      // Find existing reaction by this user on this message
+      const existing = (messageReactions as any[]).find(
+        (r: any) => r.message_id === messageId && r.user_id === uid
+      );
+
+      // If the same emoji is chosen again, remove the reaction
+      if (existing && existing.emoji === emoji) {
+        const { error } = await supabase
+          .from("message_reactions")
+          .delete()
+          .eq("id", existing.id);
+        if (error) throw error;
+        return;
+      }
+
+      if (existing) {
+        const { error } = await supabase
+          .from("message_reactions")
+          .update({ emoji })
+          .eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("message_reactions").insert({
+          message_id: messageId,
+          user_id: uid,
+          emoji,
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["message-reactions", id] });
+    },
+    onError: (error: any) => {
+      console.error("Failed to update reaction", error);
+      toast.error(error?.message || t("chat.error_reaction", "Failed to update reaction"));
+    },
+  });
 
   // Realtime subscription for new messages in this thread
   useEffect(() => {
@@ -557,10 +652,10 @@ const Chat = () => {
         </div>
       ) : (
         <div className="flex-1 min-h-0 flex items-center justify-center">
-        <div className="w-full max-w-2xl rounded-3xl bg-white/90 backdrop-blur shadow-md border border-[hsl(var(--brand-cool-start))]/30 px-4 py-3 flex flex-col">
-          {/* Thread header chip */}
+          <div className="w-full max-w-2xl rounded-3xl bg-white/90 backdrop-blur shadow-md border border-[hsl(var(--brand-cool-start))]/30 px-4 py-3 flex flex-col">
+        {/* Thread header chip */}
           {otherProfile && (
-            <div className="mb-2 flex justify-center">
+            <div className="mb-1 flex flex-col items-center gap-1">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 shadow-sm ring-1 ring-white/70">
                 <Avatar className="h-7 w-7">
                   <AvatarImage src={otherProfile.avatar_url} />
@@ -572,8 +667,11 @@ const Chat = () => {
                   <div className="font-medium leading-tight truncate max-w-[160px]">
                     {otherProfile.full_name || otherProfile.username}
                   </div>
-                  <div className="text-[10px] text-muted-foreground leading-tight">Direct message</div>
+                  <div className="text-[10px] text-muted-foreground leading-tight">{t('chat.direct_message', 'Direct message')}</div>
                 </div>
+              </div>
+              <div className="text-[10px] text-muted-foreground/80">
+                {t('chat.autodelete_notice', 'Messages auto-delete after 7 days unless you pin them.')}
               </div>
             </div>
           )}
@@ -581,12 +679,13 @@ const Chat = () => {
           {/* Messages viewport (scrolls inside the box) */}
           <div
             ref={viewportRef}
-            className="flex-1 min-h-[220px] max-h-[420px] overflow-y-auto rounded-2xl bg-white/70 ring-1 ring-white/70 p-3 space-y-1 mb-2"
+            className="flex-1 min-h-[220px] max-h-[420px] overflow-y-auto rounded-2xl bg-white/70 ring-1 ring-white/70 p-3 space-y-8 mb-2"
           >
             {renderMessages.map((m: any) => {
               const me = uid ? (m.user_id === uid) : (m.user_id === 'demo_me');
               const isImage = m.attachment_type === 'image' && m.attachment_url;
               const isAudio = m.attachment_type === 'audio' && m.attachment_url;
+              const isPinned = localPinned[m.id] ?? !!m.pinned;
               const timeLabel = (() => {
                 const d = new Date(m.created_at);
                 const opts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
@@ -598,89 +697,181 @@ const Chat = () => {
               return (
                 <div
                   key={m.id}
-                  className={`flex w-full ${me ? 'justify-end' : 'justify-start'}`}
+                  className={`flex w-full ${me ? 'justify-end' : 'justify-start'} mb-0`}
                 >
-                  <div
-                    className={`max-w-[78%] rounded-3xl px-3 py-1.5 text-sm shadow-sm whitespace-pre-wrap break-words ${
-                      me
-                        ? 'bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white'
-                        : 'bg-white text-foreground ring-1 ring-black/5'
-                    }`}
-                  >
-                    {isImage && (
-                      <div className="mb-1">
-                        <img
-                          src={m.attachment_url}
-                          alt={t('chat.image_message', 'Image message')}
-                          className="max-h-56 rounded-2xl object-cover"
-                        />
-                      </div>
-                    )}
-                    {isAudio && (
-                      <div className="mb-1 flex flex-col gap-1">
-                        <audio
-                          ref={(el) => {
-                            if (el) audioRefs.current[m.id] = el;
-                          }}
-                          src={m.attachment_url}
-                          {...{ controlsList: 'nodownload' }}
-                          className="hidden"
-                          onTimeUpdate={(e) => handleAudioTimeUpdate(m.id, e.currentTarget)}
-                          onEnded={() => handleAudioEnded(m.id)}
-                        />
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleTogglePlay(m.id)}
-                            className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium shadow-[0_6px_14px_rgba(200,80,192,0.35)] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white"
-                          >
-                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/20">
-                              {playingId === m.id ? (
-                                <Pause className="h-3 w-3" />
-                              ) : (
-                                <Play className="h-3 w-3" />
-                              )}
-                            </span>
-                            <span className="truncate max-w-[80px] text-[11px]">
-                              {m.attachment_duration_seconds
-                                ? t('chat.voice_note_with_duration', '{{seconds}}s voice note', { seconds: m.attachment_duration_seconds })
-                                : t('chat.voice_note', 'Voice note')}
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleSpeed(m.id)}
-                            className="text-[10px] px-2 py-1 rounded-full bg-white/70 text-[hsl(var(--brand-cool-start))] shadow-[0_2px_6px_rgba(0,0,0,0.12)]"
-                          >
-                            {(audioRate[m.id] || 1)}x
-                          </button>
-                        </div>
-                        <div className="flex items-center gap-2 px-1">
-                          <input
-                            type="range"
-                            min={0}
-                            max={m.attachment_duration_seconds || 0}
-                            step={0.1}
-                            value={audioPosition[m.id] ?? 0}
-                            onChange={(e) => handleSeek(m.id, Number(e.target.value))}
-                            className="flex-1 h-1 rounded-full bg-white/40 accent-white"
-                          />
-                          <span className="text-[10px] text-white/90">
-                            {formatSeconds(audioPosition[m.id])}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {m.content && (
-                      <div>{m.content}</div>
-                    )}
+                  <div className="relative group max-w-[78%]">
                     <div
-                      className={`mt-1 text-[10px] text-right ${
-                        me ? 'text-white/80' : 'text-muted-foreground'
+                      className={`w-full rounded-xl pl-3 pr-8 py-1.5 text-sm shadow-sm whitespace-pre-wrap break-words ${
+                        me
+                          ? 'bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white'
+                          : 'bg-white text-foreground ring-1 ring-black/5'
                       }`}
                     >
-                      {timeLabel}
+                      {isImage && (
+                        <div className="mb-1">
+                          <img
+                            src={m.attachment_url}
+                            alt={t('chat.image_message', 'Image message')}
+                            className="max-h-56 rounded-2xl object-cover"
+                          />
+                        </div>
+                      )}
+                      {isAudio && (
+                        <div className="mb-1 flex flex-col gap-1">
+                          <audio
+                            ref={(el) => {
+                              if (el) audioRefs.current[m.id] = el;
+                            }}
+                            src={m.attachment_url}
+                            {...{ controlsList: 'nodownload' }}
+                            className="hidden"
+                            onTimeUpdate={(e) => handleAudioTimeUpdate(m.id, e.currentTarget)}
+                            onEnded={() => handleAudioEnded(m.id)}
+                          />
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePlay(m.id)}
+                              className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium shadow-[0_6px_14px_rgba(200,80,192,0.35)] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white"
+                            >
+                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/20">
+                                {playingId === m.id ? (
+                                  <Pause className="h-3 w-3" />
+                                ) : (
+                                  <Play className="h-3 w-3" />
+                                )}
+                              </span>
+                              <span className="truncate max-w-[80px] text-[11px]">
+                                {m.attachment_duration_seconds
+                                  ? t('chat.voice_note_with_duration', '{{seconds}}s voice note', { seconds: m.attachment_duration_seconds })
+                                  : t('chat.voice_note', 'Voice note')}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSpeed(m.id)}
+                              className="text-[10px] px-2 py-1 rounded-full bg-white/70 text-[hsl(var(--brand-cool-start))] shadow-[0_2px_6px_rgba(0,0,0,0.12)]"
+                            >
+                              {(audioRate[m.id] || 1)}x
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2 px-1">
+                            <input
+                              type="range"
+                              min={0}
+                              max={m.attachment_duration_seconds || 0}
+                              step={0.1}
+                              value={audioPosition[m.id] ?? 0}
+                              onChange={(e) => handleSeek(m.id, Number(e.target.value))}
+                              className="flex-1 h-1 rounded-full bg-white/40 accent-white"
+                              aria-label={t('chat.audio_progress', 'Audio playback progress')}
+                            />
+                            <span className="text-[10px] text-white/90">
+                              {formatSeconds(audioPosition[m.id])}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {m.content && (
+                        <div>{m.content}</div>
+                      )}
+
+                      {/* Aggregated reactions under the bubble */}
+                      {(() => {
+                        const allForMessage = (messageReactions as any[]).filter(
+                          (r: any) => r.message_id === m.id
+                        );
+                        if (allForMessage.length === 0) return null;
+
+                        const byEmoji = new Map<string, { count: number; reactedByMe: boolean }>();
+                        for (const r of allForMessage) {
+                          const entry = byEmoji.get(r.emoji) || { count: 0, reactedByMe: false };
+                          entry.count += 1;
+                          if (r.user_id === uid) entry.reactedByMe = true;
+                          byEmoji.set(r.emoji, entry);
+                        }
+
+                        return (
+                          <div className={`mt-1 flex flex-wrap gap-1 ${me ? 'justify-end' : 'justify-start'}`}>
+                            {Array.from(byEmoji.entries()).map(([emoji, info]) => (
+                              <div
+                                key={emoji}
+                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] shadow-[0_2px_6px_rgba(15,23,42,0.12)] bg-white/90 ${
+                                  info.reactedByMe
+                                    ? 'ring-1 ring-[hsl(var(--brand-cool-start))] text-[hsl(var(--brand-cool-start))]'
+                                    : 'text-foreground/80'
+                                }`}
+                              >
+                                <span>{emoji}</span>
+                                <span className="text-[9px] text-muted-foreground/80">{info.count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+
+                      <div
+                        className={`mt-1 text-[10px] text-right ${
+                          me ? 'text-white/80' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {timeLabel}
+                      </div>
                     </div>
+
+                    {/* Pin + reaction controls */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLocalPinned((prev) => ({
+                          ...prev,
+                          [m.id]: !isPinned,
+                        }));
+                        pinMutation.mutate({ messageId: m.id, pinned: !isPinned });
+                      }}
+                      className={`absolute top-1 right-2 inline-flex items-center justify-center rounded-full border transition-all duration-150 cursor-pointer ${
+                        isPinned
+                          ? 'h-5 w-5 text-[10px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] border-transparent text-white shadow-[0_0_0_1px_rgba(255,255,255,0.9),0_6px_16px_rgba(200,80,192,0.65)] scale-105'
+                          : 'h-4 w-4 text-[9px] bg-white/70 border-slate-200 text-slate-300 shadow-[0_1px_3px_rgba(15,23,42,0.16)] opacity-70 hover:opacity-100'
+                      }`}
+                      aria-label={isPinned ? t('chat.unpin_message', 'Unpin message') : t('chat.pin_message', 'Pin message')}
+                    >
+                      📌
+                    </button>
+
+                    {/* Reaction trigger button & picker */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveReactionFor((prev) => (prev === m.id ? null : m.id))
+                      }
+                      className={`absolute bottom-1 right-2 inline-flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-[9px] text-white shadow-[0_3px_8px_rgba(200,80,192,0.55)] ring-1 ring-white/70 opacity-70 group-hover:opacity-100 transition-opacity`}
+                      aria-label={t('chat.add_reaction', 'Add reaction')}
+                    >
+                      +
+                    </button>
+
+                    {activeReactionFor === m.id && (
+                      <div
+                        className={`absolute -bottom-9 ${
+                          me ? 'right-0' : 'left-0'
+                        } inline-flex items-center gap-1 rounded-full bg-white/95/ backdrop-blur px-2.5 py-1 shadow-[0_10px_25px_rgba(15,23,42,0.15)] ring-1 ring-white/70 z-10`}
+                      >
+                        {allowedReactions.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => {
+                              reactionMutation.mutate({ messageId: m.id, emoji });
+                              setActiveReactionFor(null);
+                            }}
+                            className="h-7 w-7 flex items-center justify-center rounded-full bg-white/90 text-base shadow-[0_2px_5px_rgba(15,23,42,0.15)] hover:bg-[rgba(200,80,192,0.06)] hover:shadow-[0_4px_10px_rgba(200,80,192,0.35)] transition-all"
+                          >
+                            <span>{emoji}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -700,8 +891,9 @@ const Chat = () => {
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   placeholder={t('chat.type_message', 'Type a message')}
-                  className="flex-1 rounded-[10px] border-0 px-3 py-2 text-sm focus:outline-none resize-none min-h-[40px] max-h-[64px] overflow-y-auto"
+                  className="flex-1 rounded-[10px] border-0 px-3 py-2 text-sm focus:outline-none resize-none min-h-[40px] max-h-[64px] overflow-y-auto pr-10"
                   rows={1}
+                  maxLength={200}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
@@ -709,6 +901,9 @@ const Chat = () => {
                     }
                   }}
                 />
+                <span className="pointer-events-none absolute bottom-1 right-3 text-[10px] text-muted-foreground/70">
+                  {text.length}/200
+                </span>
                 {pendingImagePreview && (
                   <div className="mr-1 flex items-center gap-1">
                     <img
@@ -798,7 +993,7 @@ const Chat = () => {
             </div>
           </div>
         </div>
-        </div>
+      </div>
       )}
       </div>
     </>
