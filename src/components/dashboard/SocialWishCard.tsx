@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { formatDistanceToNow } from "date-fns";
 
 export const SocialWishCard = () => {
   const { t } = useTranslation();
@@ -17,6 +18,7 @@ export const SocialWishCard = () => {
   const navigate = useNavigate();
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentText, setCommentText] = useState("");
+  const [likersOpen, setLikersOpen] = useState(false);
 
   const { data } = useQuery({
     queryKey: ["dashboard", "social", "v2"],
@@ -35,33 +37,33 @@ export const SocialWishCard = () => {
       const ids = Array.from(new Set(followedIds));
       if (ids.length === 0) return null as any;
       
-      // First get wishlists from followed users
+      // First get wishlists from followed users, including owner preferences
       const { data: wishlists } = await supabase
         .from("wishlists")
-        .select("id, title, user_id, user_profiles(id, username, full_name, avatar_url, allow_wishlist_sharing)")
+        .select("id, title, event_date, user_id, user_profiles(id, username, full_name, avatar_url, allow_wishlist_sharing, allow_likes, allow_comments)")
         .in("user_id", ids as any);
 
       if (!wishlists || wishlists.length === 0) return null as any;
 
       const wishlistIds = wishlists.map((w: any) => w.id);
 
-      // Then get items from those wishlists
+      // Then get recent items from those wishlists
       const { data: items } = await supabase
         .from("wishlist_items")
         .select("id, title, image_url, added_at, wishlist_id")
         .in("wishlist_id", wishlistIds)
         .order("added_at", { ascending: false })
-        .limit(3);
+        .limit(9);
 
       // For now, show the most recently updated wishlist among followed users
       const primaryWishlistId = (items && items[0]?.wishlist_id) || wishlistIds[0];
       const ownerWishlist = wishlists.find((w: any) => w.id === primaryWishlistId) || wishlists[0];
-      const ownerItems = (items || []).filter((it: any) => it.wishlist_id === ownerWishlist.id).slice(0, 3);
+      const ownerItems = (items || []).filter((it: any) => it.wishlist_id === ownerWishlist.id).slice(0, 9);
 
-      // Likes for this wishlist
+      // Likes for this wishlist with user profiles
       const { data: likes } = await supabase
         .from("wishlist_likes" as any)
-        .select("user_id")
+        .select("user_id, user_profiles(id, username, full_name, avatar_url)")
         .eq("wishlist_id", ownerWishlist.id);
 
       const likesList = likes || [];
@@ -73,6 +75,7 @@ export const SocialWishCard = () => {
         items: ownerItems,
         likesCount,
         likedByMe,
+        likers: likesList,
       } as any;
     },
   });
@@ -101,10 +104,20 @@ export const SocialWishCard = () => {
   }, [queryClient]);
 
   const owner = (data as any)?.wishlist?.user_profiles;
+  const allowLikesPref = owner?.allow_likes !== false;
+  const allowCommentsPref = owner?.allow_comments !== false;
   const wishlistId = (data as any)?.wishlist?.id as string | undefined;
   const likesCount = (data as any)?.likesCount as number | undefined;
   const likedByMe = (data as any)?.likedByMe as boolean | undefined;
   const items = (data as any)?.items as any[] | undefined;
+  const wishlistTitle = (data as any)?.wishlist?.title as string | undefined;
+  const wishlistEventDate = (data as any)?.wishlist?.event_date as string | undefined;
+  const likers = ((data as any)?.likers || []) as any[];
+
+  const latestAddedAt = (items && items.length > 0 && items[0]?.added_at) || undefined;
+  const updatedAgo = latestAddedAt
+    ? formatDistanceToNow(new Date(latestAddedAt), { addSuffix: true })
+    : undefined;
 
   const likeMutation = useMutation({
     mutationFn: async () => {
@@ -241,86 +254,207 @@ export const SocialWishCard = () => {
 
   if (!data || !items || items.length === 0) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-3">
-            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white ring-1 ring-white/60">
-              <Users className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="font-semibold">{t('dashboard.no_recent_activity_title', 'No recent activity')}</p>
-              <p className="text-sm text-muted-foreground">{t('dashboard.no_recent_activity_subtitle', 'Follow friends to see their latest wishes')}</p>
-            </div>
+      <Card className="relative overflow-hidden border-none bg-transparent shadow-none">
+        <div className="rounded-3xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/18 via-[hsl(var(--brand-cool-end))]/14 to-[hsl(var(--brand-warm-end))]/20 p-[1.5px]">
+          <div className="rounded-3xl bg-background/85 backdrop-blur-md border border-white/40 shadow-[0_16px_40px_rgba(15,23,42,0.24)]">
+            <CardHeader className="pb-4 px-4 pt-4">
+              <div className="flex items-center gap-3">
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white shadow-[0_8px_18px_rgba(148,27,184,0.6)] ring-2 ring-white/70">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-semibold tracking-tight">
+                    {t('dashboard.no_recent_activity_title', 'No recent activity')}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {t('dashboard.no_recent_activity_subtitle', 'Follow friends to see their latest wishes')}
+                  </p>
+                </div>
+              </div>
+            </CardHeader>
           </div>
-        </CardHeader>
+        </div>
       </Card>
     );
   }
 
   return (
+    <>
     <Dialog open={commentsOpen} onOpenChange={setCommentsOpen}>
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
+      <Card className="relative overflow-hidden border-none bg-transparent shadow-none">
+        <div className="rounded-3xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/18 via-[hsl(var(--brand-cool-end))]/14 to-[hsl(var(--brand-warm-end))]/20 p-[1.5px]">
+          <div className="rounded-3xl bg-background/85 backdrop-blur-md border border-white/40 shadow-[0_16px_40px_rgba(15,23,42,0.24)]">
+        <CardHeader className="pb-4 px-5 pt-4">
+          <div className="flex items-start gap-3">
+            <Avatar className="h-11 w-11 shadow-[0_6px_14px_rgba(15,23,42,0.35)] ring-2 ring-white/70">
               <AvatarImage src={owner?.avatar_url || ""} />
-              <AvatarFallback className="bg-primary text-primary-foreground">{(owner?.full_name || owner?.username || 'U').charAt(0)}</AvatarFallback>
+              <AvatarFallback className="bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-primary-foreground font-semibold">
+                {(owner?.full_name || owner?.username || 'U').charAt(0)}
+              </AvatarFallback>
             </Avatar>
-            <div>
-              <p className="font-semibold">{owner?.full_name || owner?.username || 'User'}</p>
-              <p className="text-sm text-muted-foreground">{t('dashboard.added_wishes', 'Added {{count}} wishes', { count: (items || []).length })}</p>
+            <div className="min-w-0 flex-1">
+              <p
+                className="flex items-center gap-2 text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_2px_2px_rgba(0,0,0,0.75)] truncate"
+                style={{ WebkitTextStroke: "0.6px rgba(0,0,0,0.9)" }}
+              >
+                <span className="truncate">
+                  {owner?.full_name || owner?.username || 'User'}
+                </span>
+                {wishlistTitle && (
+                  <>
+                    <span className="h-1 w-1 rounded-full bg-white/80" aria-hidden />
+                    <span className="truncate">
+                      {wishlistTitle}
+                    </span>
+                  </>
+                )}
+              </p>
+              <div className="mt-0.5 flex items-center gap-2">
+                {(() => {
+                  if (!wishlistEventDate) return null;
+                  const target = new Date(wishlistEventDate).getTime();
+                  if (Number.isNaN(target)) return null;
+                  const diffDays = Math.ceil((target - Date.now()) / (1000 * 60 * 60 * 24));
+                  if (diffDays < 0) return null;
+                  const label = diffDays === 0
+                    ? t('dashboard.countdown_today', 'Today')
+                    : t('dashboard.countdown_days_left', '{{count}}d left', { count: diffDays });
+                  return (
+                    <span className="inline-flex items-center rounded-full bg-background/80 px-2 py-0.5 text-[11px] text-muted-foreground whitespace-nowrap">
+                      {label}
+                    </span>
+                  );
+                })()}
+                {wishlistId && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-3 text-[11px] font-semibold rounded-full bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white shadow-[0_4px_10px_rgba(15,23,42,0.45)] hover:shadow-[0_6px_14px_rgba(15,23,42,0.55)] hover:brightness-110 border border-white/60"
+                    onClick={() => navigate(`/wishlist/${wishlistId}`)}
+                  >
+                    {t('dashboard.view_wishlist', 'View wishlist')}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pb-3">
-          <div className="grid grid-cols-3 gap-3">
-            {(items || []).map((wish: any) => (
-              <div key={wish.id} className="aspect-square rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-                {wish.image_url ? (
+        <CardContent className="pb-4 px-5">
+          {items && items.length > 0 ? (
+            <div className="flex items-center gap-3">
+              <div className="h-14 w-14 rounded-xl bg-muted/60 flex items-center justify-center overflow-hidden ring-1 ring-white/60 shadow-[0_8px_18px_rgba(15,23,42,0.35)]">
+                {items[0].image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={wish.image_url} alt={wish.title} className="h-full w-full object-cover" />
+                  <img
+                    src={items[0].image_url}
+                    alt={items[0].title}
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
-                  <span className="text-2xl" aria-hidden>🎁</span>
+                  <span className="text-xl" aria-hidden>
+                    🎁
+                  </span>
                 )}
               </div>
-            ))}
-          </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-foreground truncate">
+                  {t('dashboard.feed_added_wishes', 'Added {{count}} new wishes', { count: items.length })}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground truncate">
+                  {(() => {
+                    const maxTitles = 3;
+                    const titles = (items || []).map((it: any) => it.title || t('events.untitled', 'Untitled'));
+                    const shown = titles.slice(0, maxTitles);
+                    const remaining = titles.length - shown.length;
+                    const base = shown.join(' · ');
+                    if (remaining > 0) {
+                      return `${base} · +${remaining} more`;
+                    }
+                    return base;
+                  })()}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {t('dashboard.no_items_yet', 'No wishes yet in this list.')}
+            </p>
+          )}
         </CardContent>
-        <CardFooter className="flex justify-around border-t pt-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex items-center gap-2"
-            onClick={() => likeMutation.mutate()}
-          >
-            <Heart className={`h-4 w-4 ${likedByMe ? 'fill-[#800000] text-[#800000]' : ''}`} />
-            <span className="text-sm">
-              {likesCount && likesCount > 0
-                ? t('dashboard.action_like_count', '{{count}} likes', { count: likesCount })
-                : t('dashboard.action_like', 'Like')}
-            </span>
-          </Button>
+        <CardFooter className="flex justify-between items-center border-t border-border/60 bg-muted/30 px-4 py-3">
+          {allowLikesPref && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-2 rounded-full px-3"
+              onClick={() => likeMutation.mutate()}
+            >
+              <Heart className={`h-4 w-4 ${likedByMe ? 'fill-[#be123c] text-[#be123c]' : 'text-muted-foreground'}`} />
+              <span className="text-sm">
+                {likesCount && likesCount > 0
+                  ? t('dashboard.action_like_count', '{{count}} likes', { count: likesCount })
+                  : t('dashboard.action_like', 'Like')}
+              </span>
+            </Button>
+          )}
           {owner?.allow_wishlist_sharing && (
             <Button
               variant="ghost"
               size="sm"
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 rounded-full px-3"
               onClick={handleShare}
             >
-              <Repeat2 className="h-4 w-4" />
+              <Repeat2 className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm">{t('dashboard.action_share', 'Share')}</span>
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex items-center gap-2"
-            onClick={handleCommentClick}
-          >
-            <MessageCircle className="h-4 w-4" />
-            <span className="text-sm">{t('dashboard.action_comment', 'Comment')}</span>
-          </Button>
+          {allowCommentsPref && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-2 rounded-full px-3"
+              onClick={handleCommentClick}
+            >
+              <MessageCircle className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">{t('dashboard.action_comment', 'Comment')}</span>
+            </Button>
+          )}
         </CardFooter>
+        {allowLikesPref && likesCount > 0 && (
+          <div className="px-4 pb-3">
+            <button
+              type="button"
+              onClick={() => setLikersOpen(true)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <div className="flex -space-x-2">
+                {likers.slice(0, 3).map((liker: any, idx: number) => {
+                  const prof = liker.user_profiles;
+                  const name = prof?.full_name || prof?.username || liker.user_id;
+                  return (
+                    <Avatar key={liker.user_id} className="h-5 w-5 ring-2 ring-background">
+                      <AvatarImage src={prof?.avatar_url || ''} />
+                      <AvatarFallback className="text-[8px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white">
+                        {name?.toString().charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  );
+                })}
+              </div>
+              <span>
+                {t('dashboard.liked_by_preview', 'Liked by {{names}}{{more}}', {
+                  names: likers.slice(0, 2).map((l: any) => {
+                    const prof = l.user_profiles;
+                    return prof?.full_name || prof?.username || 'User';
+                  }).join(', '),
+                  more: likesCount > 2 ? ` and ${likesCount - 2} ${likesCount === 3 ? 'other' : 'others'}` : ''
+                })}
+              </span>
+            </button>
+          </div>
+        )}
+          </div>
+        </div>
       </Card>
 
       {wishlistId && (
@@ -373,5 +507,42 @@ export const SocialWishCard = () => {
         </DialogContent>
       )}
     </Dialog>
+
+    <Dialog open={likersOpen} onOpenChange={setLikersOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t('dashboard.likers_title', 'Liked by')}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {likers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {t('dashboard.likers_empty', 'No likes yet.')}
+            </p>
+          ) : (
+            likers.map((liker: any) => {
+              const prof = liker.user_profiles;
+              const name = prof?.full_name || prof?.username || liker.user_id || 'User';
+              return (
+                <div key={liker.user_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={prof?.avatar_url || ''} />
+                    <AvatarFallback className="text-sm bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white">
+                      {name?.toString().charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold truncate">{name}</div>
+                    {prof?.username && (
+                      <div className="text-xs text-muted-foreground truncate">@{prof.username}</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

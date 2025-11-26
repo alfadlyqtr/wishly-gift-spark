@@ -8,7 +8,7 @@ import FloatingLines from "@/components/FloatingLines";
 import Counter from "@/components/Counter";
 import { useWishlists } from "@/hooks/use-wishlists";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Check, X, Lock, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, Lock, Loader2, Heart, MessageCircle } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, type CarouselApi } from "@/components/ui/carousel";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -66,6 +66,7 @@ const WishlistDetail = () => {
   const [privacyUpdating, setPrivacyUpdating] = useState(false);
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [visibilityPrefs, setVisibilityPrefs] = useState<{ allowFollowersView: boolean; enforceWishlistPrivacy: boolean } | null>(null);
+  const [activeTab, setActiveTab] = useState<"items" | "activity">("items");
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["wishlist-detail", id],
@@ -150,6 +151,81 @@ const WishlistDetail = () => {
       return acc;
     }, {});
   }, [reservationRows]);
+
+  // Wishlist-level likes (for Activity tab)
+  const { data: wishlistLikes = [] } = useQuery({
+    queryKey: ["wishlist-detail", id, "likes"],
+    enabled: Boolean(id),
+    queryFn: async () => {
+      if (!id) return [] as any[];
+      const { data, error } = await (supabase as any)
+        .from("wishlist_likes" as any)
+        .select("user_id, user_profiles(id, full_name, username, avatar_url)")
+        .eq("wishlist_id", id);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Wishlist-level comments (for Activity tab)
+  const { data: wishlistComments = [] } = useQuery({
+    queryKey: ["wishlist-detail", id, "comments"],
+    enabled: Boolean(id),
+    queryFn: async () => {
+      if (!id) return [] as any[];
+      const { data, error } = await (supabase as any)
+        .from("wishlist_comments" as any)
+        .select("id, content, created_at, user_id, user_profiles(id, full_name, username, avatar_url)")
+        .eq("wishlist_id", id)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Item-level likes and comments counts
+  const { data: itemSocialCounts = {} } = useQuery({
+    queryKey: ["wishlist-detail", id, "item-social-counts", reservationKeyDeps],
+    enabled: Boolean(id) && items.length > 0,
+    queryFn: async () => {
+      if (!id || items.length === 0) return {};
+      const itemIds = items.map((item) => item.id).filter(Boolean);
+      if (itemIds.length === 0) return {};
+
+      // Fetch item likes
+      const { data: likesData } = await (supabase as any)
+        .from("item_likes" as any)
+        .select("item_id")
+        .in("item_id", itemIds);
+
+      // Fetch item comments
+      const { data: commentsData } = await (supabase as any)
+        .from("item_comments" as any)
+        .select("item_id")
+        .in("item_id", itemIds);
+
+      // Count by item_id
+      const counts: Record<string, { likes: number; comments: number }> = {};
+      itemIds.forEach((itemId) => {
+        counts[itemId] = { likes: 0, comments: 0 };
+      });
+
+      (likesData || []).forEach((like: any) => {
+        if (counts[like.item_id]) {
+          counts[like.item_id].likes += 1;
+        }
+      });
+
+      (commentsData || []).forEach((comment: any) => {
+        if (counts[comment.item_id]) {
+          counts[comment.item_id].comments += 1;
+        }
+      });
+
+      return counts;
+    },
+  });
+
   const wishlistsOptions = useMemo(
     () => (wishlistsData ?? []).map(w => ({ id: w.id, name: w.title || w.id })),
     [wishlistsData]
@@ -656,12 +732,37 @@ const WishlistDetail = () => {
               )}
 
               <div className="mt-3 w-full">
-                <h3 className={`text-base font-semibold drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] ${isAr ? 'text-right' : ''}`}>{t('wishlist_detail.items_title', 'Items')}</h3>
-                {items.length > 0 ? (
+                <div className="flex items-center justify-between">
+                  <h3 className={`text-base font-semibold drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] ${isAr ? 'text-right' : ''}`}>
+                    {activeTab === 'items'
+                      ? t('wishlist_detail.items_title', 'Items')
+                      : t('wishlist_detail.activity_title', 'Activity')}
+                  </h3>
+                  <div className="inline-flex rounded-full bg-white/20 p-[2px] text-[11px]">
+                    <button
+                      type="button"
+                      className={`px-3 py-1 rounded-full font-semibold transition ${activeTab === 'items' ? 'bg-white text-slate-900 shadow-sm' : 'text-white/80'}`}
+                      onClick={() => setActiveTab('items')}
+                    >
+                      {t('wishlist_detail.tab_items', 'Items')}
+                    </button>
+                    <button
+                      type="button"
+                      className={`px-3 py-1 rounded-full font-semibold transition ${activeTab === 'activity' ? 'bg-white text-slate-900 shadow-sm' : 'text-white/80'}`}
+                      onClick={() => setActiveTab('activity')}
+                    >
+                      {t('wishlist_detail.tab_activity', 'Activity')}
+                    </button>
+                  </div>
+                </div>
+
+                {activeTab === 'items' && (
                   <>
-                  <Carousel opts={carouselOpts} className="mt-2 relative" setApi={setCarouselApi}>
-                    <CarouselContent className={isAr ? 'ml-0' : '-ml-4'}>
-                      {items.map((it) => {
+                  {items.length > 0 ? (
+                    <>
+                    <Carousel opts={carouselOpts} className="mt-2 relative" setApi={setCarouselApi}>
+                      <CarouselContent className={isAr ? 'ml-0' : '-ml-4'}>
+                        {items.map((it) => {
                         const itemReservations = reservationsByItem[it.id] ?? [];
                         const pendingReservation = itemReservations.find((r) => r.status === "pending");
                         const approvedReservation = itemReservations.find((r) => r.status === "approved");
@@ -711,6 +812,22 @@ const WishlistDetail = () => {
                                     <a href={it.item_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[11px] text-blue-200 underline">
                                       {t('giftr.view_link', 'View link')}
                                     </a>
+                                  )}
+                                  {itemSocialCounts[it.id] && (itemSocialCounts[it.id].likes > 0 || itemSocialCounts[it.id].comments > 0) && (
+                                    <div className="mt-2 flex items-center gap-3 text-xs text-white/80">
+                                      {itemSocialCounts[it.id].likes > 0 && (
+                                        <div className="flex items-center gap-1">
+                                          <Heart className="h-3.5 w-3.5 fill-[#be123c] text-[#be123c]" />
+                                          <span>{itemSocialCounts[it.id].likes}</span>
+                                        </div>
+                                      )}
+                                      {itemSocialCounts[it.id].comments > 0 && (
+                                        <div className="flex items-center gap-1">
+                                          <MessageCircle className="h-3.5 w-3.5 text-blue-400" />
+                                          <span>{itemSocialCounts[it.id].comments}</span>
+                                        </div>
+                                      )}
+                                    </div>
                                   )}
                                   {approvedReservation && (
                                     <Badge variant="secondary" className="mt-2 bg-white/90 text-emerald-700 flex items-center gap-1">
@@ -875,123 +992,75 @@ const WishlistDetail = () => {
                 ) : (
                   <p className="text-sm opacity-80 mt-1">{t('wishlist_detail.no_items', 'No items yet.')}</p>
                 )}
+                </>
+                )}
+
+                {activeTab === 'activity' && (
+                  <div className="mt-2 space-y-4 text-sm">
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-white/70 mb-1">
+                        {t('wishlist_detail.activity_likes', 'Likes')}
+                      </h4>
+                      {wishlistLikes.length === 0 ? (
+                        <p className="text-xs text-white/80">
+                          {t('wishlist_detail.activity_likes_empty', 'No likes yet.')}
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                          {wishlistLikes.map((row: any) => {
+                            const prof = row.user_profiles as any;
+                            const name = prof?.full_name || prof?.username || row.user_id;
+                            return (
+                              <div key={row.user_id} className="flex items-center gap-2 rounded-full bg-black/20 px-2 py-1">
+                                <Avatar className="h-6 w-6 ring-1 ring-white/70">
+                                  <AvatarImage src={prof?.avatar_url || ''} />
+                                  <AvatarFallback className="text-[10px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white">
+                                    {name?.toString().charAt(0).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-xs text-white/90 max-w-[120px] truncate">{name}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-white/70 mb-1">
+                        {t('wishlist_detail.activity_comments', 'Comments')}
+                      </h4>
+                      {wishlistComments.length === 0 ? (
+                        <p className="text-xs text-white/80">
+                          {t('wishlist_detail.activity_comments_empty', 'No comments yet.')}
+                        </p>
+                      ) : (
+                        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                          {wishlistComments.map((c: any) => {
+                            const prof = c.user_profiles as any;
+                            const name = prof?.full_name || prof?.username || c.user_id || 'User';
+                            return (
+                              <div key={c.id} className="flex items-start gap-2 text-xs bg-black/15 rounded-xl px-2 py-1.5">
+                                <Avatar className="h-6 w-6 mt-0.5">
+                                  <AvatarImage src={prof?.avatar_url || ''} />
+                                  <AvatarFallback className="text-[10px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white">
+                                    {name?.toString().charAt(0).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold leading-tight truncate">{name}</div>
+                                  <div className="leading-snug text-white/90 break-words">{c.content}</div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-            {!isGifterMode && (
-              <>
-                <div className="absolute bottom-4 right-4">
-                  <button
-                    type="button"
-                    onClick={() => setOpen(true)}
-                    className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center shadow-[0_16px_34px_rgba(0,0,0,0.5)] ring-2 ring-white/30"
-                    aria-label="Add"
-                  >
-                    <Plus className="h-6 w-6" />
-                  </button>
-                </div>
-                <WishAddDialog
-                  open={open}
-                  onOpenChange={setOpen}
-                  wishlists={wishlistsOptions}
-                  fixedWishlistId={data?.wishlist?.id || id || ""}
-                  onSubmit={async ({ wishlistId, title, brand, description, desire, imageFile }) => {
-                    try {
-                      const { data: { user } } = await supabase.auth.getUser();
-                      if (!user) {
-                        toast.error("You must be signed in");
-                        return;
-                      }
-
-                      let publicImageUrl: string | null = null;
-                      if (imageFile) {
-                        const bucket = "wishlist_images";
-                        const filePath = `wishlist-items/${user.id}/${Date.now()}_${imageFile.name}`;
-                        const { error: uploadError } = await supabase.storage
-                          .from(bucket)
-                          .upload(filePath, imageFile, { upsert: false, contentType: imageFile.type });
-                        if (uploadError) throw uploadError;
-                        const { data: pub } = supabase.storage.from(bucket).getPublicUrl(filePath);
-                        publicImageUrl = pub.publicUrl;
-                      }
-
-                      const payload: any = {
-                        title,
-                        brand: brand || null,
-                        description: description || (brand ? `Brand: ${brand}` : null),
-                        image_url: publicImageUrl,
-                        item_url: null,
-                        price: null,
-                        status: null,
-                        wishlist_id: wishlistId,
-                        added_at: new Date().toISOString(),
-                        desire,
-                      };
-                      const { error } = await supabase.from("wishlist_items").insert([payload]);
-                      if (error) throw error;
-                      toast.success("Wish saved");
-                      await refetch();
-                    } catch (e: any) {
-                      toast.error(e?.message || "Failed to save wish");
-                    }
-                  }}
-                />
-              </>
-            )}
-
-            {!isGifterMode && (
-            <WishAddDialog
-              open={editOpen}
-              onOpenChange={(o) => {
-                setEditOpen(o);
-                if (!o) setEditingItem(null);
-              }}
-              wishlists={wishlistsOptions}
-              initialWishlistId={editingItem?.wishlist_id || undefined}
-              onSubmit={async ({ itemId, wishlistId, title, brand, description, desire, imageFile }) => {
-                try {
-                  if (!itemId) return;
-                  const { data: { user } } = await supabase.auth.getUser();
-                  if (!user) {
-                    toast.error("You must be signed in");
-                    return;
-                  }
-
-                  let publicImageUrl: string | undefined;
-                  if (imageFile) {
-                    const bucket = "wishlist_images";
-                    const filePath = `wishlist-items/${user.id}/${Date.now()}_${imageFile.name}`;
-                    const { error: uploadError } = await supabase.storage
-                      .from(bucket)
-                      .upload(filePath, imageFile, { upsert: false, contentType: imageFile.type });
-                    if (uploadError) throw uploadError;
-                    const { data: pub } = supabase.storage.from(bucket).getPublicUrl(filePath);
-                    publicImageUrl = pub.publicUrl;
-                  }
-
-                  const updates: any = {
-                    title,
-                    brand: brand || null,
-                    description: description || (brand ? `Brand: ${brand}` : null),
-                    wishlist_id: wishlistId,
-                    desire,
-                  };
-                  if (typeof publicImageUrl === "string") updates.image_url = publicImageUrl;
-
-                  const { error } = await supabase.from("wishlist_items").update(updates).eq("id", itemId);
-                  if (error) throw error;
-                  toast.success("Wish updated");
-                  await refetch();
-                } catch (e: any) {
-                  toast.error(e?.message || "Failed to update wish");
-                }
-              }}
-              itemId={editingItem?.id || undefined}
-              initialTitle={editingItem?.title || ""}
-              initialBrand={(editingItem as any)?.brand || ""}
-              initialDescription={editingItem?.description || ""}
-              initialDesire={(editingItem as any)?.desire ?? 3}
-              initialImageUrl={editingItem?.image_url || null}
-            />)}
           </div>
         </div>
       </div>
@@ -1022,6 +1091,7 @@ const WishlistDetail = () => {
           </div>
         </div>
       )}
+      </div>
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent>
           <DialogHeader>
@@ -1035,8 +1105,8 @@ const WishlistDetail = () => {
         </DialogContent>
       </Dialog>
     </div>
-    </div>
   );
 };
 
 export default WishlistDetail;
+

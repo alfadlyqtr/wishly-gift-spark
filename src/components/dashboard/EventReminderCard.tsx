@@ -28,7 +28,21 @@ export const EventReminderCard = () => {
         .gte("event_date", today)
         .order("event_date", { ascending: true })
         .limit(1);
-      return (rows && rows[0]) || null;
+
+      if (rows && rows[0]) {
+        return rows[0] as any;
+      }
+
+      // Fallback: if there are no explicit events, use the closest upcoming wishlist event_date
+      const { data: wlRows } = await (supabase as any)
+        .from("wishlists")
+        .select("id, title, event_date")
+        .eq("user_id", uid)
+        .gte("event_date", today)
+        .order("event_date", { ascending: true })
+        .limit(1);
+
+      return (wlRows && wlRows[0]) ? (wlRows[0] as any) : null;
     },
   });
 
@@ -64,11 +78,33 @@ export const EventReminderCard = () => {
 
   if (!data) {
     return (
-      <Card className="overflow-hidden bg-white/80 backdrop-blur ring-1 ring-white/70">
-        <CardContent className="p-5 flex items-center gap-3 text-muted-foreground">
-          <CalendarDays className="h-5 w-5" />
-          <span>{t('dashboard.no_upcoming_events', 'No upcoming events.')}</span>
-        </CardContent>
+      <Card className="relative overflow-hidden border-none bg-transparent shadow-none">
+        <div className="rounded-2xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/18 via-[hsl(var(--brand-cool-end))]/14 to-[hsl(var(--brand-warm-end))]/20 p-[1px]">
+          <div className="rounded-2xl bg-background/80 backdrop-blur-sm border border-white/60 shadow-[0_18px_45px_rgba(15,23,42,0.18)]">
+            <CardContent className="p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white shadow-[0_8px_18px_rgba(148,27,184,0.6)] ring-2 ring-white/80">
+                  <CalendarDays className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">
+                    {t('dashboard.no_upcoming_events', 'No upcoming events.')}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t('dashboard.no_upcoming_events_subtitle', 'Create an event or add a date to a wishlist to see it here.')}
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                className="rounded-full px-3 text-xs font-semibold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white shadow-[0_4px_10px_rgba(15,23,42,0.45)] hover:shadow-[0_6px_14px_rgba(15,23,42,0.55)] border border-white/70"
+                onClick={() => navigate('/events')}
+              >
+                {t('dashboard.create_first_event', 'Create your first event')}
+              </Button>
+            </CardContent>
+          </div>
+        </div>
       </Card>
     );
   }
@@ -110,18 +146,12 @@ export const EventReminderCard = () => {
           </div>
         </div>
         <div className="flex gap-3">
-          <Button 
+          <Button
             onClick={() => navigate('/wishlists')}
             className="flex-1 bg-gradient-to-r from-brand-warm-start to-brand-warm-end border-none text-white hover:shadow-lg transition-all"
           >
             <Gift className="mr-2 h-4 w-4" />
             {t('dashboard.see_wishlists', 'See Wishlists')}
-          </Button>
-          <Button 
-            variant="secondary" 
-            className="flex-1 bg-white text-primary hover:bg-white/90"
-          >
-            {t('dashboard.start_group_gift', 'Start a Group Gift')}
           </Button>
         </div>
       </CardContent>

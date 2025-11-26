@@ -1,7 +1,7 @@
 import { useEffect } from "react";
-import { EventReminderCard } from "@/components/dashboard/EventReminderCard";
 import { SocialWishCard } from "@/components/dashboard/SocialWishCard";
 import { AIRecommendationCard } from "@/components/dashboard/AIRecommendationCard";
+import { RecentActivityCard } from "@/components/dashboard/RecentActivityCard";
 import { LayoutDashboard } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -75,10 +75,8 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-
-      <EventReminderCard />
-      <SocialWishCard />
       <AIRecommendationCard />
+      <RecentActivityCard />
       <SocialWishCard />
     </div>
   );

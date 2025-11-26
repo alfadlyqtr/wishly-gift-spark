@@ -4,13 +4,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import BackButton from "@/components/BackButton";
-import { Bell } from "lucide-react";
+import { Bell, Heart, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { acceptFollowRequest, declineFollowRequest } from "@/lib/follow";
 import { useTranslation } from "react-i18next";
+import { formatDistanceToNow } from "date-fns";
+
+type ActivityFilter = "all" | "follows" | "likes" | "comments";
 
 const Notifications = () => {
   const [uid, setUid] = useState<string | null>(null);
+  const [filter, setFilter] = useState<ActivityFilter>("all");
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
@@ -52,6 +57,67 @@ const Notifications = () => {
     },
   });
 
+  // Fetch likes and comments on user's wishlists
+  const { data: socialActivity = [], isLoading: socialLoading } = useQuery({
+    queryKey: ["notifications", "social", uid],
+    enabled: !!supabase && !!uid,
+    queryFn: async () => {
+      // Get user's wishlists
+      const { data: wishlists } = await supabase
+        .from("wishlists")
+        .select("id, title")
+        .eq("user_id", uid as string);
+
+      if (!wishlists || wishlists.length === 0) return [];
+
+      const wishlistIds = wishlists.map((w: any) => w.id);
+
+      // Get likes on user's wishlists
+      const { data: likes } = await (supabase as any)
+        .from("wishlist_likes")
+        .select("id, user_id, wishlist_id, created_at, user_profiles(id, username, full_name, avatar_url)")
+        .in("wishlist_id", wishlistIds)
+        .neq("user_id", uid) // Exclude self-likes
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      // Get comments on user's wishlists
+      const { data: comments } = await (supabase as any)
+        .from("wishlist_comments")
+        .select("id, user_id, wishlist_id, content, created_at, user_profiles(id, username, full_name, avatar_url)")
+        .in("wishlist_id", wishlistIds)
+        .neq("user_id", uid) // Exclude self-comments
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      // Combine and sort
+      const likeActivities = (likes || []).map((l: any) => ({
+        type: "like",
+        id: `like-${l.id}`,
+        user_id: l.user_id,
+        wishlist_id: l.wishlist_id,
+        created_at: l.created_at,
+        profile: l.user_profiles,
+        wishlist_title: wishlists.find((w: any) => w.id === l.wishlist_id)?.title || "Wishlist",
+      }));
+
+      const commentActivities = (comments || []).map((c: any) => ({
+        type: "comment",
+        id: `comment-${c.id}`,
+        user_id: c.user_id,
+        wishlist_id: c.wishlist_id,
+        content: c.content,
+        created_at: c.created_at,
+        profile: c.user_profiles,
+        wishlist_title: wishlists.find((w: any) => w.id === c.wishlist_id)?.title || "Wishlist",
+      }));
+
+      return [...likeActivities, ...commentActivities].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    },
+  });
+
   const approve = useMutation({
     mutationFn: (fromUserId: string) => acceptFollowRequest(fromUserId),
     onSuccess: () => {
@@ -82,6 +148,54 @@ const Notifications = () => {
           </h2>
         </div>
         <BackButton onClick={() => navigate('/dashboard')}>{t('common.back', 'Back')}</BackButton>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+        <button
+          type="button"
+          onClick={() => setFilter("all")}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition whitespace-nowrap ${
+            filter === "all"
+              ? "bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-white shadow-sm"
+              : "bg-white/70 text-foreground hover:bg-white/90"
+          }`}
+        >
+          {t("notifications.filter_all", "All")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilter("follows")}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition whitespace-nowrap ${
+            filter === "follows"
+              ? "bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-white shadow-sm"
+              : "bg-white/70 text-foreground hover:bg-white/90"
+          }`}
+        >
+          {t("notifications.filter_follows", "Follows")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilter("likes")}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition whitespace-nowrap ${
+            filter === "likes"
+              ? "bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-white shadow-sm"
+              : "bg-white/70 text-foreground hover:bg-white/90"
+          }`}
+        >
+          {t("notifications.filter_likes", "Likes")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilter("comments")}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition whitespace-nowrap ${
+            filter === "comments"
+              ? "bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-white shadow-sm"
+              : "bg-white/70 text-foreground hover:bg-white/90"
+          }`}
+        >
+          {t("notifications.filter_comments", "Comments")}
+        </button>
       </div>
 
       {/* Approvals Section */}
@@ -138,12 +252,74 @@ const Notifications = () => {
         </div>
 
         {/* Activity Feed */}
-        {isLoading ? (
+        {isLoading || socialLoading ? (
           <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 text-sm text-muted-foreground">{t('common.loading', 'Loading...')}</div>
-        ) : (data as any[]).length === 0 && (pendingFollowData as any[]).length === 0 ? (
-          <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 text-sm text-muted-foreground">{t('notifications.all_caught_up', "You're all caught up.")}</div>
-        ) : (
-          (data as any[]).map((a: any) => (
+        ) : (() => {
+          // Merge and filter activities
+          const followActivities = (data as any[]).map((a: any) => ({ ...a, activityType: "follow" }));
+          const allActivities = [...followActivities, ...socialActivity].sort(
+            (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+
+          const filteredActivities = allActivities.filter((a: any) => {
+            if (filter === "all") return true;
+            if (filter === "follows") return a.activityType === "follow";
+            if (filter === "likes") return a.type === "like";
+            if (filter === "comments") return a.type === "comment";
+            return true;
+          });
+
+          if (filteredActivities.length === 0 && (pendingFollowData as any[]).length === 0) {
+            return (
+              <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 text-sm text-muted-foreground">
+                {t('notifications.all_caught_up', "You're all caught up.")}
+              </div>
+            );
+          }
+
+          return filteredActivities.map((a: any) => {
+            // Render social activity (likes/comments)
+            if (a.type === "like" || a.type === "comment") {
+              const prof = a.profile;
+              const name = prof?.full_name || prof?.username || "User";
+              const timeAgo = formatDistanceToNow(new Date(a.created_at), { addSuffix: true });
+
+              return (
+                <div key={a.id} className="flex items-start gap-3 rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-3">
+                  <Avatar className="h-9 w-9 mt-0.5">
+                    <AvatarImage src={prof?.avatar_url || ""} />
+                    <AvatarFallback className="text-xs bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white">
+                      {name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      {a.type === "like" ? (
+                        <Heart className="h-4 w-4 text-[#be123c] fill-[#be123c]" />
+                      ) : (
+                        <MessageCircle className="h-4 w-4 text-blue-600" />
+                      )}
+                      <span className="font-semibold truncate">{name}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {a.type === "like"
+                          ? t("notifications.liked_your_wishlist", "liked your wishlist")
+                          : t("notifications.commented_on_wishlist", "commented on your wishlist")}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate mt-0.5">
+                      {a.wishlist_title}
+                    </div>
+                    {a.type === "comment" && a.content && (
+                      <div className="text-sm text-foreground mt-1 line-clamp-2">"{a.content}"</div>
+                    )}
+                    <div className="text-xs text-muted-foreground mt-1">{timeAgo}</div>
+                  </div>
+                </div>
+              );
+            }
+
+            // Render follow activity (existing code)
+            return (
             <div key={a.id} className="flex items-center justify-between rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-3">
               <div className="flex items-center gap-3 min-w-0">
                 {a.user_profiles ? (
@@ -205,8 +381,9 @@ const Notifications = () => {
                 </div>
               </div>
             </div>
-          ))
-        )}
+            );
+          });
+        })()}
       </div>
     </div>
   );
