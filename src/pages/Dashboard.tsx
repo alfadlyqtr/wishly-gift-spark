@@ -75,8 +75,8 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-      <AIRecommendationCard />
       <RecentActivityCard />
+      <AIRecommendationCard />
       <SocialWishCard />
     </div>
   );

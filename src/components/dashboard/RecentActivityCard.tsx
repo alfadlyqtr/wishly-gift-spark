@@ -27,57 +27,39 @@ export const RecentActivityCard = () => {
 
       const wishlistIds = wishlists.map((w: any) => w.id);
 
-      // Get recent likes on user's wishlists
+      // Get likes on user's wishlists (we need wishlist_id + created_at to know which list was liked)
       const { data: likes } = await supabase
         .from("wishlist_likes" as any)
-        .select("id, user_id, wishlist_id, created_at, user_profiles(id, username, full_name, avatar_url)")
+        .select("id, wishlist_id, created_at")
         .in("wishlist_id", wishlistIds)
-        .neq("user_id", uid) // Exclude self-likes
+        .neq("user_id", uid)
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(20);
 
-      // Get recent comments on user's wishlists
+      // Get comments on user's wishlists (count only)
       const { data: comments } = await supabase
         .from("wishlist_comments" as any)
-        .select("id, user_id, wishlist_id, content, created_at, user_profiles(id, username, full_name, avatar_url)")
+        .select("id")
         .in("wishlist_id", wishlistIds)
-        .neq("user_id", uid) // Exclude self-comments
-        .order("created_at", { ascending: false })
-        .limit(5);
+        .neq("user_id", uid);
 
-      // Combine and sort by created_at
-      const likeActivities = (likes || []).map((l: any) => ({
-        type: "like",
-        id: l.id,
-        user_id: l.user_id,
-        wishlist_id: l.wishlist_id,
-        created_at: l.created_at,
-        profile: l.user_profiles,
-        wishlist_title: wishlists.find((w: any) => w.id === l.wishlist_id)?.title || "Wishlist",
-      }));
+      const likesCount = likes?.length || 0;
 
-      const commentActivities = (comments || []).map((c: any) => ({
-        type: "comment",
-        id: c.id,
-        user_id: c.user_id,
-        wishlist_id: c.wishlist_id,
-        content: c.content,
-        created_at: c.created_at,
-        profile: c.user_profiles,
-        wishlist_title: wishlists.find((w: any) => w.id === c.wishlist_id)?.title || "Wishlist",
-      }));
+      // Determine which wishlist was most recently liked
+      let latestLikedTitle: string | null = null;
+      if (likes && likes.length > 0) {
+        const latest = likes[0] as any;
+        const wl = (wishlists as any[]).find((w) => w.id === latest.wishlist_id);
+        latestLikedTitle = (wl && wl.title) || null;
+      }
 
-      const allActivities = [...likeActivities, ...commentActivities].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-
-      return allActivities.slice(0, 10);
+      return {
+        likesCount,
+        commentsCount: comments?.length || 0,
+        latestLikedTitle,
+      } as { likesCount: number; commentsCount: number; latestLikedTitle: string | null };
     },
   });
-
-  if (!data || data.length === 0) {
-    return null;
-  }
 
   return (
     <Card>
@@ -86,45 +68,37 @@ export const RecentActivityCard = () => {
           {t("dashboard.recent_activity_title", "Your recent activity")}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {data.map((activity: any) => {
-          const prof = activity.profile;
-          const name = prof?.full_name || prof?.username || "User";
-          const timeAgo = formatDistanceToNow(new Date(activity.created_at), { addSuffix: true });
-
-          return (
-            <div key={`${activity.type}-${activity.id}`} className="flex items-start gap-3 text-sm">
-              <Avatar className="h-9 w-9 mt-0.5">
-                <AvatarImage src={prof?.avatar_url || ""} />
-                <AvatarFallback className="text-xs bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white">
-                  {name.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  {activity.type === "like" ? (
-                    <Heart className="h-4 w-4 text-[#be123c] fill-[#be123c]" />
-                  ) : (
-                    <MessageCircle className="h-4 w-4 text-blue-600" />
-                  )}
-                  <span className="font-semibold truncate">{name}</span>
-                  <span className="text-muted-foreground">
-                    {activity.type === "like"
-                      ? t("dashboard.activity_liked", "liked")
-                      : t("dashboard.activity_commented", "commented on")}
-                  </span>
-                </div>
-                <div className="text-xs text-muted-foreground truncate mt-0.5">
-                  {activity.wishlist_title}
-                </div>
-                {activity.type === "comment" && activity.content && (
-                  <div className="text-sm text-foreground mt-1 line-clamp-2">"{activity.content}"</div>
-                )}
-                <div className="text-xs text-muted-foreground mt-1">{timeAgo}</div>
-              </div>
+      <CardContent className="space-y-2">
+        {!data ? (
+          <div className="text-sm text-muted-foreground text-center py-4">
+            {t("dashboard.no_recent_activity", "No recent activity on your wishlists yet")}
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 text-sm">
+              <Heart className="h-4 w-4 text-[#be123c] fill-[#be123c]" />
+              <span className="font-semibold">{data.likesCount}</span>
+              <span className="text-muted-foreground">
+                {data.likesCount === 0
+                  ? t("dashboard.activity_likes_count", "likes on your wishlists")
+                  : data.likesCount === 1 && data.latestLikedTitle
+                    ? t(
+                        "dashboard.activity_likes_single",
+                        "like on {{title}}",
+                        { title: data.latestLikedTitle }
+                      )
+                    : t("dashboard.activity_likes_count", "likes on your wishlists")}
+              </span>
             </div>
-          );
-        })}
+            <div className="flex items-center gap-2 text-sm">
+              <MessageCircle className="h-4 w-4 text-blue-600" />
+              <span className="font-semibold">{data.commentsCount}</span>
+              <span className="text-muted-foreground">
+                {t("dashboard.activity_comments_count", "comments on your wishlists")}
+              </span>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

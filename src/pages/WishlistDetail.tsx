@@ -160,7 +160,7 @@ const WishlistDetail = () => {
       if (!id) return [] as any[];
       const { data, error } = await (supabase as any)
         .from("wishlist_likes" as any)
-        .select("user_id, user_profiles(id, full_name, username, avatar_url)")
+        .select("user_id")
         .eq("wishlist_id", id);
       if (error) throw error;
       return data || [];
@@ -175,7 +175,7 @@ const WishlistDetail = () => {
       if (!id) return [] as any[];
       const { data, error } = await (supabase as any)
         .from("wishlist_comments" as any)
-        .select("id, content, created_at, user_id, user_profiles(id, full_name, username, avatar_url)")
+        .select("id, content, created_at, user_id")
         .eq("wishlist_id", id)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -996,66 +996,20 @@ const WishlistDetail = () => {
                 )}
 
                 {activeTab === 'activity' && (
-                  <div className="mt-2 space-y-4 text-sm">
-                    <div>
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-white/70 mb-1">
-                        {t('wishlist_detail.activity_likes', 'Likes')}
-                      </h4>
-                      {wishlistLikes.length === 0 ? (
-                        <p className="text-xs text-white/80">
-                          {t('wishlist_detail.activity_likes_empty', 'No likes yet.')}
-                        </p>
-                      ) : (
-                        <div className="flex flex-wrap items-center gap-2">
-                          {wishlistLikes.map((row: any) => {
-                            const prof = row.user_profiles as any;
-                            const name = prof?.full_name || prof?.username || row.user_id;
-                            return (
-                              <div key={row.user_id} className="flex items-center gap-2 rounded-full bg-black/20 px-2 py-1">
-                                <Avatar className="h-6 w-6 ring-1 ring-white/70">
-                                  <AvatarImage src={prof?.avatar_url || ''} />
-                                  <AvatarFallback className="text-[10px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white">
-                                    {name?.toString().charAt(0).toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="text-xs text-white/90 max-w-[120px] truncate">{name}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                  <div className="mt-2 space-y-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Heart className="h-4 w-4 text-[#be123c] fill-[#be123c]" />
+                      <span className="font-semibold text-white">{wishlistLikes.length}</span>
+                      <span className="text-white/80 text-xs">
+                        {t('wishlist_detail.activity_likes_count', 'likes')}
+                      </span>
                     </div>
-
-                    <div>
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-white/70 mb-1">
-                        {t('wishlist_detail.activity_comments', 'Comments')}
-                      </h4>
-                      {wishlistComments.length === 0 ? (
-                        <p className="text-xs text-white/80">
-                          {t('wishlist_detail.activity_comments_empty', 'No comments yet.')}
-                        </p>
-                      ) : (
-                        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                          {wishlistComments.map((c: any) => {
-                            const prof = c.user_profiles as any;
-                            const name = prof?.full_name || prof?.username || c.user_id || 'User';
-                            return (
-                              <div key={c.id} className="flex items-start gap-2 text-xs bg-black/15 rounded-xl px-2 py-1.5">
-                                <Avatar className="h-6 w-6 mt-0.5">
-                                  <AvatarImage src={prof?.avatar_url || ''} />
-                                  <AvatarFallback className="text-[10px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white">
-                                    {name?.toString().charAt(0).toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-semibold leading-tight truncate">{name}</div>
-                                  <div className="leading-snug text-white/90 break-words">{c.content}</div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4 text-blue-400" />
+                      <span className="font-semibold text-white">{wishlistComments.length}</span>
+                      <span className="text-white/80 text-xs">
+                        {t('wishlist_detail.activity_comments_count', 'comments')}
+                      </span>
                     </div>
                   </div>
                 )}

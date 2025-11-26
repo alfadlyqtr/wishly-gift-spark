@@ -75,7 +75,7 @@ const Notifications = () => {
       // Get likes on user's wishlists
       const { data: likes } = await (supabase as any)
         .from("wishlist_likes")
-        .select("id, user_id, wishlist_id, created_at, user_profiles(id, username, full_name, avatar_url)")
+        .select("id, user_id, wishlist_id, created_at")
         .in("wishlist_id", wishlistIds)
         .neq("user_id", uid) // Exclude self-likes
         .order("created_at", { ascending: false })
@@ -84,7 +84,7 @@ const Notifications = () => {
       // Get comments on user's wishlists
       const { data: comments } = await (supabase as any)
         .from("wishlist_comments")
-        .select("id, user_id, wishlist_id, content, created_at, user_profiles(id, username, full_name, avatar_url)")
+        .select("id, user_id, wishlist_id, content, created_at")
         .in("wishlist_id", wishlistIds)
         .neq("user_id", uid) // Exclude self-comments
         .order("created_at", { ascending: false })
@@ -97,7 +97,6 @@ const Notifications = () => {
         user_id: l.user_id,
         wishlist_id: l.wishlist_id,
         created_at: l.created_at,
-        profile: l.user_profiles,
         wishlist_title: wishlists.find((w: any) => w.id === l.wishlist_id)?.title || "Wishlist",
       }));
 
@@ -108,7 +107,6 @@ const Notifications = () => {
         wishlist_id: c.wishlist_id,
         content: c.content,
         created_at: c.created_at,
-        profile: c.user_profiles,
         wishlist_title: wishlists.find((w: any) => w.id === c.wishlist_id)?.title || "Wishlist",
       }));
 
@@ -280,18 +278,10 @@ const Notifications = () => {
           return filteredActivities.map((a: any) => {
             // Render social activity (likes/comments)
             if (a.type === "like" || a.type === "comment") {
-              const prof = a.profile;
-              const name = prof?.full_name || prof?.username || "User";
               const timeAgo = formatDistanceToNow(new Date(a.created_at), { addSuffix: true });
 
               return (
                 <div key={a.id} className="flex items-start gap-3 rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-3">
-                  <Avatar className="h-9 w-9 mt-0.5">
-                    <AvatarImage src={prof?.avatar_url || ""} />
-                    <AvatarFallback className="text-xs bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white">
-                      {name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       {a.type === "like" ? (
@@ -299,11 +289,10 @@ const Notifications = () => {
                       ) : (
                         <MessageCircle className="h-4 w-4 text-blue-600" />
                       )}
-                      <span className="font-semibold truncate">{name}</span>
                       <span className="text-sm text-muted-foreground">
                         {a.type === "like"
-                          ? t("notifications.liked_your_wishlist", "liked your wishlist")
-                          : t("notifications.commented_on_wishlist", "commented on your wishlist")}
+                          ? t("notifications.someone_liked_wishlist", "Someone liked your wishlist")
+                          : t("notifications.someone_commented_wishlist", "Someone commented on your wishlist")}
                       </span>
                     </div>
                     <div className="text-xs text-muted-foreground truncate mt-0.5">

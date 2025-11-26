@@ -18,7 +18,6 @@ export const SocialWishCard = () => {
   const navigate = useNavigate();
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentText, setCommentText] = useState("");
-  const [likersOpen, setLikersOpen] = useState(false);
 
   const { data } = useQuery({
     queryKey: ["dashboard", "social", "v2"],
@@ -55,27 +54,46 @@ export const SocialWishCard = () => {
         .order("added_at", { ascending: false })
         .limit(9);
 
-      // For now, show the most recently updated wishlist among followed users
+      // Determine the most recently updated wishlist among followed users
       const primaryWishlistId = (items && items[0]?.wishlist_id) || wishlistIds[0];
-      const ownerWishlist = wishlists.find((w: any) => w.id === primaryWishlistId) || wishlists[0];
-      const ownerItems = (items || []).filter((it: any) => it.wishlist_id === ownerWishlist.id).slice(0, 9);
+      const primaryWishlist = wishlists.find((w: any) => w.id === primaryWishlistId) || wishlists[0];
 
-      // Likes for this wishlist with user profiles
+      // Focus on a single owner (friend) for this card: the owner of the primary wishlist
+      const ownerUserId = primaryWishlist.user_id;
+      const ownerWishlists = (wishlists || []).filter((w: any) => w.user_id === ownerUserId);
+      const ownerWishlistIds = ownerWishlists.map((w: any) => w.id);
+
+      // All items for this owner (we will filter per active wishlist in the component)
+      const ownerItems = (items || []).filter((it: any) => ownerWishlistIds.includes(it.wishlist_id));
+
+      // Likes for all of this owner's wishlists
       const { data: likes } = await supabase
         .from("wishlist_likes" as any)
-        .select("user_id, user_profiles(id, username, full_name, avatar_url)")
-        .eq("wishlist_id", ownerWishlist.id);
+        .select("wishlist_id, user_id")
+        .in("wishlist_id", ownerWishlistIds as any);
 
       const likesList = likes || [];
-      const likesCount = likesList.length;
-      const likedByMe = !!uid && likesList.some((l: any) => l.user_id === uid);
+      const likesByWishlist: Record<string, { count: number; likedByMe: boolean }> = {};
+      for (const wid of ownerWishlistIds) {
+        likesByWishlist[wid] = { count: 0, likedByMe: false };
+      }
+      for (const row of likesList as any[]) {
+        const wid = row.wishlist_id as string;
+        if (!likesByWishlist[wid]) {
+          likesByWishlist[wid] = { count: 0, likedByMe: false };
+        }
+        likesByWishlist[wid].count += 1;
+        if (uid && row.user_id === uid) {
+          likesByWishlist[wid].likedByMe = true;
+        }
+      }
 
       return {
-        wishlist: ownerWishlist,
+        owner: primaryWishlist.user_profiles,
+        ownerWishlists,
         items: ownerItems,
-        likesCount,
-        likedByMe,
-        likers: likesList,
+        likesByWishlist,
+        primaryWishlistId,
       } as any;
     },
   });
@@ -103,16 +121,34 @@ export const SocialWishCard = () => {
     };
   }, [queryClient]);
 
-  const owner = (data as any)?.wishlist?.user_profiles;
+  const ownerWishlists = (data as any)?.ownerWishlists as any[] | undefined;
+  const [activeWishlistId, setActiveWishlistId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!data?.primaryWishlistId) return;
+    setActiveWishlistId(data.primaryWishlistId as string);
+  }, [data?.primaryWishlistId]);
+
+  const activeWishlist = ownerWishlists && ownerWishlists.length > 0
+    ? ownerWishlists.find((w: any) => w.id === activeWishlistId) || ownerWishlists[0]
+    : undefined;
+
+  const itemsAll = (data as any)?.items as any[] | undefined;
+  const items = activeWishlist && itemsAll
+    ? itemsAll.filter((it: any) => it.wishlist_id === activeWishlist.id)
+    : [];
+
+  const likesByWishlist = (data as any)?.likesByWishlist as Record<string, { count: number; likedByMe: boolean }> | undefined;
+  const wishlistId = activeWishlist?.id as string | undefined;
+  const likesInfo = wishlistId && likesByWishlist ? likesByWishlist[wishlistId] : undefined;
+  const likesCount = likesInfo?.count ?? 0;
+  const likedByMe = likesInfo?.likedByMe ?? false;
+
+  const owner = (data as any)?.owner;
   const allowLikesPref = owner?.allow_likes !== false;
   const allowCommentsPref = owner?.allow_comments !== false;
-  const wishlistId = (data as any)?.wishlist?.id as string | undefined;
-  const likesCount = (data as any)?.likesCount as number | undefined;
-  const likedByMe = (data as any)?.likedByMe as boolean | undefined;
-  const items = (data as any)?.items as any[] | undefined;
-  const wishlistTitle = (data as any)?.wishlist?.title as string | undefined;
-  const wishlistEventDate = (data as any)?.wishlist?.event_date as string | undefined;
-  const likers = ((data as any)?.likers || []) as any[];
+  const wishlistTitle = activeWishlist?.title as string | undefined;
+  const wishlistEventDate = activeWishlist?.event_date as string | undefined;
 
   const latestAddedAt = (items && items.length > 0 && items[0]?.added_at) || undefined;
   const updatedAgo = latestAddedAt
@@ -140,7 +176,11 @@ export const SocialWishCard = () => {
         const { error } = await supabase
           .from("wishlist_likes" as any)
           .insert({ wishlist_id: wishlistId, user_id: uid });
-        if (error) throw error;
+
+        // Ignore duplicate like attempts hitting the unique (wishlist_id, user_id) constraint
+        if (error && (error as any).code !== "23505") {
+          throw error;
+        }
       }
     },
     onSuccess: () => {
@@ -300,15 +340,33 @@ export const SocialWishCard = () => {
                 <span className="truncate">
                   {owner?.full_name || owner?.username || 'User'}
                 </span>
-                {wishlistTitle && (
-                  <>
-                    <span className="h-1 w-1 rounded-full bg-white/80" aria-hidden />
-                    <span className="truncate">
-                      {wishlistTitle}
-                    </span>
-                  </>
-                )}
               </p>
+              {wishlistTitle && (
+                <p className="mt-0.5 text-xs font-semibold text-foreground/90 truncate">
+                  {wishlistTitle}
+                </p>
+              )}
+              {ownerWishlists && ownerWishlists.length > 1 && (
+                <div className="mt-1 flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
+                  {ownerWishlists.map((w: any) => {
+                    const isActive = w.id === activeWishlistId;
+                    return (
+                      <button
+                        key={w.id}
+                        type="button"
+                        onClick={() => setActiveWishlistId(w.id)}
+                        className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
+                          isActive
+                            ? 'bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white border-white/70 shadow-[0_4px_10px_rgba(15,23,42,0.45)]'
+                            : 'bg-background/70 text-muted-foreground border-white/50 hover:bg-background hover:text-foreground'
+                        }`}
+                      >
+                        {w.title || t('events.untitled', 'Untitled')}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               <div className="mt-0.5 flex items-center gap-2">
                 {(() => {
                   if (!wishlistEventDate) return null;
@@ -420,39 +478,6 @@ export const SocialWishCard = () => {
             </Button>
           )}
         </CardFooter>
-        {allowLikesPref && likesCount > 0 && (
-          <div className="px-4 pb-3">
-            <button
-              type="button"
-              onClick={() => setLikersOpen(true)}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <div className="flex -space-x-2">
-                {likers.slice(0, 3).map((liker: any, idx: number) => {
-                  const prof = liker.user_profiles;
-                  const name = prof?.full_name || prof?.username || liker.user_id;
-                  return (
-                    <Avatar key={liker.user_id} className="h-5 w-5 ring-2 ring-background">
-                      <AvatarImage src={prof?.avatar_url || ''} />
-                      <AvatarFallback className="text-[8px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white">
-                        {name?.toString().charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  );
-                })}
-              </div>
-              <span>
-                {t('dashboard.liked_by_preview', 'Liked by {{names}}{{more}}', {
-                  names: likers.slice(0, 2).map((l: any) => {
-                    const prof = l.user_profiles;
-                    return prof?.full_name || prof?.username || 'User';
-                  }).join(', '),
-                  more: likesCount > 2 ? ` and ${likesCount - 2} ${likesCount === 3 ? 'other' : 'others'}` : ''
-                })}
-              </span>
-            </button>
-          </div>
-        )}
           </div>
         </div>
       </Card>
@@ -506,42 +531,6 @@ export const SocialWishCard = () => {
           </div>
         </DialogContent>
       )}
-    </Dialog>
-
-    <Dialog open={likersOpen} onOpenChange={setLikersOpen}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t('dashboard.likers_title', 'Liked by')}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-2 max-h-64 overflow-y-auto">
-          {likers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t('dashboard.likers_empty', 'No likes yet.')}
-            </p>
-          ) : (
-            likers.map((liker: any) => {
-              const prof = liker.user_profiles;
-              const name = prof?.full_name || prof?.username || liker.user_id || 'User';
-              return (
-                <div key={liker.user_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={prof?.avatar_url || ''} />
-                    <AvatarFallback className="text-sm bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white">
-                      {name?.toString().charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate">{name}</div>
-                    {prof?.username && (
-                      <div className="text-xs text-muted-foreground truncate">@{prof.username}</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </DialogContent>
     </Dialog>
     </>
   );
