@@ -292,7 +292,12 @@ export const SocialWishCard = () => {
     setCommentsOpen(true);
   };
 
-  if (!data || !items || items.length === 0) {
+  const ownerHasWishlists = !!ownerWishlists && ownerWishlists.length > 0;
+  const hasAnyItemsAcrossWishlists = !!itemsAll && itemsAll.length > 0;
+
+  // Show the global "No recent activity" card only when there is truly
+  // nothing to show (no wishlists or no items at all).
+  if (!data || !ownerHasWishlists || !hasAnyItemsAcrossWishlists) {
     return (
       <Card className="relative overflow-hidden border-none bg-transparent shadow-none">
         <div className="rounded-3xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/18 via-[hsl(var(--brand-cool-end))]/14 to-[hsl(var(--brand-warm-end))]/20 p-[1.5px]">
@@ -341,13 +346,8 @@ export const SocialWishCard = () => {
                   {owner?.full_name || owner?.username || 'User'}
                 </span>
               </p>
-              {wishlistTitle && (
-                <p className="mt-0.5 text-xs font-semibold text-foreground/90 truncate">
-                  {wishlistTitle}
-                </p>
-              )}
-              {ownerWishlists && ownerWishlists.length > 1 && (
-                <div className="mt-1 flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
+              {ownerWishlists && ownerWishlists.length > 0 && (
+                <div className="mt-1 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-[hsl(var(--brand-cool-end))]/60 bg-background/10 px-1 py-0.5 -mx-1 px-1 shadow-[0_0_0_1px_rgba(15,23,42,0.35)]">
                   {ownerWishlists.map((w: any) => {
                     const isActive = w.id === activeWishlistId;
                     return (
@@ -355,10 +355,10 @@ export const SocialWishCard = () => {
                         key={w.id}
                         type="button"
                         onClick={() => setActiveWishlistId(w.id)}
-                        className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
+                        className={`relative whitespace-nowrap rounded-full px-3 py-0.5 text-[11px] font-semibold transition-colors ${
                           isActive
-                            ? 'bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white border-white/70 shadow-[0_4px_10px_rgba(15,23,42,0.45)]'
-                            : 'bg-background/70 text-muted-foreground border-white/50 hover:bg-background hover:text-foreground'
+                            ? 'bg-white text-[hsl(var(--brand-cool-end))] border border-[hsl(var(--brand-cool-end))]/80 shadow-sm'
+                            : 'bg-transparent text-[hsl(var(--brand-cool-end))]/80 hover:text-[hsl(var(--brand-cool-end))]'
                         }`}
                       >
                         {w.title || t('events.untitled', 'Untitled')}
@@ -367,37 +367,11 @@ export const SocialWishCard = () => {
                   })}
                 </div>
               )}
-              <div className="mt-0.5 flex items-center gap-2">
-                {(() => {
-                  if (!wishlistEventDate) return null;
-                  const target = new Date(wishlistEventDate).getTime();
-                  if (Number.isNaN(target)) return null;
-                  const diffDays = Math.ceil((target - Date.now()) / (1000 * 60 * 60 * 24));
-                  if (diffDays < 0) return null;
-                  const label = diffDays === 0
-                    ? t('dashboard.countdown_today', 'Today')
-                    : t('dashboard.countdown_days_left', '{{count}}d left', { count: diffDays });
-                  return (
-                    <span className="inline-flex items-center rounded-full bg-background/80 px-2 py-0.5 text-[11px] text-muted-foreground whitespace-nowrap">
-                      {label}
-                    </span>
-                  );
-                })()}
-                {wishlistId && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-3 text-[11px] font-semibold rounded-full bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white shadow-[0_4px_10px_rgba(15,23,42,0.45)] hover:shadow-[0_6px_14px_rgba(15,23,42,0.55)] hover:brightness-110 border border-white/60"
-                    onClick={() => navigate(`/wishlist/${wishlistId}`)}
-                  >
-                    {t('dashboard.view_wishlist', 'View wishlist')}
-                  </Button>
-                )}
-              </div>
+              <div className="mt-0.5" />
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pb-4 px-5">
+        <CardContent className="pb-2 px-5">
           {items && items.length > 0 ? (
             <div className="flex items-center gap-3">
               <div className="h-14 w-14 rounded-xl bg-muted/60 flex items-center justify-center overflow-hidden ring-1 ring-white/60 shadow-[0_8px_18px_rgba(15,23,42,0.35)]">
@@ -439,6 +413,33 @@ export const SocialWishCard = () => {
             </p>
           )}
         </CardContent>
+        {wishlistId && (
+          <div className="px-5 pb-2 flex items-center justify-center gap-2">
+            {(() => {
+              if (!wishlistEventDate) return null;
+              const target = new Date(wishlistEventDate).getTime();
+              if (Number.isNaN(target)) return null;
+              const diffDays = Math.ceil((target - Date.now()) / (1000 * 60 * 60 * 24));
+              if (diffDays < 0) return null;
+              const label = diffDays === 0
+                ? t('dashboard.countdown_today', 'Today')
+                : t('dashboard.countdown_days_left', '{{count}}d left', { count: diffDays });
+              return (
+                <span className="inline-flex items-center rounded-full bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] px-2 py-0.5 text-[11px] text-white whitespace-nowrap shadow-[0_0_14px_rgba(56,189,248,0.7)]">
+                  {label}
+                </span>
+              );
+            })()}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-3 text-[11px] font-semibold rounded-full bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white shadow-[0_4px_10px_rgba(15,23,42,0.45)] hover:shadow-[0_6px_14px_rgba(15,23,42,0.55)] hover:brightness-110 border border-white/60"
+              onClick={() => navigate(`/wishlist/${wishlistId}`)}
+            >
+              {t('dashboard.view_wishlist', 'View wishlist')}
+            </Button>
+          </div>
+        )}
         <CardFooter className="flex justify-between items-center border-t border-border/60 bg-muted/30 px-4 py-3">
           {allowLikesPref && (
             <Button
