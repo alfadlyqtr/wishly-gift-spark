@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { MentionInput } from "@/components/ui/MentionInput";
 import { formatDistanceToNow } from "date-fns";
 
 export const SocialWishCard = () => {
@@ -419,11 +420,23 @@ export const SocialWishCard = () => {
               if (!wishlistEventDate) return null;
               const target = new Date(wishlistEventDate).getTime();
               if (Number.isNaN(target)) return null;
-              const diffDays = Math.ceil((target - Date.now()) / (1000 * 60 * 60 * 24));
-              if (diffDays < 0) return null;
-              const label = diffDays === 0
-                ? t('dashboard.countdown_today', 'Today')
-                : t('dashboard.countdown_days_left', '{{count}}d left', { count: diffDays });
+
+              const now = Date.now();
+              const diffMs = target - now;
+              if (diffMs < 0) return null;
+
+              const totalMinutes = Math.floor(diffMs / (1000 * 60));
+              const days = Math.floor(totalMinutes / (60 * 24));
+              const remainingMinutesAfterDays = totalMinutes - days * 60 * 24;
+              const hours = Math.floor(remainingMinutesAfterDays / 60);
+              const minutes = remainingMinutesAfterDays % 60;
+
+              const label = t(
+                'dashboard.countdown_full_left',
+                '{{days}}d {{hours}}h {{minutes}}m left',
+                { days, hours, minutes },
+              );
+
               return (
                 <span className="inline-flex items-center rounded-full bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] px-2 py-0.5 text-[11px] text-white whitespace-nowrap shadow-[0_0_14px_rgba(56,189,248,0.7)]">
                   {label}
@@ -515,7 +528,7 @@ export const SocialWishCard = () => {
             )}
           </div>
           <div className="flex items-center gap-2 pt-1">
-            <Input
+            <MentionInput
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               placeholder={t('dashboard.comments_placeholder', 'Add a comment...')}
