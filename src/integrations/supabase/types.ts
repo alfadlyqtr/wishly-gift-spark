@@ -137,6 +137,72 @@ export type Database = {
           },
         ]
       }
+      brands: {
+        Row: {
+          address: string | null
+          brand_category: string | null
+          brand_country: string | null
+          brand_name: string
+          brand_website: string | null
+          created_at: string | null
+          description: string | null
+          email: string | null
+          facebook: string | null
+          id: string
+          instagram: string | null
+          is_public: boolean | null
+          linkedin: string | null
+          manager_name: string | null
+          phone: string | null
+          tagline: string | null
+          twitter: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          brand_category?: string | null
+          brand_country?: string | null
+          brand_name: string
+          brand_website?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
+          facebook?: string | null
+          id?: string
+          instagram?: string | null
+          is_public?: boolean | null
+          linkedin?: string | null
+          manager_name?: string | null
+          phone?: string | null
+          tagline?: string | null
+          twitter?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          brand_category?: string | null
+          brand_country?: string | null
+          brand_name?: string
+          brand_website?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
+          facebook?: string | null
+          id?: string
+          instagram?: string | null
+          is_public?: boolean | null
+          linkedin?: string | null
+          manager_name?: string | null
+          phone?: string | null
+          tagline?: string | null
+          twitter?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       campaigns: {
         Row: {
           created_at: string | null
@@ -731,6 +797,67 @@ export type Database = {
           },
         ]
       }
+      item_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          item_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          item_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_comments_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "wishlist_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_likes: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_likes_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "wishlist_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leaderboards: {
         Row: {
           id: string
@@ -836,25 +963,86 @@ export type Database = {
           },
         ]
       }
+      message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "verified_brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
+          attachment_duration_seconds: number | null
+          attachment_size_bytes: number | null
+          attachment_type: string | null
+          attachment_url: string | null
           content: string
           created_at: string | null
           id: string
+          pinned: boolean
           thread_id: string
           user_id: string
         }
         Insert: {
+          attachment_duration_seconds?: number | null
+          attachment_size_bytes?: number | null
+          attachment_type?: string | null
+          attachment_url?: string | null
           content: string
           created_at?: string | null
           id?: string
+          pinned?: boolean
           thread_id: string
           user_id: string
         }
         Update: {
+          attachment_duration_seconds?: number | null
+          attachment_size_bytes?: number | null
+          attachment_type?: string | null
+          attachment_url?: string | null
           content?: string
           created_at?: string | null
           id?: string
+          pinned?: boolean
           thread_id?: string
           user_id?: string
         }
@@ -1166,8 +1354,10 @@ export type Database = {
       }
       user_profiles: {
         Row: {
+          allow_comments: boolean
           allow_followers_view: boolean
           allow_friends_claim: boolean
+          allow_likes: boolean
           allow_wishlist_sharing: boolean
           auto_approve_claims: boolean | null
           auto_approve_unclaims: boolean | null
@@ -1187,8 +1377,10 @@ export type Database = {
           username: string
         }
         Insert: {
+          allow_comments?: boolean
           allow_followers_view?: boolean
           allow_friends_claim?: boolean
+          allow_likes?: boolean
           allow_wishlist_sharing?: boolean
           auto_approve_claims?: boolean | null
           auto_approve_unclaims?: boolean | null
@@ -1208,8 +1400,10 @@ export type Database = {
           username: string
         }
         Update: {
+          allow_comments?: boolean
           allow_followers_view?: boolean
           allow_friends_claim?: boolean
+          allow_likes?: boolean
           allow_wishlist_sharing?: boolean
           auto_approve_claims?: boolean | null
           auto_approve_unclaims?: boolean | null
@@ -1263,6 +1457,38 @@ export type Database = {
           },
         ]
       }
+      wishlist_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          user_id: string
+          wishlist_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          user_id: string
+          wishlist_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+          wishlist_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_comments_wishlist_id_fkey"
+            columns: ["wishlist_id"]
+            isOneToOne: false
+            referencedRelation: "wishlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wishlist_items: {
         Row: {
           added_at: string | null
@@ -1306,6 +1532,35 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "wishlist_items_wishlist_id_fkey"
+            columns: ["wishlist_id"]
+            isOneToOne: false
+            referencedRelation: "wishlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wishlist_likes: {
+        Row: {
+          created_at: string
+          id: string
+          user_id: string
+          wishlist_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id: string
+          wishlist_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id?: string
+          wishlist_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_likes_wishlist_id_fkey"
             columns: ["wishlist_id"]
             isOneToOne: false
             referencedRelation: "wishlists"
@@ -1442,6 +1697,8 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_old_messages: { Args: never; Returns: undefined }
+      create_direct_thread: { Args: { other_user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1449,6 +1706,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_thread_member: { Args: { _thread_id: string }; Returns: boolean }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
