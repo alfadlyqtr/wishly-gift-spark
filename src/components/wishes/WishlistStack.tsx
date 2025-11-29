@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export type WishlistCard = { id: string; title: string };
 
@@ -115,6 +116,7 @@ export default function WishlistStack({
   viewerMode = false,
   onCardOpen,
 }: WishlistStackProps) {
+  const { t } = useTranslation();
   const [stack, setStack] = useState(cards);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -203,16 +205,16 @@ export default function WishlistStack({
         } catch {}
         // Also copy to clipboard as a reliable fallback
         await navigator.clipboard.writeText(text);
-        toast.success('Link copied. If WhatsApp did not open, paste into any app.');
-        return;
-      }
-
-      await navigator.clipboard.writeText(url);
-      toast.success('Link copied');
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to share');
+        toast.success(t('wishlist.link_copied', 'Link copied. If WhatsApp did not open, paste into any app.'));
+      return;
     }
-  };
+
+    await navigator.clipboard.writeText(url);
+    toast.success(t('wishlist.link_copied', 'Link copied'));
+  } catch (e: any) {
+    toast.error(e?.message || t('wishlist.share_failed', 'Failed to share'));
+  }
+};
 
   return (
     <div
@@ -260,7 +262,7 @@ export default function WishlistStack({
                   <button
                     type="button"
                     className="wl-share-btn"
-                    aria-label="Share wishlist"
+                    aria-label={t('wishlist.share_aria', 'Share wishlist')}
                     onClick={(e) => {
                       e.stopPropagation();
                       shareWishlist(card.id, card.title);
@@ -269,18 +271,22 @@ export default function WishlistStack({
                     <Share2 className="h-4 w-4" />
                   </button>
                 )}
-                <div className="wl-card-title">{card.title}</div>
+                <div className="wl-card-title">
+                  {card.title === 'My Birthday Wishlist' 
+                    ? t('wishlist.my_birthday_wishlist', 'My Birthday Wishlist') 
+                    : card.title}
+                </div>
                 {viewerMode && (
                   <button
                     type="button"
                     className="wl-viewer-open-btn"
-                    aria-label="Open wishlist"
+                    aria-label={t('wishlist.open', 'Open')}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleOpen(card.id);
                     }}
                   >
-                    Open
+                    {t('wishlist.open', 'Open')}
                   </button>
                 )}
                 {!viewerMode && (
@@ -289,11 +295,11 @@ export default function WishlistStack({
                       <button
                         type="button"
                         className="wl-delete-btn"
-                        aria-label="Delete wishlist"
+                        aria-label={t('wishlist.delete_aria', 'Delete wishlist')}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (card.title === 'My Birthday Wishlist') {
-                            toast.error('Birthday wishlist cannot be deleted');
+                            toast.error(t('wishlist.birthday_cannot_delete', 'Birthday wishlist cannot be deleted'));
                             return;
                           }
                           setTarget({ id: card.id, title: card.title });
@@ -311,7 +317,7 @@ export default function WishlistStack({
                         handleOpen(card.id);
                       }}
                     >
-                      Open
+                      {t('wishlist.open', 'Open')}
                     </button>
                   </div>
                 )}
@@ -323,11 +329,11 @@ export default function WishlistStack({
       <Dialog open={deleteOpen && !viewerMode} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Wishlist?</DialogTitle>
+            <DialogTitle>{t('wishlist.delete_title', 'Delete Wishlist?')}</DialogTitle>
           </DialogHeader>
-          <p>Are you sure you want to delete “{target?.title}”?</p>
+          <p>{t('wishlist.delete_confirm', 'Are you sure you want to delete "{{title}}"?', { title: target?.title })}</p>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="secondary" onClick={() => setDeleteOpen(false)}>{t('common.cancel', 'Cancel')}</Button>
             <Button
               variant="destructive"
               onClick={async () => {
@@ -335,7 +341,7 @@ export default function WishlistStack({
                 try {
                   const { error } = await supabase.from('wishlists').delete().eq('id', target.id);
                   if (error) throw error;
-                  toast.success('Wishlist deleted');
+                  toast.success(t('wishlist.deleted', 'Wishlist deleted'));
                   setStack((prev) => prev.filter((c) => c.id !== target.id));
                   setDeleteOpen(false);
                   setTarget(null);
@@ -344,11 +350,11 @@ export default function WishlistStack({
                     predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'events'
                   });
                 } catch (e: any) {
-                  toast.error(e?.message || 'Failed to delete');
+                  toast.error(e?.message || t('wishlist.delete_failed', 'Failed to delete'));
                 }
               }}
             >
-              Delete
+              {t('common.delete', 'Delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

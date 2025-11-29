@@ -39,9 +39,16 @@
     "forgot_password_button": "إرسال رابط إعادة التعيين",
     "forgot_password_success": "تم إرسال رسالة إعادة تعيين كلمة المرور. يرجى التحقق من بريدك.",
     "back_to_login": "الرجوع لتسجيل الدخول",
-    "country": "الدولة/المنطقة"
-  }
-  ,
+    "country": "الدولة/المنطقة",
+    "login_success": "سعيدون برؤيتك مجددًا!",
+    "signup_success": "تم إنشاء الحساب! يرجى التحقق من بريدك الإلكتروني للتأكيد.",
+    "email_placeholder": "you@example.com",
+    "password_placeholder": "••••••••",
+    "username_placeholder": "johndoe",
+    "full_name_placeholder": "John Doe",
+    "country_placeholder": "قطر",
+    "password_helper": "على الأقل ٦ أحرف"
+  },
   "wishlist_hub_title": "قوائم الأمنيات",
   "Notes_button": "إنشاء قائمة أمنيات جديدة",
   "wishlist_detail_back": "رجوع",
@@ -105,6 +112,8 @@
     "allow_friends_claim": "السماح للأصدقاء بحجز العناصر",
     "auto_approve_claims": "الموافقة التلقائية على طلبات الحجز",
     "auto_approve_unclaims": "الموافقة التلقائية على طلبات إلغاء الحجز",
+    "allow_likes": "السماح بالإعجابات على قوائم أمنياتي",
+    "allow_comments": "السماح بالتعليقات على قوائم أمنياتي",
     "show_countdown": "إظهار عدٍّ تنازلي على صفحة المشاركة",
     "wishlist_prefs_saved": "تم حفظ تفضيلات قوائم الأمنيات"
   }
@@ -121,13 +130,31 @@
     "approve": "موافقة",
     "decline": "رفض",
     "not_set": "غير محدد",
-    "back": "رجوع"
+    "back": "رجوع",
+    "delete": "حذف",
+    "error_generic": "حدث خطأ ما"
   }
   ,
   "wishlist": {
     "create_title": "إنشاء قائمة أمنيات",
     "create_hint": "ابدأ بعنوان وتفاصيل اختيارية. يمكنك التخصيص لاحقًا.",
-    "event_date": "تاريخ المناسبة"
+    "event_date": "تاريخ المناسبة",
+    "hub_title": "قوائم أمنياتك",
+    "hub_subtitle": "اسحب واضغط على البطاقة لفتحها.",
+    "swipe_hint": "< اسحب البطاقات >",
+    "empty": "لا توجد قوائم أمنيات بعد.",
+    "add_button_aria": "إضافة قائمة أمنيات",
+    "open": "فتح",
+    "delete_title": "حذف قائمة الأمنيات؟",
+    "delete_confirm": "هل أنت متأكد من حذف \"{{title}}\"؟",
+    "deleted": "تم حذف قائمة الأمنيات",
+    "delete_failed": "فشل الحذف",
+    "share_aria": "مشاركة قائمة الأمنيات",
+    "delete_aria": "حذف قائمة الأمنيات",
+    "link_copied": "تم نسخ الرابط",
+    "share_failed": "فشلت المشاركة",
+    "birthday_cannot_delete": "لا يمكن حذف قائمة أمنيات عيد الميلاد",
+    "my_birthday_wishlist": "قائمة أمنيات عيد ميلادي"
   }
   ,
   "events": {
@@ -138,6 +165,8 @@
     "empty_my": "لا توجد فعاليات قادمة.",
     "empty_friends": "لا توجد فعاليات للأصدقاء.",
     "empty_general": "لا توجد فعاليات عامة.",
+    "event_singular": "فعالية",
+    "event_plural": "فعاليات",
     "untitled": "بدون عنوان",
     "public_holiday_disclaimer": "قد تختلف تواريخ العطل الرسمية.",
     "refresh_holidays": "تحديث العطلات",
@@ -164,7 +193,9 @@
     "helper_banks_closed": "المصارف مغلقة",
     "helper_workers_day": "عيد العمال",
     "helper_merry_and_bright": "بهجة وأجواء مبهرة",
-    "helper_seasonal_balance": "توازن فصلي"
+    "helper_seasonal_balance": "توازن فصلي",
+    "pending_claims_title": "طلبات الحجز المعلقة",
+    "pending_claims_caption": "وافق أو ارفض لإعلام أصدقائك بحالة حجزهم."
   }
   ,
   "explore": {
@@ -212,7 +243,19 @@
     "gift_bluetooth_speaker": "سماعة بلوتوث",
     "gift_desk_lamp": "مصباح مكتب",
     "ai_loading": "جاري سؤال Wishly عن أفكار هدايا...",
-    "ai_error": "سيتم استخدام أفكار افتراضية لأن الذكاء الاصطناعي غير متوفر الآن."
+    "ai_error": "سيتم استخدام أفكار افتراضية لأن الذكاء الاصطناعي غير متوفر الآن.",
+    "recent_activity_title": "نشاطك الأخير",
+    "view_all_activity": "عرض كل النشاط",
+    "activity_likes_count": "إعجاب",
+    "activity_comments_count": "تعليق",
+    "comments_empty": "لا توجد تعليقات بعد. كن أول من يعلق!",
+    "comments_placeholder": "أضف تعليقًا...",
+    "comments_post": "نشر",
+    "feed_added_wishes": "أضاف {{count}} أمنية جديدة",
+    "view_wishlist": "عرض القائمة",
+    "countdown_full": "{{days}} يوم {{hours}} ساعة {{minutes}} دقيقة متبقية",
+    "countdown_full_left": "{{days}} يوم {{hours}} ساعة {{minutes}} دقيقة متبقية",
+    "action_like_count": "{{count}} إعجاب"
   }
   ,
   "messages": {
@@ -256,7 +299,7 @@
     "upload_aria": "رفع صورة",
     "upload_button": "رفع ملف",
     "clear_image": "مسح الصورة",
-    "extract_ai_button": "استخراج التفاصيل بالذكاء الاصطناعي",
+    "extract_ai_button": "استخراج بالذكاء",
     "extracting": "جارٍ الاستخراج...",
     "extract_done": "تم استخراج التفاصيل من الصورة",
     "detected_colors": "الألوان المكتشفة",
@@ -289,7 +332,14 @@
     "items_badge": "{{count}} عنصر",
     "my_birthday_wishlist": "قائمة أمنيات عيد ميلادي",
     "claimed_by_badge": "تم حجزه من قبل {{name}}",
-    "pending_claim_badge": "بانتظار الموافقة"
+    "pending_claim_badge": "بانتظار الموافقة",
+    "edit_item": "تعديل العنصر",
+    "title_required": "العنوان مطلوب",
+    "edit_failed": "فشل التحديث",
+    "item_updated": "تم تحديث العنصر",
+    "description": "الوصف",
+    "brand": "العلامة التجارية",
+    "link": "الرابط"
   }
   ,
   "notifications": {
@@ -313,5 +363,54 @@
   "dashboard_countdown": {
     "countdown_today": "اليوم",
     "countdown_full": "متبقي {{days}} يوم {{hours}} ساعة {{minutes}} دقيقة"
+  },
+  "brand": {
+    "header_title": "بوابة العلامة التجارية",
+    "header_subtitle": "لوحة تحكم الأعمال",
+    "nav_dashboard": "الرئيسية",
+    "nav_products": "المنتجات",
+    "nav_insights": "التحليلات",
+    "nav_profile": "العلامة",
+    "profile_title": "ملف العلامة التجارية",
+    "profile_subtitle": "إدارة معلومات ومظهر علامتك التجارية",
+    "profile_load_error": "فشل تحميل بيانات العلامة التجارية",
+    "profile_saved": "تم حفظ ملف العلامة التجارية بنجاح",
+    "profile_save_error": "فشل حفظ ملف العلامة التجارية",
+    "logo_section": "شعار العلامة التجارية",
+    "logo_hint": "انقر على أيقونة الكاميرا لرفع شعار علامتك التجارية",
+    "logo_uploaded": "تم رفع الشعار بنجاح",
+    "logo_upload_error": "فشل رفع الشعار",
+    "basic_info": "المعلومات الأساسية",
+    "field_name": "اسم العلامة التجارية",
+    "field_name_placeholder": "اسم علامتك التجارية",
+    "field_tagline": "الشعار",
+    "field_tagline_placeholder": "عبارة قصيرة جذابة",
+    "field_description": "الوصف",
+    "field_description_placeholder": "أخبر العملاء عن علامتك التجارية...",
+    "field_category": "الفئة",
+    "field_category_placeholder": "مثال: أزياء",
+    "field_country": "الدولة",
+    "field_country_placeholder": "مثال: قطر",
+    "field_manager": "اسم المدير",
+    "field_manager_placeholder": "اسم مدير الحساب",
+    "contact_links": "التواصل والروابط",
+    "field_website": "الموقع الإلكتروني",
+    "field_email": "البريد الإلكتروني",
+    "field_phone": "الهاتف",
+    "field_address": "العنوان",
+    "field_address_placeholder": "عنوان المتجر أو المكتب",
+    "social_media": "وسائل التواصل الاجتماعي",
+    "visibility_settings": "إعدادات الظهور",
+    "field_public": "ملف عام",
+    "field_public_hint": "السماح للمستخدمين باكتشاف وعرض علامتك التجارية",
+    "saving": "جاري الحفظ...",
+    "save_profile": "حفظ الملف",
+    "dashboard_title": "لوحة تحكم العلامة التجارية",
+    "dashboard_subtitle": "نظرة عامة على أداء علامتك التجارية على Wishly",
+    "products_title": "المنتجات",
+    "products_subtitle": "إدارة المنتجات التي تريد عرضها في Wishly",
+    "products_add": "إضافة منتج",
+    "insights_title": "التحليلات والإحصائيات",
+    "insights_subtitle": "فهم كيفية تفاعل مستخدمي Wishly مع علامتك التجارية"
   }
 }

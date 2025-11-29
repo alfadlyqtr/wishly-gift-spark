@@ -177,11 +177,15 @@ export const MentionInput: React.FC<MentionInputProps> = ({
         value={internalValue}
         onChange={handleChange}
       />
-      {open && (isLoading || users.length > 0) && (
+      {open && (
         <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-60 overflow-y-auto rounded-md border bg-popover p-1 text-sm shadow-md">
           {isLoading ? (
             <div className="px-2 py-1 text-xs text-muted-foreground">
               Loading...
+            </div>
+          ) : users.length === 0 ? (
+            <div className="px-2 py-1 text-xs text-muted-foreground">
+              No matching users
             </div>
           ) : (
             users.map((u) => {

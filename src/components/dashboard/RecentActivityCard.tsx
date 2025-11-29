@@ -10,6 +10,7 @@ import { MentionInput } from "@/components/ui/MentionInput";
 import { Heart, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { formatDistanceToNow } from "date-fns";
+import { ar, enUS } from "date-fns/locale";
 
 type WishlistWithStats = {
   id: string;
@@ -25,7 +26,8 @@ type RecentActivityData = {
 };
 
 export const RecentActivityCard = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language === 'ar' ? ar : enUS;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeWishlistId, setActiveWishlistId] = useState<string | null>(null);
@@ -223,15 +225,15 @@ export const RecentActivityCard = () => {
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!data || !data.wishlists || data.wishlists.length === 0 ? (
-          <div className="text-sm text-muted-foreground text-center py-4">
-            {t("dashboard.no_recent_activity", "No recent activity on your wishlists yet")}
+        {!data || data.wishlists.length === 0 ? (
+          <div className="text-sm text-muted-foreground">
+            {t("dashboard.no_recent_activity_title", "No recent activity")}
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <div className="flex gap-2 overflow-x-auto pb-1">
               {data.wishlists.map((w) => {
-                const isActive = w.id === activeWishlist?.id;
+                const isActive = activeWishlist && w.id === activeWishlist.id;
                 return (
                   <button
                     key={w.id}
@@ -243,7 +245,11 @@ export const RecentActivityCard = () => {
                         : "bg-muted text-foreground border-border hover:bg-muted/80"
                     }`}
                   >
-                    <span className="truncate max-w-[140px]">{w.title}</span>
+                    <span className="truncate max-w-[140px]">
+                      {w.title === "My Birthday Wishlist"
+                        ? t("wishlist.my_birthday_wishlist", "My Birthday Wishlist")
+                        : w.title}
+                    </span>
                     <span className="flex items-center gap-1 text-[11px]">
                       <Heart className="h-3 w-3 text-[#be123c]" />
                       <span>{w.likesCount}</span>
@@ -295,6 +301,7 @@ export const RecentActivityCard = () => {
                       const created = c.created_at
                         ? formatDistanceToNow(new Date(c.created_at), {
                             addSuffix: true,
+                            locale: dateLocale,
                           })
                         : "";
                       return (

@@ -362,7 +362,9 @@ export const SocialWishCard = () => {
                             : 'bg-transparent text-[hsl(var(--brand-cool-end))]/80 hover:text-[hsl(var(--brand-cool-end))]'
                         }`}
                       >
-                        {w.title || t('events.untitled', 'Untitled')}
+                        {w.title === 'My Birthday Wishlist' 
+                          ? t('wishlist.my_birthday_wishlist', 'My Birthday Wishlist') 
+                          : (w.title || t('events.untitled', 'Untitled'))}
                       </button>
                     );
                   })}

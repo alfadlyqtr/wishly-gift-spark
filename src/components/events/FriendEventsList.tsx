@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { motion, useInView } from "motion/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useTranslation } from "react-i18next";
 import "./friend-animated-list.css";
 
 export type FriendEventsListFriend = {
@@ -29,6 +30,7 @@ type AnimatedFriendItemProps = {
 };
 
 const AnimatedFriendItem = ({ friend, index, onSelect }: AnimatedFriendItemProps) => {
+  const { t } = useTranslation();
   const ref = useRef<HTMLButtonElement | null>(null);
   const inView = useInView(ref, { amount: 0.4, margin: "0px 0px -10% 0px" });
 
@@ -60,7 +62,7 @@ const AnimatedFriendItem = ({ friend, index, onSelect }: AnimatedFriendItemProps
         </div>
         <span className="friend-pill">
           <span aria-hidden>✨</span>
-          {count} {count === 1 ? "event" : "events"}
+          {count} {count === 1 ? t('events.event_singular', 'event') : t('events.event_plural', 'events')}
         </span>
       </div>
     </motion.button>

@@ -47,7 +47,7 @@ const ForgotPassword = () => {
         navigate("/login");
       }
     } catch (err: any) {
-      toast.error(err?.message ?? "Something went wrong");
+      toast.error(err?.message ?? t('common.error_generic', 'Something went wrong'));
     } finally {
       setLoading(false);
     }
@@ -78,7 +78,7 @@ const ForgotPassword = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t('auth.email_placeholder', 'you@example.com')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

@@ -29,7 +29,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -37,8 +37,13 @@ const Login = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Welcome back!");
-      navigate("/dashboard");
+      const accountType = data?.user?.user_metadata?.account_type;
+      toast.success(t('auth.login_success', 'Welcome back!'));
+      if (accountType === "business") {
+        navigate("/brand/dashboard");
+      } else {
+        navigate("/dashboard");
+      }
     }
     setLoading(false);
   };
@@ -63,7 +68,7 @@ const Login = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t('auth.email_placeholder', 'you@example.com')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -74,7 +79,7 @@ const Login = () => {
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder={t('auth.password_placeholder', '••••••••')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

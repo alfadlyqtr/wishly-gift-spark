@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,14 +46,15 @@ const Signup = () => {
           full_name: fullName,
           dob: dob,
           country: country,
-        }
+          account_type: "user",
+        },
       },
     });
 
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Account created! Please check your email to confirm.");
+      toast.success(t('auth.signup_success', 'Account created! Please check your email to confirm.'));
       navigate("/login");
     }
     setLoading(false);
@@ -65,6 +67,19 @@ const Signup = () => {
       </div>
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-4 text-center">
+          <div className="flex items-center justify-between">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="-ml-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => navigate("/signup")}
+            >
+              <ArrowLeft className="mr-1 h-4 w-4" aria-hidden />
+              {t("auth.back_to_account_type", "Back")}
+            </Button>
+            <div className="flex-1" />
+          </div>
           <Link to="/" className="mx-auto w-32">
             <img src={wishlyLogo} alt="Wishly" className="w-full" />
           </Link>
@@ -78,7 +93,7 @@ const Signup = () => {
               <Input
                 id="username"
                 type="text"
-                placeholder="johndoe"
+                placeholder={t('auth.username_placeholder', 'johndoe')}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -90,7 +105,7 @@ const Signup = () => {
               <Input
                 id="fullName"
                 type="text"
-                placeholder="John Doe"
+                placeholder={t('auth.full_name_placeholder', 'John Doe')}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
               />
@@ -110,7 +125,7 @@ const Signup = () => {
               <Input
                 id="country"
                 type="text"
-                placeholder="Qatar"
+                placeholder={t('auth.country_placeholder', 'Qatar')}
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
               />
@@ -120,7 +135,7 @@ const Signup = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t('auth.email_placeholder', 'you@example.com')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -131,13 +146,15 @@ const Signup = () => {
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder={t('auth.password_placeholder', '••••••••')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
               />
-              <p className="text-xs text-muted-foreground">At least 6 characters</p>
+              <p className="text-xs text-muted-foreground">
+                {t('auth.password_helper', 'At least 6 characters')}
+              </p>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">

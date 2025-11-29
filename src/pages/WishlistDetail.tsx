@@ -1058,6 +1058,30 @@ const WishlistDetail = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Item Dialog - uses WishAddDialog in edit mode */}
+      {editingItem && (
+        <WishAddDialog
+          open={editOpen}
+          onOpenChange={(open) => {
+            setEditOpen(open);
+            if (!open) setEditingItem(null);
+          }}
+          wishlists={(wishlistsData ?? []).map(w => ({ id: w.id, name: w.title || w.id }))}
+          itemId={editingItem.id}
+          initialWishlistId={id}
+          initialTitle={editingItem.title || ''}
+          initialBrand={editingItem.brand || ''}
+          initialDescription={editingItem.description || ''}
+          initialDesire={editingItem.desire ?? 3}
+          initialImageUrl={editingItem.image_url}
+          onSubmit={async () => {
+            setEditOpen(false);
+            setEditingItem(null);
+            await refetch();
+          }}
+        />
+      )}
     </div>
   );
 };
