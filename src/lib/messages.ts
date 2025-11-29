@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 export async function openOrCreateDirectThread(otherUserId: string): Promise<{ id: string | null, error: any }> {
   if (!supabase) return { id: null, error: "Supabase client not initialized" };
 
-  const { data, error } = await supabase.rpc('create_direct_thread', {
+  const { data, error } = await supabase.rpc('create_direct_thread' as any, {
     other_user_id: otherUserId
   });
 
@@ -17,5 +17,5 @@ export async function openOrCreateDirectThread(otherUserId: string): Promise<{ i
     return { id: null, error };
   }
 
-  return { id: data as string, error: null };
+  return { id: data, error: null };
 }

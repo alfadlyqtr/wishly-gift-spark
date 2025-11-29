@@ -98,7 +98,6 @@ const WishlistDetail = () => {
   const carouselOpts = useMemo(() => ({
     align: "start" as const,
     loop: false,
-    direction: isAr ? "rtl" : "ltr",
   }), [isAr]);
 
   const items = useMemo(() => data?.items ?? [], [data]);

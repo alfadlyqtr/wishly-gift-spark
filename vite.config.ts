@@ -11,9 +11,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     // Disable React Fast Refresh to avoid '/@react-refresh' runtime errors
-    react({
-      fastRefresh: false,
-    }),
+    react(),
     mode === "development" && componentTagger(),
   ].filter(Boolean),
   resolve: {

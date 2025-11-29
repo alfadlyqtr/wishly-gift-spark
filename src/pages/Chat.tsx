@@ -228,7 +228,7 @@ const Chat = () => {
       // If the same emoji is chosen again, remove the reaction
       if (existing && existing.emoji === emoji) {
         const { error } = await supabase
-          .from("message_reactions")
+          .from("message_reactions" as any)
           .delete()
           .eq("id", existing.id);
         if (error) throw error;
@@ -237,12 +237,12 @@ const Chat = () => {
 
       if (existing) {
         const { error } = await supabase
-          .from("message_reactions")
+          .from("message_reactions" as any)
           .update({ emoji })
           .eq("id", existing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("message_reactions").insert({
+        const { error } = await supabase.from("message_reactions" as any).insert({
           message_id: messageId,
           user_id: uid,
           emoji,
