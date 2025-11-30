@@ -29,6 +29,10 @@ import BrandProfile from "./pages/BrandProfile";
 import BrandProducts from "./pages/BrandProducts";
 import BrandProductDetail from "./pages/BrandProductDetail";
 import BrandInsights from "./pages/BrandInsights";
+import BrandFollowers from "./pages/BrandFollowers";
+import BrandFollowing from "./pages/BrandFollowing";
+import PublicBrandProfile from "./pages/PublicBrandProfile";
+import BrandsFollowing from "./pages/BrandsFollowing";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -56,11 +60,13 @@ const App = () => (
              keeps public entrypoint; authenticated users will typically use
              the in-app route below which has the full MainLayout chrome. */}
           <Route path="/w/:id" element={<ShortWishRedirect />} />
+          {/* Public brand profile */}
+          <Route path="/brand/:id" element={<PublicBrandProfile />} />
 
-          {/* Authenticated app shell */}
+          {/* Authenticated app shell - personal users */}
           <Route
             element={
-              <ProtectedRoute>
+              <ProtectedRoute mode="personal">
                 <MainLayout />
               </ProtectedRoute>
             }
@@ -71,6 +77,7 @@ const App = () => (
             <Route path="/wishlist/:id" element={<WishlistDetail />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/followers" element={<FollowersFollowing />} />
+            <Route path="/brands-following" element={<BrandsFollowing />} />
             <Route path="/wishlists" element={<Wishlists />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/messages" element={<Messages />} />
@@ -81,16 +88,18 @@ const App = () => (
           {/* Brand / business app shell - separate layout */}
           <Route
             element={
-              <ProtectedRoute>
+              <ProtectedRoute mode="business">
                 <BrandLayout />
               </ProtectedRoute>
             }
           >
             <Route path="/brand/dashboard" element={<BrandDashboard />} />
             <Route path="/brand/profile" element={<BrandProfile />} />
+            <Route path="/brand/followers" element={<BrandFollowers />} />
+            <Route path="/brand/following" element={<BrandFollowing />} />
             <Route path="/brand/products" element={<BrandProducts />} />
             <Route path="/brand/products/:id" element={<BrandProductDetail />} />
-            <Route path="/brand/insights" element={<BrandInsights />} />
+            <Route path="/brand/explore" element={<Explore />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

@@ -102,3 +102,53 @@ export async function declineFollowRequest(fromUserId: string) {
     .eq("status", "pending");
   if (error) throw error;
 }
+
+// Brand follow functions
+export async function brandFollowUser(targetUserId: string) {
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth.user?.id;
+  if (!userId) throw new Error("Not authenticated");
+
+  // Get brand ID
+  const { data: brandData } = await (supabase as any)
+    .from("brands")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!brandData) throw new Error("Brand not found");
+
+  const { error } = await (supabase as any)
+    .from("brand_following")
+    .insert({
+      brand_id: brandData.id,
+      following_id: targetUserId,
+      following_type: "user",
+      status: "accepted",
+    });
+
+  if (error) throw error;
+}
+
+export async function brandUnfollowUser(targetUserId: string) {
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth.user?.id;
+  if (!userId) throw new Error("Not authenticated");
+
+  // Get brand ID
+  const { data: brandData } = await (supabase as any)
+    .from("brands")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!brandData) throw new Error("Brand not found");
+
+  const { error } = await (supabase as any)
+    .from("brand_following")
+    .delete()
+    .eq("brand_id", brandData.id)
+    .eq("following_id", targetUserId);
+
+  if (error) throw error;
+}

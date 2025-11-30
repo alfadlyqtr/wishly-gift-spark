@@ -6,8 +6,10 @@ import BackButton from "@/components/BackButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
-import { cancelFollow, removeFollower, requestFollow, FollowStatus } from "@/lib/follow";
+import { cancelFollow, removeFollower, requestFollow, FollowStatus, brandFollowUser, brandUnfollowUser } from "@/lib/follow";
 import { toast } from "sonner";
+import { Store } from "lucide-react";
+import { BrandProfileModal } from "@/components/BrandProfileModal";
 
 interface ProfilePreview {
   id: string;
@@ -17,19 +19,33 @@ interface ProfilePreview {
   avatar_url: string | null;
 }
 
+interface BrandPreview {
+  id: string;
+  brand_name: string;
+  tagline?: string;
+  logo_url?: string;
+}
+
 interface ConnectionRow {
   id: string;
   fallbackId: string;
   profile: ProfilePreview | null;
+  brand: BrandPreview | null;
   status: FollowStatus | null;
+  type: "user" | "brand";
 }
 
 const FollowersFollowing = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
-  const initialTab = (searchParams.get("tab") as "followers" | "following" | null) ?? "followers";
-  const [tab, setTab] = useState<"followers" | "following">(initialTab);
+  const initialTab = (searchParams.get("tab") as "followers" | "following" | "brands" | null) ?? "followers";
+  const [tab, setTab] = useState<"followers" | "following" | "brands">(initialTab);
+  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
+  const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
+  
+  // Detect if we're on a brand page
+  const isBrandPage = window.location.pathname.startsWith("/brand/");
 
   const queryClient = useQueryClient();
 
@@ -53,11 +69,101 @@ const FollowersFollowing = () => {
   const uid = authData?.id ?? null;
 
   const { data: lists, isLoading } = useQuery({
-    queryKey: ["followers-following-list", uid],
+    queryKey: ["followers-following-list", uid, isBrandPage],
     enabled: !!uid,
     queryFn: async () => {
       if (!uid) return { followers: [] as ConnectionRow[], following: [] as ConnectionRow[] };
 
+      // If on brand page, fetch brand followers/following
+      if (isBrandPage) {
+        // Get brand ID first
+        const { data: brandData } = await (supabase as any)
+          .from("brands")
+          .select("id")
+          .eq("user_id", uid)
+          .maybeSingle();
+
+        if (!brandData) return { followers: [] as ConnectionRow[], following: [] as ConnectionRow[] };
+
+        const brandId = brandData.id;
+
+        // Fetch brand followers
+        const { data: brandFollowersData } = await (supabase as any)
+          .from("brand_followers")
+          .select("id, follower_id, follower_type, status")
+          .eq("brand_id", brandId)
+          .eq("status", "accepted");
+
+        // Fetch brand followers
+        const followersData = await Promise.all(
+          ((brandFollowersData as any[]) ?? []).map(async (row) => {
+            if (row.follower_type === "user") {
+              const { data: profile } = await supabase
+                .from("user_profiles")
+                .select("id, username, full_name, email, avatar_url")
+                .eq("id", row.follower_id)
+                .maybeSingle();
+              
+              return {
+                id: row.id,
+                fallbackId: row.follower_id,
+                profile: profile as ProfilePreview | null,
+                brand: null,
+                status: row.status as FollowStatus,
+                type: "user" as const,
+              };
+            } else {
+              const { data: brand } = await (supabase as any)
+                .from("brands")
+                .select("id, brand_name, tagline, logo_url")
+                .eq("id", row.follower_id)
+                .maybeSingle();
+              
+              return {
+                id: row.id,
+                fallbackId: row.follower_id,
+                profile: null,
+                brand: brand as BrandPreview | null,
+                status: row.status as FollowStatus,
+                type: "brand" as const,
+              };
+            }
+          })
+        );
+
+        // Fetch brand following
+        const { data: brandFollowingData } = await (supabase as any)
+          .from("brand_following")
+          .select("id, following_id, following_type, status")
+          .eq("brand_id", brandId)
+          .eq("status", "accepted");
+
+        const followingData = await Promise.all(
+          ((brandFollowingData as any[]) ?? []).map(async (row) => {
+            const { data: profile } = await supabase
+              .from("user_profiles")
+              .select("id, username, full_name, email, avatar_url")
+              .eq("id", row.following_id)
+              .maybeSingle();
+            
+            return {
+              id: row.id,
+              fallbackId: row.following_id,
+              profile: profile as ProfilePreview | null,
+              brand: null,
+              status: row.status as FollowStatus,
+              type: "user" as const,
+            };
+          })
+        );
+
+        return {
+          followers: followersData,
+          following: followingData,
+        };
+      }
+
+      // Regular user followers/following
       const followerSelect = "id,user_id,following_id,status,user_profiles!followers_user_id_fkey(id,username,full_name,email,avatar_url)";
       const followingSelect = "id,user_id,following_id,status,user_profiles!followers_following_id_fkey(id,username,full_name,email,avatar_url)";
 
@@ -81,19 +187,77 @@ const FollowersFollowing = () => {
         id: row.id as string,
         fallbackId: row.user_id as string,
         profile: (row.user_profiles ?? null) as ProfilePreview | null,
+        brand: null,
         status: (row.status as FollowStatus) ?? null,
+        type: "user" as const,
+      }));
+
+      // Fetch brands that are following this user
+      const { data: brandFollowersData } = await (supabase as any)
+        .from("brand_following")
+        .select(`
+          id,
+          brand_id,
+          status,
+          brand:brands(
+            id,
+            brand_name,
+            tagline,
+            logo_url
+          )
+        `)
+        .eq("following_id", uid)
+        .eq("following_type", "user")
+        .eq("status", "accepted");
+
+      const brandFollowersRows = ((brandFollowersData as any[]) ?? []).map((row) => ({
+        id: row.id as string,
+        fallbackId: row.brand_id as string,
+        profile: null,
+        brand: (row.brand ?? null) as BrandPreview | null,
+        status: "accepted" as FollowStatus,
+        type: "brand" as const,
+      }));
+
+      // Fetch brands this user is following
+      const { data: brandsData } = await (supabase as any)
+        .from("brand_followers")
+        .select(`
+          id,
+          brand_id,
+          status,
+          brand:brands(
+            id,
+            brand_name,
+            tagline,
+            logo_url
+          )
+        `)
+        .eq("follower_id", uid)
+        .eq("follower_type", "user")
+        .eq("status", "accepted");
+
+      const brandFollowingData = ((brandsData as any[]) ?? []).map((row) => ({
+        id: row.id as string,
+        fallbackId: row.brand_id as string,
+        profile: null,
+        brand: (row.brand ?? null) as BrandPreview | null,
+        status: "accepted" as FollowStatus,
+        type: "brand" as const,
       }));
 
       const followingData = ((followingRes.data as any[]) ?? []).map((row) => ({
         id: row.id as string,
         fallbackId: row.following_id as string,
         profile: (row.user_profiles ?? null) as ProfilePreview | null,
+        brand: null,
         status: (row.status as FollowStatus) ?? null,
+        type: "user" as const,
       }));
 
       return {
-        followers: followersData,
-        following: followingData,
+        followers: [...followersData, ...brandFollowersRows],
+        following: [...followingData, ...brandFollowingData],
       };
     },
   });
@@ -110,8 +274,31 @@ const FollowersFollowing = () => {
   }, [allFollowing]);
 
   const invalidateConnections = () => {
-    queryClient.invalidateQueries({ queryKey: ["followers-following-list", uid] });
+    // Invalidate all followers-following lists (for all users)
+    queryClient.invalidateQueries({ queryKey: ["followers-following-list"] });
+    // Invalidate profile social counts
+    queryClient.invalidateQueries({ queryKey: ["profile", "social"] });
+    // Invalidate brand followers count
+    queryClient.invalidateQueries({ queryKey: ["brand-followers-count"] });
   };
+
+  const followBackMutation = useMutation({
+    mutationFn: (targetId: string) => isBrandPage ? brandFollowUser(targetId) : requestFollow(targetId),
+    onSuccess: () => {
+      invalidateConnections();
+      toast.success(t("followers.followed", "Now following"));
+    },
+    onError: (error: any) => toast.error(error?.message || t("common.error", "Something went wrong")),
+  });
+
+  const brandUnfollowMutation = useMutation({
+    mutationFn: (targetId: string) => brandUnfollowUser(targetId),
+    onSuccess: () => {
+      invalidateConnections();
+      toast.success(t("followers.unfollowed", "Unfollowed"));
+    },
+    onError: (error: any) => toast.error(error?.message || t("common.error", "Something went wrong")),
+  });
 
   const unfollowMutation = useMutation({
     mutationFn: (targetId: string) => cancelFollow(targetId),
@@ -129,23 +316,6 @@ const FollowersFollowing = () => {
       toast.success(t("followers.removed", "Follower removed."));
     },
     onError: (error: any) => toast.error(error?.message || t("common.error", "Something went wrong")),
-  });
-
-  const followBackMutation = useMutation({
-    mutationFn: (targetId: string) => requestFollow(targetId),
-    onSuccess: () => {
-      invalidateConnections();
-      toast.success(t("followers.follow_back_success", "Follow request sent (awaiting approval)."));
-    },
-    onError: (error: any) => {
-      const message = String(error?.message || "").toLowerCase();
-      if (message.includes("duplicate key")) {
-        invalidateConnections();
-        toast.info(t("followers.already_requested", "Already requested."));
-        return;
-      }
-      toast.error(error?.message || t("common.error", "Something went wrong"));
-    },
   });
 
   const emptyText = useMemo(() => {
@@ -221,6 +391,51 @@ const FollowersFollowing = () => {
                         <div className="px-4 py-3 text-sm opacity-80">{emptyText}</div>
                       ) : (
                         followers.map((row) => {
+                          // Handle both users and brands
+                          if (row.type === "brand") {
+                            const brand = row.brand;
+                            const displayName = brand?.brand_name || "Unknown Brand";
+                            return (
+                              <div key={row.id} className="connections-row px-4 py-3 flex items-center gap-3 mb-4">
+                                {brand?.logo_url ? (
+                                  <Avatar className="h-12 w-12">
+                                    <AvatarImage src={brand.logo_url} alt={displayName} />
+                                    <AvatarFallback>{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                  </Avatar>
+                                ) : (
+                                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] flex items-center justify-center">
+                                    <Store className="h-5 w-5 text-white" />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="connections-name text-sm font-semibold truncate">{displayName}</p>
+                                  {brand?.tagline && (
+                                    <p className="connections-identity text-[11px] opacity-70 truncate">{brand.tagline}</p>
+                                  )}
+                                </div>
+                                <div className="shrink-0 connections-action-btn-wrapper">
+                                  <button
+                                    type="button"
+                                    className="connections-action-btn connections-action-btn--secondary text-xs px-3 py-1.5"
+                                    onClick={() => {
+                                      setSelectedBrandId(row.fallbackId);
+                                      setIsBrandModalOpen(true);
+                                    }}
+                                  >
+                                    <span className="connections-fold" aria-hidden="true" />
+                                    <span className="connections-points" aria-hidden="true">
+                                      {Array.from({ length: 10 }).map((_, idx) => (
+                                        <span key={idx} className="connections-point" />
+                                      ))}
+                                    </span>
+                                    <span className="connections-inner">{t("followers.view", "View")}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // Handle users
                           const profile = row.profile;
                           const displayName = profile?.full_name || profile?.username || row.fallbackId;
                           const identity = profile?.username
@@ -230,62 +445,98 @@ const FollowersFollowing = () => {
                           const isAlreadyFollowing = existingStatus === "accepted";
                           const isPendingFollow = existingStatus === "pending";
                           return (
-                            <div key={row.id} className="connections-row px-4 py-3 flex items-center gap-4">
-                              <Avatar className="h-14 w-14">
+                            <div key={row.id} className="connections-row px-4 py-3 flex items-center gap-3 mb-4">
+                              <Avatar className="h-12 w-12">
                                 <AvatarImage src={profile?.avatar_url || undefined} alt={displayName || "avatar"} />
                                 <AvatarFallback>{displayName?.slice(0, 2).toUpperCase() || "--"}</AvatarFallback>
                               </Avatar>
                               <div className="flex-1 min-w-0">
-                                <p className="connections-name text-base font-semibold truncate">{displayName}</p>
+                                <p className="connections-name text-sm font-semibold truncate">{displayName}</p>
                                 {identity && (
-                                  <p className="connections-identity text-[12px] opacity-70 truncate">{identity}</p>
+                                  <p className="connections-identity text-[11px] opacity-70 truncate">{identity}</p>
                                 )}
                               </div>
                               <div className="shrink-0 connections-action-btn-wrapper">
-                                {isAlreadyFollowing ? (
-                                  <button
-                                    type="button"
-                                    className="connections-action-btn connections-action-btn--primary"
-                                    disabled
-                                  >
-                                    <span className="connections-fold" aria-hidden="true" />
-                                    <span className="connections-points" aria-hidden="true">
-                                      {Array.from({ length: 10 }).map((_, idx) => (
-                                        <span key={idx} className="connections-point" />
-                                      ))}
-                                    </span>
-                                    <span className="connections-inner">{t("followers.following", "Following")}</span>
-                                  </button>
-                                ) : isPendingFollow ? (
-                                  <button
-                                    type="button"
-                                    className="connections-action-btn connections-action-btn--primary"
-                                    onClick={() => cancelRequestMutation.mutate(row.fallbackId)}
-                                    disabled={cancelRequestMutation.isPending}
-                                  >
-                                    <span className="connections-fold" aria-hidden="true" />
-                                    <span className="connections-points" aria-hidden="true">
-                                      {Array.from({ length: 10 }).map((_, idx) => (
-                                        <span key={idx} className="connections-point" />
-                                      ))}
-                                    </span>
-                                    <span className="connections-inner">{t("followers.cancel_request", "Cancel request")}</span>
-                                  </button>
+                                {isBrandPage ? (
+                                  // Brand follow back button
+                                  isAlreadyFollowing ? (
+                                    <button
+                                      type="button"
+                                      className="connections-action-btn connections-action-btn--primary text-xs px-3 py-1.5"
+                                      onClick={() => brandUnfollowMutation.mutate(row.fallbackId)}
+                                      disabled={brandUnfollowMutation.isPending}
+                                    >
+                                      <span className="connections-fold" aria-hidden="true" />
+                                      <span className="connections-points" aria-hidden="true">
+                                        {Array.from({ length: 10 }).map((_, idx) => (
+                                          <span key={idx} className="connections-point" />
+                                        ))}
+                                      </span>
+                                      <span className="connections-inner">{t("followers.following", "Following")}</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="connections-action-btn connections-action-btn--primary text-xs px-3 py-1.5"
+                                      onClick={() => followBackMutation.mutate(row.fallbackId)}
+                                      disabled={followBackMutation.isPending}
+                                    >
+                                      <span className="connections-fold" aria-hidden="true" />
+                                      <span className="connections-points" aria-hidden="true">
+                                        {Array.from({ length: 10 }).map((_, idx) => (
+                                          <span key={idx} className="connections-point" />
+                                        ))}
+                                      </span>
+                                      <span className="connections-inner">{t("followers.follow_back", "Follow back")}</span>
+                                    </button>
+                                  )
                                 ) : (
-                                  <button
-                                    type="button"
-                                    className="connections-action-btn connections-action-btn--primary"
-                                    onClick={() => followBackMutation.mutate(row.fallbackId)}
-                                    disabled={followBackMutation.isPending}
-                                  >
-                                    <span className="connections-fold" aria-hidden="true" />
-                                    <span className="connections-points" aria-hidden="true">
-                                      {Array.from({ length: 10 }).map((_, idx) => (
-                                        <span key={idx} className="connections-point" />
-                                      ))}
-                                    </span>
-                                    <span className="connections-inner">{t("followers.follow_back", "Follow back")}</span>
-                                  </button>
+                                  // User follow back buttons
+                                  isAlreadyFollowing ? (
+                                    <button
+                                      type="button"
+                                      className="connections-action-btn connections-action-btn--primary text-xs px-3 py-1.5"
+                                      disabled
+                                    >
+                                      <span className="connections-fold" aria-hidden="true" />
+                                      <span className="connections-points" aria-hidden="true">
+                                        {Array.from({ length: 10 }).map((_, idx) => (
+                                          <span key={idx} className="connections-point" />
+                                        ))}
+                                      </span>
+                                      <span className="connections-inner">{t("followers.following", "Following")}</span>
+                                    </button>
+                                  ) : isPendingFollow ? (
+                                    <button
+                                      type="button"
+                                      className="connections-action-btn connections-action-btn--primary text-xs px-3 py-1.5"
+                                      onClick={() => cancelRequestMutation.mutate(row.fallbackId)}
+                                      disabled={cancelRequestMutation.isPending}
+                                    >
+                                      <span className="connections-fold" aria-hidden="true" />
+                                      <span className="connections-points" aria-hidden="true">
+                                        {Array.from({ length: 10 }).map((_, idx) => (
+                                          <span key={idx} className="connections-point" />
+                                        ))}
+                                      </span>
+                                      <span className="connections-inner">{t("followers.cancel_request", "Cancel request")}</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="connections-action-btn connections-action-btn--primary text-xs px-3 py-1.5"
+                                      onClick={() => followBackMutation.mutate(row.fallbackId)}
+                                      disabled={followBackMutation.isPending}
+                                    >
+                                      <span className="connections-fold" aria-hidden="true" />
+                                      <span className="connections-points" aria-hidden="true">
+                                        {Array.from({ length: 10 }).map((_, idx) => (
+                                          <span key={idx} className="connections-point" />
+                                        ))}
+                                      </span>
+                                      <span className="connections-inner">{t("followers.follow_back", "Follow back")}</span>
+                                    </button>
+                                  )
                                 )}
                               </div>
                             </div>
@@ -296,41 +547,104 @@ const FollowersFollowing = () => {
                       <div className="px-4 py-3 text-sm opacity-80">{emptyText}</div>
                     ) : (
                       following.map((row) => {
-                        const profile = row.profile;
-                        const displayName = profile?.full_name || profile?.username || row.fallbackId;
-                        const identity = profile?.username
-                          ? `@${profile.username}${profile.email ? ` · ${profile.email}` : ""}`
-                          : profile?.email || "";
-                        return (
-                          <div key={row.id} className="connections-row px-4 py-3 flex items-center gap-4">
-                            <Avatar className="h-14 w-14">
-                              <AvatarImage src={profile?.avatar_url || undefined} alt={displayName || "avatar"} />
-                              <AvatarFallback>{displayName?.slice(0, 2).toUpperCase() || "--"}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="connections-name text-base font-semibold truncate">{displayName}</p>
-                              {identity && (
-                                <p className="connections-identity text-[12px] opacity-70 truncate">{identity}</p>
+                        if (row.type === "brand") {
+                          const brand = row.brand;
+                          const displayName = brand?.brand_name || "Unknown Brand";
+                          return (
+                            <div 
+                              key={row.id} 
+                              className="connections-row px-4 py-4 flex items-center gap-3 mb-4"
+                            >
+                              {brand?.logo_url ? (
+                                <Avatar className="h-12 w-12">
+                                  <AvatarImage src={brand.logo_url} alt={displayName} />
+                                  <AvatarFallback>{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                              ) : (
+                                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] flex items-center justify-center">
+                                  <Store className="h-5 w-5 text-white" />
+                                </div>
                               )}
+                              <div className="flex-1 min-w-0">
+                                <p className="connections-name text-sm font-semibold truncate">{displayName}</p>
+                                {brand?.tagline && (
+                                  <p className="connections-identity text-[11px] opacity-70 truncate">{brand.tagline}</p>
+                                )}
+                              </div>
+                              <div className="shrink-0 flex flex-col gap-1.5">
+                                <button
+                                  type="button"
+                                  className="connections-action-btn connections-action-btn--secondary text-xs px-3 py-1.5"
+                                  onClick={() => {
+                                    setSelectedBrandId(row.fallbackId);
+                                    setIsBrandModalOpen(true);
+                                  }}
+                                >
+                                  <span className="connections-fold" aria-hidden="true" />
+                                  <span className="connections-points" aria-hidden="true">
+                                    {Array.from({ length: 10 }).map((_, idx) => (
+                                      <span key={idx} className="connections-point" />
+                                    ))}
+                                  </span>
+                                  <span className="connections-inner">{t("followers.view", "View")}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="connections-action-btn connections-action-btn--primary text-xs px-3 py-1.5"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    unfollowMutation.mutate(row.fallbackId);
+                                  }}
+                                  disabled={unfollowMutation.isPending}
+                                >
+                                  <span className="connections-fold" aria-hidden="true" />
+                                  <span className="connections-points" aria-hidden="true">
+                                    {Array.from({ length: 10 }).map((_, idx) => (
+                                      <span key={idx} className="connections-point" />
+                                    ))}
+                                  </span>
+                                  <span className="connections-inner">{t("followers.unfollow", "Unfollow")}</span>
+                                </button>
+                              </div>
                             </div>
-                            <div className="shrink-0 connections-action-btn-wrapper">
-                              <button
-                                type="button"
-                                className="connections-action-btn connections-action-btn--primary"
-                                onClick={() => unfollowMutation.mutate(row.fallbackId)}
-                                disabled={unfollowMutation.isPending}
-                              >
-                                <span className="connections-fold" aria-hidden="true" />
-                                <span className="connections-points" aria-hidden="true">
-                                  {Array.from({ length: 10 }).map((_, idx) => (
-                                    <span key={idx} className="connections-point" />
-                                  ))}
-                                </span>
-                                <span className="connections-inner">{t("followers.unfollow", "Unfollow")}</span>
-                              </button>
+                          );
+                        } else {
+                          const profile = row.profile;
+                          const displayName = profile?.full_name || profile?.username || row.fallbackId;
+                          const identity = profile?.username
+                            ? `@${profile.username}${profile.email ? ` · ${profile.email}` : ""}`
+                            : profile?.email || "";
+                          return (
+                            <div key={row.id} className="connections-row px-4 py-3 flex items-center gap-3 mb-4">
+                              <Avatar className="h-12 w-12">
+                                <AvatarImage src={profile?.avatar_url || undefined} alt={displayName || "avatar"} />
+                                <AvatarFallback>{displayName?.slice(0, 2).toUpperCase() || "--"}</AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <p className="connections-name text-sm font-semibold truncate">{displayName}</p>
+                                {identity && (
+                                  <p className="connections-identity text-[11px] opacity-70 truncate">{identity}</p>
+                                )}
+                              </div>
+                              <div className="shrink-0 connections-action-btn-wrapper">
+                                <button
+                                  type="button"
+                                  className="connections-action-btn connections-action-btn--primary text-xs px-3 py-1.5"
+                                  onClick={() => unfollowMutation.mutate(row.fallbackId)}
+                                  disabled={unfollowMutation.isPending}
+                                >
+                                  <span className="connections-fold" aria-hidden="true" />
+                                  <span className="connections-points" aria-hidden="true">
+                                    {Array.from({ length: 10 }).map((_, idx) => (
+                                      <span key={idx} className="connections-point" />
+                                    ))}
+                                  </span>
+                                  <span className="connections-inner">{t("followers.unfollow", "Unfollow")}</span>
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        );
+                          );
+                        }
                       })
                     )}
                   </div>
@@ -340,6 +654,18 @@ const FollowersFollowing = () => {
           </div>
         </div>
       </div>
+
+      {/* Brand Profile Modal */}
+      {selectedBrandId && (
+        <BrandProfileModal
+          brandId={selectedBrandId}
+          isOpen={isBrandModalOpen}
+          onClose={() => {
+            setIsBrandModalOpen(false);
+            setSelectedBrandId(null);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -250,14 +250,6 @@ export const RecentActivityCard = () => {
                         ? t("wishlist.my_birthday_wishlist", "My Birthday Wishlist")
                         : w.title}
                     </span>
-                    <span className="flex items-center gap-1 text-[11px]">
-                      <Heart className="h-3 w-3 text-[#be123c]" />
-                      <span>{w.likesCount}</span>
-                    </span>
-                    <span className="flex items-center gap-1 text-[11px]">
-                      <MessageCircle className="h-3 w-3 text-blue-600" />
-                      <span>{w.commentsCount}</span>
-                    </span>
                   </button>
                 );
               })}

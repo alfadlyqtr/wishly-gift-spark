@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { requestFollow } from "@/lib/follow";
+import { BrandProfileModal } from "@/components/BrandProfileModal";
 
 const Explore = () => {
   const { t } = useTranslation();
@@ -12,6 +13,8 @@ const Explore = () => {
   const [q, setQ] = useState("");
   const debouncedQ = useMemo(() => q.trim(), [q]);
   const [requestedIds, setRequestedIds] = useState<string[]>([]);
+  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
+  const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
 
   const usersQuery = useQuery({
     queryKey: ["explore", "users", debouncedQ],
@@ -127,10 +130,10 @@ const Explore = () => {
       const s = debouncedQ;
       if (!s) return [];
       const { data } = await (supabase as any)
-        .from("wishlists")
-        .select("id, title, description")
-        .eq("privacy_level", "public")
-        .or(`title.ilike.%${s}%,description.ilike.%${s}%`)
+        .from("brands")
+        .select("id, brand_name, tagline, description, logo_url, is_public")
+        .eq("is_public", true)
+        .or(`brand_name.ilike.%${s}%,tagline.ilike.%${s}%,description.ilike.%${s}%`)
         .limit(20);
       return data ?? [];
     },
@@ -238,10 +241,48 @@ const Explore = () => {
             <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4 text-sm text-muted-foreground">{t('explore.no_results', 'No results.')}</div>
           ) : (
             <div className="space-y-3">
-              {brandsQuery.data!.map((w: any) => (
-                <div key={w.id} className="rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4">
-                  <div className="font-medium truncate">{w.title || "Untitled"}</div>
-                  {w.description && <div className="text-sm text-muted-foreground line-clamp-2">{w.description}</div>}
+              {brandsQuery.data!.map((brand: any) => (
+                <div key={brand.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {brand.logo_url ? (
+                      <span className="relative flex shrink-0 overflow-hidden rounded-full h-9 w-9 ring-2 ring-white/80">
+                        <img
+                          src={brand.logo_url}
+                          alt={brand.brand_name || "brand logo"}
+                          className="h-full w-full object-cover"
+                          onError={(e: any) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      </span>
+                    ) : (
+                      <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white ring-1 ring-white/60 shadow-[0_6px_14px_rgba(200,80,192,0.28)]">
+                        <Store className="h-4 w-4" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{brand.brand_name || "Untitled"}</div>
+                      {brand.tagline && <div className="text-sm text-muted-foreground truncate">{brand.tagline}</div>}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="explore-follow-btn shrink-0"
+                    onClick={() => {
+                      setSelectedBrandId(brand.id);
+                      setIsBrandModalOpen(true);
+                    }}
+                  >
+                    <span className="explore-follow-btn-fold" aria-hidden="true" />
+                    <span className="explore-follow-btn-points" aria-hidden="true">
+                      {Array.from({ length: 10 }).map((_, i) => (
+                        <span key={i} className="explore-follow-btn-point" />
+                      ))}
+                    </span>
+                    <span className="explore-follow-btn-inner">
+                      {t("explore.view", "View")}
+                    </span>
+                  </button>
                 </div>
               ))}
             </div>
@@ -323,6 +364,18 @@ const Explore = () => {
           )
         )}
       </div>
+
+      {/* Brand Profile Modal */}
+      {selectedBrandId && (
+        <BrandProfileModal
+          brandId={selectedBrandId}
+          isOpen={isBrandModalOpen}
+          onClose={() => {
+            setIsBrandModalOpen(false);
+            setSelectedBrandId(null);
+          }}
+        />
+      )}
     </div>
   );
 };

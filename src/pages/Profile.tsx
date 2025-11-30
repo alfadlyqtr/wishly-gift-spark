@@ -36,21 +36,38 @@ const Profile = () => {
       const uid = auth.user?.id;
       if (!uid) return { followers: 0, following: 0 };
       try {
-        const [r1, r2] = await Promise.all([
+        const [userFollowers, userFollowing, brandFollowers, brandFollowing] = await Promise.all([
+          // User followers (users following this user)
           supabase
             .from("followers")
             .select("id", { count: "exact", head: true })
             .eq("following_id", uid)
             .eq("status", "accepted"),
+          // User following (users this user is following)
           supabase
             .from("followers")
             .select("id", { count: "exact", head: true })
             .eq("user_id", uid)
             .eq("status", "accepted"),
+          // Brand followers (brands following this user)
+          (supabase as any)
+            .from("brand_following")
+            .select("id", { count: "exact", head: true })
+            .eq("following_id", uid)
+            .eq("following_type", "user")
+            .eq("status", "accepted"),
+          // Brand following (brands this user is following)
+          (supabase as any)
+            .from("brand_followers")
+            .select("id", { count: "exact", head: true })
+            .eq("follower_id", uid)
+            .eq("follower_type", "user")
+            .eq("status", "accepted"),
         ]);
+        
         return {
-          followers: (r1.count as number | null) ?? 0,
-          following: (r2.count as number | null) ?? 0,
+          followers: ((userFollowers.count as number | null) ?? 0) + ((brandFollowers.count as number | null) ?? 0),
+          following: ((userFollowing.count as number | null) ?? 0) + ((brandFollowing.count as number | null) ?? 0),
         };
       } catch {
         return { followers: 0, following: 0 };

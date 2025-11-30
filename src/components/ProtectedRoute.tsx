@@ -5,9 +5,10 @@ import { Session } from "@supabase/supabase-js";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  mode?: "personal" | "business";
 }
 
-export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+export const ProtectedRoute = ({ children, mode }: ProtectedRouteProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -35,9 +36,18 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-
   if (!session) {
     return <Navigate to="/login" replace />;
+  }
+
+  const accountType = (session.user?.user_metadata as any)?.account_type as string | undefined;
+
+  if (mode === "business" && accountType !== "business") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (mode === "personal" && accountType === "business") {
+    return <Navigate to="/brand/dashboard" replace />;
   }
 
   return <>{children}</>;

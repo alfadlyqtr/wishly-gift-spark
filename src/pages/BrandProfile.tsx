@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Camera, Globe, Instagram, Twitter, Facebook, Linkedin, Mail, Phone, MapPin, Save, Building2, ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Camera, Globe, Instagram, Twitter, Facebook, Linkedin, Mail, Phone, MapPin, Save, Building2, ExternalLink, Bell, MessageSquare, Users, Shield, TrendingUp, Settings as SettingsIcon, Youtube, UserPlus, UserCheck, MessageCircle, Plus, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -22,21 +26,68 @@ interface BrandData {
   description?: string;
   email?: string;
   phone?: string;
+  whatsapp?: string;
   address?: string;
+  store_locations?: string[];
   instagram?: string;
   twitter?: string;
   facebook?: string;
   linkedin?: string;
+  tiktok?: string;
+  youtube?: string;
   is_verified?: boolean;
   is_public?: boolean;
+  allow_messages?: boolean;
+  allow_product_requests?: boolean;
+  auto_approve_followers?: boolean;
+  notify_new_follower?: boolean;
+  notify_product_mention?: boolean;
+  notify_review?: boolean;
+  show_analytics_publicly?: boolean;
 }
 
 const BrandProfile = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [brand, setBrand] = useState<BrandData | null>(null);
+
+  // Use React Query for follower counts
+  const { data: followerCounts } = useQuery({
+    queryKey: ["brand-followers-count"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { followers: 0, following: 0 };
+
+      const { data: brandData } = await (supabase as any)
+        .from("brands")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!brandData) return { followers: 0, following: 0 };
+
+      const [followersRes, followingRes] = await Promise.all([
+        (supabase as any)
+          .from("brand_followers")
+          .select("id", { count: "exact", head: true })
+          .eq("brand_id", brandData.id)
+          .eq("status", "accepted"),
+        (supabase as any)
+          .from("brand_following")
+          .select("id", { count: "exact", head: true })
+          .eq("brand_id", brandData.id)
+          .eq("status", "accepted"),
+      ]);
+
+      return {
+        followers: followersRes.count || 0,
+        following: followingRes.count || 0,
+      };
+    },
+  });
 
   // Form state
   const [brandName, setBrandName] = useState("");
@@ -48,17 +99,29 @@ const BrandProfile = () => {
   const [managerName, setManagerName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [address, setAddress] = useState("");
+  const [storeLocations, setStoreLocations] = useState<string[]>([]);
   const [instagram, setInstagram] = useState("");
   const [twitter, setTwitter] = useState("");
   const [facebook, setFacebook] = useState("");
   const [linkedin, setLinkedin] = useState("");
+  const [tiktok, setTiktok] = useState("");
+  const [youtube, setYoutube] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isPublic, setIsPublic] = useState(true);
+  const [allowMessages, setAllowMessages] = useState(true);
+  const [allowProductRequests, setAllowProductRequests] = useState(true);
+  const [autoApproveFollowers, setAutoApproveFollowers] = useState(false);
+  const [notifyNewFollower, setNotifyNewFollower] = useState(true);
+  const [notifyProductMention, setNotifyProductMention] = useState(true);
+  const [notifyReview, setNotifyReview] = useState(true);
+  const [showAnalyticsPublicly, setShowAnalyticsPublicly] = useState(false);
 
   useEffect(() => {
     fetchBrandData();
   }, []);
+
 
   const fetchBrandData = async () => {
     try {
@@ -84,13 +147,24 @@ const BrandProfile = () => {
         setManagerName(data.manager_name || "");
         setEmail(data.email || "");
         setPhone(data.phone || "");
+        setWhatsapp(data.whatsapp || "");
         setAddress(data.address || "");
+        setStoreLocations(data.store_locations || []);
         setInstagram(data.instagram || "");
         setTwitter(data.twitter || "");
         setFacebook(data.facebook || "");
         setLinkedin(data.linkedin || "");
+        setTiktok(data.tiktok || "");
+        setYoutube(data.youtube || "");
         setLogoUrl(data.logo_url || null);
         setIsPublic(data.is_public !== false);
+        setAllowMessages(data.allow_messages !== false);
+        setAllowProductRequests(data.allow_product_requests !== false);
+        setAutoApproveFollowers(data.auto_approve_followers === true);
+        setNotifyNewFollower(data.notify_new_follower !== false);
+        setNotifyProductMention(data.notify_product_mention !== false);
+        setNotifyReview(data.notify_review !== false);
+        setShowAnalyticsPublicly(data.show_analytics_publicly === true);
       }
     } catch (err: any) {
       toast.error(err.message || t("brand.profile_load_error", "Failed to load brand data"));
@@ -148,13 +222,24 @@ const BrandProfile = () => {
           manager_name: managerName,
           email,
           phone,
+          whatsapp,
           address,
+          store_locations: storeLocations,
           instagram,
           twitter,
           facebook,
           linkedin,
+          tiktok,
+          youtube,
           logo_url: logoUrl,
           is_public: isPublic,
+          allow_messages: allowMessages,
+          allow_product_requests: allowProductRequests,
+          auto_approve_followers: autoApproveFollowers,
+          notify_new_follower: notifyNewFollower,
+          notify_product_mention: notifyProductMention,
+          notify_review: notifyReview,
+          show_analytics_publicly: showAnalyticsPublicly,
           updated_at: new Date().toISOString(),
         })
         .eq("id", brand.id);
@@ -188,6 +273,43 @@ const BrandProfile = () => {
           {t("brand.profile_subtitle", "Manage your brand information and appearance")}
         </p>
       </div>
+
+      {/* Followers & Following Stats */}
+      <Card className="shadow-lg border border-white/40 bg-gradient-to-br from-white/95 via-white/90 to-white/80">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={() => navigate("/brand/followers")}
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-brand-cool-start/10 to-brand-cool-end/10 hover:from-brand-cool-start/20 hover:to-brand-cool-end/20 transition-all"
+            >
+              <div className="flex items-center gap-2">
+                <UserCheck className="h-5 w-5 text-primary" />
+                <span className="text-2xl font-bold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-cool-end))] bg-clip-text text-transparent">
+                  {followerCounts?.followers ?? 0}
+                </span>
+              </div>
+              <span className="text-sm font-semibold text-muted-foreground">
+                {t("brand.followers", "Followers")}
+              </span>
+            </button>
+
+            <button
+              onClick={() => navigate("/brand/following")}
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-brand-warm-start/10 to-brand-warm-end/10 hover:from-brand-warm-start/20 hover:to-brand-warm-end/20 transition-all"
+            >
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-primary" />
+                <span className="text-2xl font-bold bg-gradient-to-r from-[hsl(var(--brand-warm-start))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent">
+                  {followerCounts?.following ?? 0}
+                </span>
+              </div>
+              <span className="text-sm font-semibold text-muted-foreground">
+                {t("brand.following", "Following")}
+              </span>
+            </button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Logo Section */}
       <Card className="shadow-lg border border-white/40 bg-gradient-to-br from-white/95 via-white/90 to-white/80 overflow-hidden">
@@ -441,17 +563,271 @@ const BrandProfile = () => {
               className="border-slate-200 focus:border-primary"
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="tiktok" className="flex items-center gap-2">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+              </svg>
+              TikTok
+            </Label>
+            <Input
+              id="tiktok"
+              value={tiktok}
+              onChange={(e) => setTiktok(e.target.value)}
+              placeholder="@yourbrand"
+              className="border-slate-200 focus:border-primary"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="youtube" className="flex items-center gap-2">
+              <Youtube className="h-4 w-4 text-red-600" />
+              YouTube
+            </Label>
+            <Input
+              id="youtube"
+              value={youtube}
+              onChange={(e) => setYoutube(e.target.value)}
+              placeholder="youtube.com/@yourbrand"
+              className="border-slate-200 focus:border-primary"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="whatsapp" className="flex items-center gap-2">
+              <MessageCircle className="h-4 w-4 text-green-600" />
+              WhatsApp
+            </Label>
+            <Input
+              id="whatsapp"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              placeholder="+1234567890"
+              className="border-slate-200 focus:border-primary"
+            />
+          </div>
         </CardContent>
       </Card>
 
-      {/* Visibility Settings */}
+      {/* Store Locations */}
       <Card className="shadow-lg border border-white/40 bg-gradient-to-br from-white/95 via-white/90 to-white/80">
         <CardHeader className="bg-gradient-to-r from-brand-cool-start/10 via-brand-cool-end/5 to-brand-warm-start/10 pb-4">
-          <CardTitle className="text-lg">
-            {t("brand.visibility_settings", "Visibility Settings")}
+          <CardTitle className="text-lg flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-primary" />
+            {t("brand.store_locations", "Store Locations")}
+          </CardTitle>
+          <CardDescription>
+            Add Google Maps links for your physical store locations
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-4">
+          {storeLocations.map((location, index) => (
+            <div key={index} className="flex gap-2">
+              <Input
+                value={location}
+                onChange={(e) => {
+                  const newLocations = [...storeLocations];
+                  newLocations[index] = e.target.value;
+                  setStoreLocations(newLocations);
+                }}
+                placeholder="https://maps.google.com/..."
+                className="border-slate-200 focus:border-primary flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  const newLocations = storeLocations.filter((_, i) => i !== index);
+                  setStoreLocations(newLocations);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setStoreLocations([...storeLocations, ""])}
+            className="w-full"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {t("brand.add_location", "Add Location")}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Privacy & Interaction Settings */}
+      <Card className="shadow-lg border border-white/40 bg-gradient-to-br from-white/95 via-white/90 to-white/80">
+        <CardHeader className="bg-gradient-to-r from-brand-cool-start/10 via-brand-cool-end/5 to-brand-warm-start/10 pb-4">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Shield className="h-5 w-5 text-primary" />
+            {t("brand.privacy_interaction", "Privacy & Interaction")}
+          </CardTitle>
+          <CardDescription>
+            {t("brand.privacy_interaction_desc", "Control how users interact with your brand")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="allowMessages" className="text-base font-medium flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                {t("brand.allow_messages", "Allow Messages")}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t("brand.allow_messages_hint", "Let users send you direct messages")}
+              </p>
+            </div>
+            <Switch
+              id="allowMessages"
+              checked={allowMessages}
+              onCheckedChange={setAllowMessages}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="allowProductRequests" className="text-base font-medium">
+                {t("brand.allow_product_requests", "Allow Product Requests")}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t("brand.allow_product_requests_hint", "Users can request products not in your catalog")}
+              </p>
+            </div>
+            <Switch
+              id="allowProductRequests"
+              checked={allowProductRequests}
+              onCheckedChange={setAllowProductRequests}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="autoApproveFollowers" className="text-base font-medium flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                {t("brand.auto_approve_followers", "Auto-Approve Followers")}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t("brand.auto_approve_followers_hint", "Automatically accept all follow requests")}
+              </p>
+            </div>
+            <Switch
+              id="autoApproveFollowers"
+              checked={autoApproveFollowers}
+              onCheckedChange={setAutoApproveFollowers}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Notification Settings */}
+      <Card className="shadow-lg border border-white/40 bg-gradient-to-br from-white/95 via-white/90 to-white/80">
+        <CardHeader className="bg-gradient-to-r from-brand-cool-start/10 via-brand-cool-end/5 to-brand-warm-start/10 pb-4">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Bell className="h-5 w-5 text-primary" />
+            {t("brand.notifications", "Notifications")}
+          </CardTitle>
+          <CardDescription>
+            {t("brand.notifications_desc", "Choose what notifications you want to receive")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="notifyNewFollower" className="text-base font-medium">
+                {t("brand.notify_new_follower", "New Followers")}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t("brand.notify_new_follower_hint", "Get notified when someone follows your brand")}
+              </p>
+            </div>
+            <Switch
+              id="notifyNewFollower"
+              checked={notifyNewFollower}
+              onCheckedChange={setNotifyNewFollower}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="notifyProductMention" className="text-base font-medium">
+                {t("brand.notify_product_mention", "Product Mentions")}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t("brand.notify_product_mention_hint", "When users add your products to wishlists")}
+              </p>
+            </div>
+            <Switch
+              id="notifyProductMention"
+              checked={notifyProductMention}
+              onCheckedChange={setNotifyProductMention}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="notifyReview" className="text-base font-medium">
+                {t("brand.notify_review", "Reviews & Feedback")}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t("brand.notify_review_hint", "Get notified about new reviews")}
+              </p>
+            </div>
+            <Switch
+              id="notifyReview"
+              checked={notifyReview}
+              onCheckedChange={setNotifyReview}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Analytics Settings */}
+      <Card className="shadow-lg border border-white/40 bg-gradient-to-br from-white/95 via-white/90 to-white/80">
+        <CardHeader className="bg-gradient-to-r from-brand-cool-start/10 via-brand-cool-end/5 to-brand-warm-start/10 pb-4">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            {t("brand.analytics_settings", "Analytics & Insights")}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="showAnalyticsPublicly" className="text-base font-medium">
+                {t("brand.show_analytics_publicly", "Public Analytics")}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t("brand.show_analytics_publicly_hint", "Display basic stats on your public profile")}
+              </p>
+            </div>
+            <Switch
+              id="showAnalyticsPublicly"
+              checked={showAnalyticsPublicly}
+              onCheckedChange={setShowAnalyticsPublicly}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Visibility & Language Settings */}
+      <Card className="shadow-lg border border-white/40 bg-gradient-to-br from-white/95 via-white/90 to-white/80">
+        <CardHeader className="bg-gradient-to-r from-brand-cool-start/10 via-brand-cool-end/5 to-brand-warm-start/10 pb-4">
+          <CardTitle className="text-lg">
+            {t("brand.visibility_settings", "Visibility & Language")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <Label htmlFor="isPublic" className="text-base font-medium">
@@ -466,6 +842,20 @@ const BrandProfile = () => {
               checked={isPublic}
               onCheckedChange={setIsPublic}
             />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label className="text-base font-medium">
+                {t("brand.language", "Language")}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t("brand.language_hint", "Switch between English and Arabic")}
+              </p>
+            </div>
+            <LanguageToggle />
           </div>
         </CardContent>
       </Card>

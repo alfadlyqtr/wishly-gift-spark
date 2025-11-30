@@ -8,7 +8,6 @@ import WishAddDialog from "@/components/wishes/WishAddDialog";
 import { useWishlists } from "@/hooks/use-wishlists";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-// reverted: no avatar in bottom nav
 
 export const MainLayout = () => {
   const location = useLocation();
@@ -163,12 +162,12 @@ export const MainLayout = () => {
       {/* Main Content */}
       <main
         className={`flex-1 overflow-y-auto ${
-          isGifterShared ? '' : 'pb-28 sm:pb-24'
+          isGifterShared ? '' : 'pb-32'
         }`}
         style={{
           paddingBottom: isGifterShared
             ? undefined
-            : 'calc(env(safe-area-inset-bottom, 0px) + 7rem)',
+            : 'calc(env(safe-area-inset-bottom, 0px) + 6rem)',
         }}
       >
         <Outlet />
@@ -177,19 +176,16 @@ export const MainLayout = () => {
       {/* Bottom Navigation (hidden on shared gifter view) */}
       {!isGifterShared && (
       <nav
-        className="fixed bottom-6 sm:bottom-4 left-0 right-0 z-50"
-        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.5rem)' }}
+        className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-white/95 via-white/90 to-transparent pt-4 pb-2"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
       >
-        <div
-          className="mx-auto w-[min(720px,90%)]"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom, 6px)' }}
-        >
-          <div className="flex items-end justify-between gap-2 px-3 py-2 rounded-3xl bg-white/85 backdrop-blur ring-1 ring-white/70 shadow-[0_12px_32px_rgba(0,0,0,0.12)]">
-          <Link to="/dashboard" className="flex flex-1 justify-center min-w-0">
+        <div className="mx-auto w-[min(720px,95%)] p-[2px] rounded-3xl bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
+          <div className="flex items-end justify-between gap-2 px-3 py-2 rounded-3xl bg-white/85 backdrop-blur shadow-[0_12px_32px_rgba(0,0,0,0.12)] touch-manipulation">
+          <Link to="/dashboard" className="flex flex-1 justify-center min-w-0" style={{ WebkitTapHighlightColor: 'transparent' }}>
             <Button
               variant="ghost"
               size="sm"
-              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-2 ${
+              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-2 touch-manipulation select-none ${
                 isActive("/dashboard") ? "text-primary" : "text-muted-foreground"
               }`}
             >
@@ -203,11 +199,11 @@ export const MainLayout = () => {
             </Button>
           </Link>
 
-          <Link to="/explore" className="flex flex-1 justify-center min-w-0">
+          <Link to="/explore" className="flex flex-1 justify-center min-w-0" style={{ WebkitTapHighlightColor: 'transparent' }}>
             <Button
               variant="ghost"
               size="sm"
-              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 ${
+              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 touch-manipulation select-none ${
                 isActive("/explore") ? "text-primary" : "text-muted-foreground"
               }`}
             >
@@ -225,7 +221,8 @@ export const MainLayout = () => {
             <Button
               onClick={() => setAddOpen(true)}
               size="lg"
-              className="relative w-full max-w-[92px] sm:max-w-none -mt-9 px-3 py-2 bg-transparent shadow-none ring-0 transition-all"
+              className="relative w-full max-w-[92px] sm:max-w-none -mt-9 px-3 py-2 bg-transparent shadow-none ring-0 transition-all touch-manipulation select-none"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
               <div className="flex flex-col items-center">
                 <span
@@ -244,11 +241,11 @@ export const MainLayout = () => {
             </Button>
           </div>
 
-          <Link to="/events" className="flex flex-1 justify-center min-w-0">
+          <Link to="/events" className="flex flex-1 justify-center min-w-0" style={{ WebkitTapHighlightColor: 'transparent' }}>
             <Button
               variant="ghost"
               size="sm"
-              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 ${
+              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 touch-manipulation select-none ${
                 isActive("/events") ? "text-primary" : "text-muted-foreground"
               }`}
             >
@@ -262,11 +259,11 @@ export const MainLayout = () => {
             </Button>
           </Link>
 
-          <Link to="/profile" className="flex flex-1 justify-center min-w-0">
+          <Link to="/profile" className="flex flex-1 justify-center min-w-0" style={{ WebkitTapHighlightColor: 'transparent' }}>
             <Button
               variant="ghost"
               size="sm"
-              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-2 ${
+              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-2 touch-manipulation select-none ${
                 isActive("/profile") ? "text-primary" : "text-muted-foreground"
               }`}
             >

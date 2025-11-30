@@ -257,7 +257,7 @@ const WishlistDetail = () => {
 
   useEffect(() => {
     if (!reservationRows || reservationRows.length === 0) {
-      setClaimed({});
+      setClaimed((prev) => Object.keys(prev).length === 0 ? prev : {});
       return;
     }
     const nextClaimed: Record<string, boolean> = {};
@@ -267,7 +267,13 @@ const WishlistDetail = () => {
         nextClaimed[reservation.item_id] = true;
       }
     });
-    setClaimed(nextClaimed);
+    setClaimed((prev) => {
+      const prevKeys = Object.keys(prev).sort();
+      const nextKeys = Object.keys(nextClaimed).sort();
+      if (prevKeys.length !== nextKeys.length) return nextClaimed;
+      if (prevKeys.some((k, i) => k !== nextKeys[i])) return nextClaimed;
+      return prev;
+    });
   }, [reservationRows]);
 
   const handleReservationAction = async (reservationId: string, action: "approve" | "decline") => {
@@ -429,7 +435,7 @@ const WishlistDetail = () => {
     return () => {
       cancelled = true;
     };
-  }, [id, isGifterMode, data?.wishlist?.user_id]);
+  }, [id, isGifterMode, data?.wishlist?.user_id, owner?.username, owner?.full_name, owner?.avatar_url]);
 
   const eventDateText = (() => {
     const d = data?.wishlist?.event_date ? new Date(data.wishlist.event_date) : null;
