@@ -37,6 +37,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
 
   const [loadingScrape, setLoadingScrape] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
@@ -45,6 +47,52 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
     if (!supabaseUrl) return "";
     return `${supabaseUrl}/functions/v1/ai-gateway`;
   }, [supabaseUrl]);
+
+  const handlePhotoUpload = async (file: File | null) => {
+    if (!file) return;
+    setUploadError(null);
+
+    try {
+      setUploadingImage(true);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Not authenticated");
+      }
+
+      const fileExt = file.name.split(".").pop();
+      const filePath = `brand-products/${user.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await (supabase as any).storage
+        .from("brand-media")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: publicUrlData } = (supabase as any).storage
+        .from("brand-media")
+        .getPublicUrl(filePath);
+
+      if (!publicUrlData?.publicUrl) {
+        throw new Error("Could not get public URL for image");
+      }
+
+      setImageUrl(publicUrlData.publicUrl);
+      toast.success("Image uploaded");
+      setActiveTab("link");
+    } catch (err: any) {
+      const message = err?.message || "Failed to upload image";
+      setUploadError(message);
+      toast.error(message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleScrape = async () => {
     if (!url) {
@@ -207,24 +255,39 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
                   <Label htmlFor="item_url">Product URL</Label>
                   <Input id="item_url" value={itemUrl} onChange={(e) => setItemUrl(e.target.value)} />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="image_url">Image URL</Label>
-                  <Input id="image_url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+                  <Input
+                    id="image_url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="Right-click product image → Copy image address → paste here"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Tip: On the product page, right-click the main image and choose
+                    {" "}
+                    <span className="font-medium">Copy image address</span>, then paste it here.
+                  </p>
                 </div>
               </div>
             </TabsContent>
 
             <TabsContent value="photo" className="space-y-4 pt-4">
-              <div className="rounded-md border p-4 text-sm text-muted-foreground">
-                <p className="mb-2 font-medium text-foreground">Photo Upload (placeholder)</p>
-                <p>
-                  This is a placeholder for integrating Supabase Storage. Provide a file input, upload to Storage,
-                  then set <code>image_url</code> to the public URL.
-                </p>
-              </div>
               <div className="space-y-2">
-                <Label htmlFor="image_url_photo">Image URL</Label>
-                <Input id="image_url_photo" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+                <Label htmlFor="photo_file">Upload image file</Label>
+                <Input
+                  id="photo_file"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handlePhotoUpload(e.target.files?.[0] || null)}
+                  disabled={uploadingImage}
+                />
+                <p className="text-xs text-muted-foreground">
+                  We will upload this image to your brand storage and fill the Image URL field automatically.
+                </p>
+                {uploadError && (
+                  <p className="text-xs text-red-500">{uploadError}</p>
+                )}
               </div>
             </TabsContent>
           </Tabs>

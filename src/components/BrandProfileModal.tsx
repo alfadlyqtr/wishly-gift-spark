@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Store, Instagram, Twitter, Facebook, Linkedin, Globe, X, UserPlus, UserCheck, BadgeCheck, Mail, Phone, MessageCircle, MapPin, Youtube } from "lucide-react";
+import { Store, Instagram, Twitter, Facebook, Linkedin, Globe, X, UserPlus, UserCheck, BadgeCheck, Mail, Phone, MessageCircle, MapPin, Youtube, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import WishAddDialog from "@/components/wishes/WishAddDialog";
+import { useWishlists } from "@/hooks/use-wishlists";
 import "@/styles/brand-profile-card.css";
 
 interface BrandProfileModalProps {
@@ -37,11 +40,18 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [selectedProductForModal, setSelectedProductForModal] = useState<any | null>(null);
+  const [productForWishAdd, setProductForWishAdd] = useState<any | null>(null);
+  const wishlistsQuery = useWishlists();
+  const wishlistOptions = (wishlistsQuery.data || []).map((w) => ({ id: w.id, name: w.title }));
 
   useEffect(() => {
     if (isOpen && brandId) {
       fetchBrandProfile();
       checkFollowStatus();
+      fetchBrandProducts();
     }
   }, [isOpen, brandId]);
 
@@ -62,6 +72,25 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
       onClose();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchBrandProducts = async () => {
+    try {
+      setProductsLoading(true);
+      const { data, error } = await (supabase as any)
+        .from("brand_products")
+        .select("id,name,description,image_url,is_findable")
+        .eq("brand_id", brandId)
+        .eq("is_findable", true)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setProducts(data ?? []);
+    } catch (err) {
+      console.error("Error loading brand products", err);
+    } finally {
+      setProductsLoading(false);
     }
   };
 
@@ -241,8 +270,216 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
                 </>
               )}
             </button>
+
+            {/* Brand Products List */}
+            <div className="mt-4 w-full rounded-2xl bg-black/20 border border-white/15 px-3 pt-3 pb-2 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-white/95">
+                  {t("brand.products", "Products")}
+                </span>
+                {products.length > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[18px] h-4 rounded-full bg-white/20 text-[10px] text-white/90 px-1">
+                    {products.length}
+                  </span>
+                )}
+              </div>
+              <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
+                {productsLoading ? (
+                  <div className="flex items-center justify-center py-3 text-xs text-white/80">
+                    {t("brand.loading_products", "Loading products...")}
+                  </div>
+                ) : products.length === 0 ? (
+                  <div className="rounded-full bg-white/10 px-3 py-1.5 text-[11px] text-white/90">
+                    {t("brand.no_products", "This brand has no public products yet.")}
+                  </div>
+                ) : (
+                  products.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-2 rounded-full bg-white/95 px-2.5 py-1 border border-white/80 shadow-sm hover:bg-white"
+                    >
+                      <div
+                        className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer"
+                        onClick={() => setSelectedProductForModal(p)}
+                      >
+                        {p.image_url ? (
+                          <div className="h-9 w-9 rounded-full overflow-hidden flex-shrink-0 ring-1 ring-slate-200">
+                            <img
+                              src={p.image_url}
+                              alt={p.name || "product"}
+                              className="h-full w-full object-cover"
+                              onError={(e: any) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-purple-500 to-sky-400 flex items-center justify-center text-white text-xs flex-shrink-0">
+                            <Store className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[11px] font-semibold text-slate-900 truncate">
+                            {p.name || t("brand.untitled_product", "Untitled product")}
+                          </div>
+                          {p.description && (
+                            <div className="text-[10px] text-slate-600 truncate">
+                              {p.description}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center transition-all ${
+                          p.allow_add_as_item === false
+                            ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                            : "bg-gradient-to-br from-purple-500 to-violet-600 text-white hover:shadow-md"
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (p.allow_add_as_item !== false) {
+                            setProductForWishAdd(p);
+                          }
+                        }}
+                        disabled={p.allow_add_as_item === false}
+                        aria-label={t("explore.add_as_item", "Add as item")}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         ) : null}
+
+        {/* Product Detail Modal - Premium Card */}
+        {selectedProductForModal && (
+          <Dialog
+            open={!!selectedProductForModal}
+            onOpenChange={(open) => {
+              if (!open) setSelectedProductForModal(null);
+            }}
+          >
+            <DialogContent className="max-w-md sm:max-w-lg border-0 bg-transparent shadow-none p-0">
+              <div className="flex justify-end px-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedProductForModal(null)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md border border-slate-200 hover:bg-white"
+                  aria-label={t("common.close", "Close")}
+                >
+                  <span className="text-lg leading-none">×</span>
+                </button>
+              </div>
+              <div className="flex justify-center pb-2 px-1">
+                <div className="explore-product-card w-full">
+                  <div className="explore-product-card__shine" aria-hidden="true" />
+                  <div className="explore-product-card__glow" aria-hidden="true" />
+                  <div className="explore-product-card__content">
+                    <div className="explore-product-card__image">
+                      {selectedProductForModal.image_url ? (
+                        <img
+                          src={selectedProductForModal.image_url}
+                          alt={selectedProductForModal.name || t("explore.untitled_product", "Untitled product")}
+                          onError={(e: any) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ) : null}
+                    </div>
+
+                    <div className="explore-product-card__text">
+                      <p className="explore-product-card__title truncate">
+                        {selectedProductForModal.name || t("explore.untitled_product", "Untitled product")}
+                      </p>
+                      <p className="explore-product-card__description line-clamp-2">
+                        {selectedProductForModal.description || t("explore.no_description", "No description provided")}
+                      </p>
+                    </div>
+
+                    <div className="explore-product-card__footer">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="explore-product-card__brand truncate">
+                          {brand?.brand_name || t("explore.unknown_brand", "Brand / Store")}
+                        </div>
+                      </div>
+                      <div className="explore-product-card__actions">
+                        <button
+                          type="button"
+                          className="explore-product-card__button-text flex items-center gap-1"
+                          onClick={() => {
+                            setSelectedProductForModal(null);
+                          }}
+                        >
+                          <Store className="h-3.5 w-3.5" />
+                          <span>{t("explore.view_brand", "View store")}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`explore-product-card__button-icon ${
+                            selectedProductForModal.allow_add_as_item === false ? "disabled" : ""
+                          }`}
+                          onClick={() => {
+                            if (selectedProductForModal.allow_add_as_item !== false) {
+                              setProductForWishAdd(selectedProductForModal);
+                              setSelectedProductForModal(null);
+                            }
+                          }}
+                          disabled={selectedProductForModal.allow_add_as_item === false}
+                          aria-label={t("explore.add_as_item", "Add as item")}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Wish Add Dialog */}
+        {productForWishAdd && wishlistOptions.length > 0 && (
+          <WishAddDialog
+            open={!!productForWishAdd}
+            onOpenChange={(open) => {
+              if (!open) setProductForWishAdd(null);
+            }}
+            wishlists={wishlistOptions}
+            initialTitle={productForWishAdd.name || ""}
+            initialBrand={brand?.brand_name || ""}
+            initialDescription={productForWishAdd.description || ""}
+            initialImageUrl={productForWishAdd.image_url || null}
+            onSubmit={async ({ wishlistId, title, brand: brandName, description, desire, imagePreviewUrl }) => {
+              try {
+                const effectiveTitle = title || productForWishAdd.name || "";
+                const effectiveBrand = brandName || brand?.brand_name || "";
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                  toast.error(t("common.login_required", "Please login to add items"));
+                  return;
+                }
+                const { error } = await supabase.from("wishlist_items").insert({
+                  wishlist_id: wishlistId,
+                  title: effectiveTitle,
+                  brand: effectiveBrand,
+                  description: description || "",
+                  desire: desire,
+                  image_url: imagePreviewUrl || productForWishAdd.image_url || null,
+                });
+                if (error) throw error;
+                toast.success(t("explore.item_added", "Item added to wishlist"));
+                setProductForWishAdd(null);
+              } catch (err: any) {
+                toast.error(err.message || t("common.error", "Something went wrong"));
+              }
+            }}
+          />
+        )}
       </div>
     </div>
   );

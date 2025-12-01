@@ -1,20 +1,35 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Store, Search, Filter, Users } from "lucide-react";
+import { Store, Search, Filter, Users, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { requestFollow } from "@/lib/follow";
 import { BrandProfileModal } from "@/components/BrandProfileModal";
+import WishAddDialog from "@/components/wishes/WishAddDialog";
+import { useWishlists } from "@/hooks/use-wishlists";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import "./ExploreProductsCard.css";
 
 const Explore = () => {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<"brands" | "users">("brands");
+  const [mode, setMode] = useState<"brands" | "products" | "users">("brands");
   const [q, setQ] = useState("");
   const debouncedQ = useMemo(() => q.trim(), [q]);
   const [requestedIds, setRequestedIds] = useState<string[]>([]);
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
   const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
+  const [productForAdd, setProductForAdd] = useState<any | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [productsView, setProductsView] = useState<"card" | "list">("list");
+  const [selectedProductForModal, setSelectedProductForModal] = useState<any | null>(null);
+  const [cardGroupIndex, setCardGroupIndex] = useState<Record<string, number>>({});
+
+  const { data: wishlistsData } = useWishlists();
+  const wishlistOptions = useMemo(
+    () => (wishlistsData ?? []).map((w) => ({ id: w.id, name: w.title || w.id })),
+    [wishlistsData],
+  );
 
   const usersQuery = useQuery({
     queryKey: ["explore", "users", debouncedQ],
@@ -140,6 +155,72 @@ const Explore = () => {
     enabled: mode === "brands" && debouncedQ.length > 0,
   });
 
+  const productsQuery = useQuery({
+    queryKey: ["explore", "products", debouncedQ],
+    queryFn: async () => {
+      const s = debouncedQ;
+      if (!s) return [];
+      const { data, error } = await (supabase as any)
+        .from("brand_products")
+        .select("id,name,description,image_url,is_findable,allow_add_as_item, brands!inner(id,brand_name,logo_url)")
+        .eq("is_findable", true)
+        .or(`name.ilike.%${s}%,description.ilike.%${s}%`)
+        .limit(20);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: mode === "products" && debouncedQ.length > 0,
+  });
+
+  const products = (productsQuery.data as any[]) || [];
+
+  const productGroups = useMemo(() => {
+    const groups: Record<string, { key: string; brand: any; items: any[] }> = {};
+    for (const p of products) {
+      const brandId = p.brands?.id || "unknown";
+      const nameNorm = String(p.name || "").trim().toLowerCase();
+      const key = `${brandId}::${nameNorm || p.id}`;
+      if (!groups[key]) {
+        groups[key] = {
+          key,
+          brand: p.brands,
+          items: [],
+        };
+      }
+      groups[key].items.push(p);
+    }
+    return Object.values(groups);
+  }, [products]);
+
+  const handleAddAsItemClick = async (product: any) => {
+    if (product.allow_add_as_item === false) return;
+
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const me = auth.user?.id;
+      if (!me) {
+        toast.message(
+          t("explore.login_required_title", "Log in to save items"),
+          {
+            description: t(
+              "explore.login_required_desc",
+              "Create an account or log in to save this product to a wishlist.",
+            ),
+          } as any,
+        );
+        return;
+      }
+
+      setProductForAdd(product);
+      setIsAddDialogOpen(true);
+    } catch (e: any) {
+      toast.error(
+        e?.message ||
+          t("common.error_generic", "Something went wrong. Please try again."),
+      );
+    }
+  };
+
   return (
     <div className="container max-w-2xl mx-auto px-4 py-6 space-y-6">
       {/* Header like Events */}
@@ -198,8 +279,16 @@ const Explore = () => {
             <span className="pointer-events-none absolute inset-x-6 -top-1 h-5 rounded-full bg-white/60 blur-md opacity-60" />
             {/* Sliding glass highlight */}
             <span
-              className="pointer-events-none absolute top-1 bottom-1 w-1/2 rounded-full p-[1px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))]/40 via-[hsl(var(--brand-cool-end))]/35 to-[hsl(var(--brand-warm-end))]/40 shadow-[0_6px_16px_rgba(200,80,192,0.14)] transition-all duration-300 ease-out z-0"
-              style={{ left: mode === 'users' ? 'calc(50% + 0px)' : '0px' }}
+              className="pointer-events-none absolute top-1 bottom-1 rounded-full p-[1px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))]/40 via-[hsl(var(--brand-cool-end))]/35 to-[hsl(var(--brand-warm-end))]/40 shadow-[0_6px_16px_rgba(200,80,192,0.14)] transition-all duration-300 ease-out z-0"
+              style={{
+                width: '33.3333%',
+                left:
+                  mode === 'brands'
+                    ? '0%'
+                    : mode === 'products'
+                    ? '33.3333%'
+                    : '66.6666%',
+              }}
             >
               <span className="absolute inset-0 rounded-full ring-1 ring-white/60" />
               <span className="relative block h-full w-full rounded-full bg-white/20 backdrop-blur-[2px] shadow-[inset_0_1px_3px_rgba(255,255,255,0.6),_0_4px_10px_rgba(0,0,0,0.06)]" />
@@ -207,7 +296,7 @@ const Explore = () => {
           <button
             type="button"
             onClick={() => setMode('brands')}
-            className={`relative z-10 flex-1 rounded-full px-4 py-2 text-xs font-semibold transition-colors duration-200 flex items-center justify-center gap-1 ${
+            className={`relative z-10 flex-1 rounded-full px-3 py-2 text-[11px] font-semibold transition-colors duration-200 flex items-center justify-center gap-1 ${
               mode === 'brands' ? 'text-foreground' : 'text-muted-foreground'
             }`}
             aria-pressed={mode === 'brands'}
@@ -217,8 +306,19 @@ const Explore = () => {
           </button>
           <button
             type="button"
+            onClick={() => setMode('products')}
+            className={`relative z-10 flex-1 rounded-full px-3 py-2 text-[11px] font-semibold transition-colors duration-200 flex items-center justify-center gap-1 ${
+              mode === 'products' ? 'text-foreground' : 'text-muted-foreground'
+            }`}
+            aria-pressed={mode === 'products'}
+          >
+            <Store className="h-4 w-4" />
+            <span>{t('explore.segment_products', 'Products')}</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setMode('users')}
-            className={`relative z-10 flex-1 rounded-full px-4 py-2 text-xs font-semibold transition-colors duration-200 flex items-center justify-center gap-1 ${
+            className={`relative z-10 flex-1 rounded-full px-3 py-2 text-[11px] font-semibold transition-colors duration-200 flex items-center justify-center gap-1 ${
               mode === 'users' ? 'text-foreground' : 'text-muted-foreground'
             }`}
             aria-pressed={mode === 'users'}
@@ -230,7 +330,7 @@ const Explore = () => {
         </div>
       </div>
 
-      {/* Placeholder body for this stage */}
+      {/* Results body */}
       <div className="mx-auto w-full max-w-md space-y-3">
         {mode === "brands" ? (
           debouncedQ.length === 0 ? (
@@ -285,6 +385,193 @@ const Explore = () => {
                   </button>
                 </div>
               ))}
+            </div>
+          )
+        ) : mode === "products" ? (
+          debouncedQ.length === 0 ? (
+            <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4 text-sm text-muted-foreground">
+              {t('explore.empty_products', 'Search products by name or description.')}
+            </div>
+          ) : productsQuery.isLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <div className="loader"><span className="text">{t('explore.loading', 'Loading')}</span></div>
+            </div>
+          ) : (productsQuery.data?.length ?? 0) === 0 ? (
+            <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-4 text-sm text-muted-foreground">
+              {t('explore.no_products', 'No products found.')}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-end gap-2 pb-1 text-[11px] text-muted-foreground">
+                <span className="rounded-full bg-white/70 px-1 py-0.5 border border-white/60 shadow-sm flex items-center gap-1">
+                  <button
+                    type="button"
+                    className={`px-2 py-0.5 rounded-full font-semibold ${productsView === 'card' ? 'bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-white shadow-sm' : 'text-muted-foreground'}`}
+                    onClick={() => setProductsView('card')}
+                  >
+                    {t('explore.products_view_card', 'Card')}
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-2 py-0.5 rounded-full font-semibold ${productsView === 'list' ? 'bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-white shadow-sm' : 'text-muted-foreground'}`}
+                    onClick={() => setProductsView('list')}
+                  >
+                    {t('explore.products_view_list', 'List')}
+                  </button>
+                </span>
+              </div>
+
+              {productsView === 'card' ? (
+                <div className="space-y-3">
+                  {productGroups.map((group) => {
+                    const currentIndex = cardGroupIndex[group.key] ?? 0;
+                    const clampedIndex = Math.min(Math.max(currentIndex, 0), group.items.length - 1);
+                    const p = group.items[clampedIndex] || group.items[0];
+                    const total = group.items.length;
+                    const currentDisplay = (clampedIndex % total) + 1;
+                    return (
+                      <div key={group.key} className="flex justify-center">
+                      <div className="explore-product-card w-full">
+                        <div className="explore-product-card__shine" aria-hidden="true" />
+                        <div className="explore-product-card__glow" aria-hidden="true" />
+                        <div className="explore-product-card__content">
+                          <div className="explore-product-card__image">
+                            {p.image_url ? (
+                              <img
+                                src={p.image_url}
+                                alt={p.name || t('explore.untitled_product', 'Untitled product')}
+                                onError={(e: any) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            ) : null}
+                          </div>
+
+                          <div className="explore-product-card__text">
+                            <p className="explore-product-card__title truncate">
+                              {p.name || t('explore.untitled_product', 'Untitled product')}
+                            </p>
+                            <p className="explore-product-card__description line-clamp-2">
+                              {p.description || t('explore.no_description', 'No description provided')}
+                            </p>
+                          </div>
+
+                          <div className="explore-product-card__footer">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="explore-product-card__brand truncate">
+                                {p.brands?.brand_name || t('explore.unknown_brand', 'Brand / Store')}
+                              </div>
+                              {total > 1 && (
+                                <button
+                                  type="button"
+                                  className="text-[10px] px-2 py-0.5 rounded-full bg-white/80 border border-slate-200 text-slate-600 hover:bg-white"
+                                  onClick={() =>
+                                    setCardGroupIndex((prev) => ({
+                                      ...prev,
+                                      [group.key]: (clampedIndex + 1) % total,
+                                    }))
+                                  }
+                                >
+                                  {currentDisplay} / {total}
+                                </button>
+                              )}
+                            </div>
+                            <div className="explore-product-card__actions">
+                              <button
+                                type="button"
+                                className="explore-product-card__button-text flex items-center gap-1"
+                                onClick={() => {
+                                  if (!p.brands?.id) return;
+                                  setSelectedBrandId(p.brands.id);
+                                  setIsBrandModalOpen(true);
+                                }}
+                              >
+                                <Store className="h-3.5 w-3.5" />
+                                <span>{t('explore.view_brand', 'View store')}</span>
+                              </button>
+                              <button
+                                type="button"
+                                className={`explore-product-card__button-icon ${
+                                  p.allow_add_as_item === false ? 'disabled' : ''
+                                }`}
+                                onClick={() => handleAddAsItemClick(p)}
+                                disabled={p.allow_add_as_item === false}
+                                aria-label={t('explore.add_as_item', 'Add as item')}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {productsQuery.data!.map((p: any, idx: number) => (
+                    <div
+                      key={p.id}
+                      className="explore-product-row"
+                      style={{ animationDelay: `${idx * 40}ms` }}
+                      onClick={() => setSelectedProductForModal(p)}
+                    >
+                      <div className="explore-product-row__image">
+                        {p.image_url ? (
+                          <img
+                            src={p.image_url}
+                            alt={p.name || t('explore.untitled_product', 'Untitled product')}
+                            onError={(e: any) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : null}
+                      </div>
+                      <div className="explore-product-row__text">
+                        <div className="explore-product-row__title">
+                          {p.name || t('explore.untitled_product', 'Untitled product')}
+                        </div>
+                        <div className="explore-product-row__meta">
+                          <span className="explore-product-row__brand">
+                            {p.brands?.brand_name || t('explore.unknown_brand', 'Brand / Store')}
+                          </span>
+                          {p.description && (
+                            <span className="explore-product-row__subtitle">
+                              {p.description}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="explore-product-row__actions" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="explore-product-row__icon-btn"
+                          onClick={() => {
+                            if (!p.brands?.id) return;
+                            setSelectedBrandId(p.brands.id);
+                            setIsBrandModalOpen(true);
+                          }}
+                          aria-label={t('explore.view_brand', 'View store')}
+                        >
+                          <Store className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          className={`explore-product-row__icon-btn ${
+                            p.allow_add_as_item === false ? 'is-disabled' : ''
+                          }`}
+                          onClick={() => p.allow_add_as_item === false ? undefined : handleAddAsItemClick(p)}
+                          disabled={p.allow_add_as_item === false}
+                          aria-label={t('explore.add_as_item', 'Add as item')}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )
         ) : (
@@ -373,6 +660,148 @@ const Explore = () => {
           onClose={() => {
             setIsBrandModalOpen(false);
             setSelectedBrandId(null);
+          }}
+        />
+      )}
+
+      {/* Product detail modal for list view - reuses premium card */}
+      {selectedProductForModal && (
+        <Dialog
+          open={!!selectedProductForModal}
+          onOpenChange={(open) => {
+            if (!open) setSelectedProductForModal(null);
+          }}
+        >
+          <DialogContent className="max-w-md sm:max-w-lg border-0 bg-transparent shadow-none p-0">
+            <div className="flex justify-end px-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setSelectedProductForModal(null)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md border border-slate-200 hover:bg-white"
+                aria-label={t('common.close', 'Close')}
+              >
+                <span className="text-lg leading-none">×</span>
+              </button>
+            </div>
+            <div className="flex justify-center pb-2 px-1">
+              <div className="explore-product-card w-full">
+                <div className="explore-product-card__shine" aria-hidden="true" />
+                <div className="explore-product-card__glow" aria-hidden="true" />
+                <div className="explore-product-card__content">
+                  <div className="explore-product-card__image">
+                    {selectedProductForModal.image_url ? (
+                      <img
+                        src={selectedProductForModal.image_url}
+                        alt={selectedProductForModal.name || t('explore.untitled_product', 'Untitled product')}
+                        onError={(e: any) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : null}
+                  </div>
+
+                  <div className="explore-product-card__text">
+                    <p className="explore-product-card__title truncate">
+                      {selectedProductForModal.name || t('explore.untitled_product', 'Untitled product')}
+                    </p>
+                    <p className="explore-product-card__description line-clamp-3">
+                      {selectedProductForModal.description || t('explore.no_description', 'No description provided')}
+                    </p>
+                  </div>
+
+                  <div className="explore-product-card__footer">
+                    <div className="explore-product-card__brand truncate">
+                      {selectedProductForModal.brands?.brand_name || t('explore.unknown_brand', 'Brand / Store')}
+                    </div>
+                    <div className="explore-product-card__actions">
+                      <button
+                        type="button"
+                        className="explore-product-card__button-text flex items-center gap-1"
+                        onClick={() => {
+                          if (!selectedProductForModal.brands?.id) return;
+                          setSelectedBrandId(selectedProductForModal.brands.id);
+                          setIsBrandModalOpen(true);
+                        }}
+                      >
+                        <Store className="h-3.5 w-3.5" />
+                        <span>{t('explore.view_brand', 'View store')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`explore-product-card__button-icon ${
+                          selectedProductForModal.allow_add_as_item === false ? 'disabled' : ''
+                        }`}
+                        onClick={() =>
+                          selectedProductForModal.allow_add_as_item === false
+                            ? undefined
+                            : handleAddAsItemClick(selectedProductForModal)
+                        }
+                        disabled={selectedProductForModal.allow_add_as_item === false}
+                        aria-label={t('explore.add_as_item', 'Add as item')}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Add as item dialog for brand products */}
+      {productForAdd && isAddDialogOpen && wishlistOptions.length > 0 && (
+        <WishAddDialog
+          open={isAddDialogOpen}
+          onOpenChange={(open) => {
+            setIsAddDialogOpen(open);
+            if (!open) {
+              setProductForAdd(null);
+            }
+          }}
+          wishlists={wishlistOptions}
+          initialTitle={productForAdd.name || ""}
+          initialBrand={productForAdd.brands?.brand_name || ""}
+          initialDescription={productForAdd.description || ""}
+          initialImageUrl={productForAdd.image_url || null}
+          onSubmit={async ({ wishlistId, title, brand, description, desire, imagePreviewUrl }) => {
+            try {
+              const effectiveTitle = title || productForAdd.name || "";
+              const effectiveBrand = brand || productForAdd.brands?.brand_name || "";
+              const effectiveDescription = description || productForAdd.description || "";
+
+              const imageUrlToSave =
+                typeof imagePreviewUrl === "string" && imagePreviewUrl.startsWith("http")
+                  ? imagePreviewUrl
+                  : productForAdd.image_url || null;
+
+              const { error } = await (supabase as any)
+                .from("wishlist_items")
+                .insert({
+                  wishlist_id: wishlistId,
+                  title: effectiveTitle,
+                  brand: effectiveBrand,
+                  description: effectiveDescription,
+                  desire,
+                  image_url: imageUrlToSave,
+                  item_url: productForAdd.product_url || null,
+                });
+
+              if (error) throw error;
+
+              toast.success(
+                t("explore.added_product_to_wishlist", "Added to your wishlist"),
+              );
+            } catch (e: any) {
+              toast.error(
+                e?.message ||
+                  t("common.error_generic", "Something went wrong. Please try again."),
+              );
+            } finally {
+              setIsAddDialogOpen(false);
+              setProductForAdd(null);
+            }
           }}
         />
       )}

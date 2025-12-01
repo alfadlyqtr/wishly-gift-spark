@@ -44,6 +44,8 @@ interface BrandData {
   notify_product_mention?: boolean;
   notify_review?: boolean;
   show_analytics_publicly?: boolean;
+  products_find_mode?: 'all_off' | 'all_on' | 'per_product';
+  products_add_mode?: 'all_off' | 'all_on' | 'per_product';
 }
 
 const BrandProfile = () => {
@@ -117,6 +119,8 @@ const BrandProfile = () => {
   const [notifyProductMention, setNotifyProductMention] = useState(true);
   const [notifyReview, setNotifyReview] = useState(true);
   const [showAnalyticsPublicly, setShowAnalyticsPublicly] = useState(false);
+  const [productsFindMode, setProductsFindMode] = useState<'all_off' | 'all_on' | 'per_product'>('per_product');
+  const [productsAddMode, setProductsAddMode] = useState<'all_off' | 'all_on' | 'per_product'>('per_product');
 
   useEffect(() => {
     fetchBrandData();
@@ -165,6 +169,8 @@ const BrandProfile = () => {
         setNotifyProductMention(data.notify_product_mention !== false);
         setNotifyReview(data.notify_review !== false);
         setShowAnalyticsPublicly(data.show_analytics_publicly === true);
+        setProductsFindMode((data.products_find_mode as any) || 'per_product');
+        setProductsAddMode((data.products_add_mode as any) || 'per_product');
       }
     } catch (err: any) {
       toast.error(err.message || t("brand.profile_load_error", "Failed to load brand data"));
@@ -240,6 +246,8 @@ const BrandProfile = () => {
           notify_product_mention: notifyProductMention,
           notify_review: notifyReview,
           show_analytics_publicly: showAnalyticsPublicly,
+          products_find_mode: productsFindMode,
+          products_add_mode: productsAddMode,
           updated_at: new Date().toISOString(),
         })
         .eq("id", brand.id);
@@ -307,6 +315,104 @@ const BrandProfile = () => {
                 {t("brand.following", "Following")}
               </span>
             </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Products Settings */}
+      <Card className="shadow-lg border border-white/40 bg-gradient-to-br from-white/95 via-white/90 to-white/80">
+        <CardHeader className="bg-gradient-to-r from-brand-cool-start/10 via-brand-cool-end/5 to-brand-warm-start/10 pb-4">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <SettingsIcon className="h-5 w-5 text-primary" />
+            {t("brand.products_settings", "Products")}
+          </CardTitle>
+          <CardDescription>
+            {t("brand.products_settings_desc", "Control how users can see and use your products")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-6">
+          <div className="space-y-2">
+            <Label className="text-base font-medium">
+              {t("brand.products_find_mode", "Users can find your products")}
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              {t("brand.products_find_mode_hint", "Choose whether products are findable for everyone or per product.")}
+            </p>
+            <div className="inline-flex rounded-full border bg-muted px-1 py-0.5 text-xs mt-2">
+              <button
+                type="button"
+                className={`px-3 py-1 rounded-full ${productsFindMode === 'all_off' ? 'bg-white shadow-sm' : 'text-muted-foreground'}`}
+                onClick={() => setProductsFindMode('all_off')}
+              >
+                {t('brand.mode_all_off', 'All off')}
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1 rounded-full ${productsFindMode === 'all_on' ? 'bg-white shadow-sm' : 'text-muted-foreground'}`}
+                onClick={() => setProductsFindMode('all_on')}
+              >
+                {t('brand.mode_all_on', 'All on')}
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1 rounded-full ${productsFindMode === 'per_product' ? 'bg-white shadow-sm' : 'text-muted-foreground'}`}
+                onClick={() => setProductsFindMode('per_product')}
+              >
+                {t('brand.mode_per_product', 'Per product')}
+              </button>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <Label className="text-base font-medium">
+              {t("brand.products_add_mode", "Users can add products as an item")}
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              {t("brand.products_add_mode_hint", "Control if products can be added to wishlists or items list.")}
+            </p>
+            <div className="inline-flex rounded-full border bg-muted px-1 py-0.5 text-xs mt-2">
+              <button
+                type="button"
+                className={`px-3 py-1 rounded-full ${productsAddMode === 'all_off' ? 'bg-white shadow-sm' : 'text-muted-foreground'}`}
+                onClick={() => setProductsAddMode('all_off')}
+              >
+                {t('brand.mode_all_off', 'All off')}
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1 rounded-full ${productsAddMode === 'all_on' ? 'bg-white shadow-sm' : 'text-muted-foreground'}`}
+                onClick={() => setProductsAddMode('all_on')}
+              >
+                {t('brand.mode_all_on', 'All on')}
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1 rounded-full ${productsAddMode === 'per_product' ? 'bg-white shadow-sm' : 'text-muted-foreground'}`}
+                onClick={() => setProductsAddMode('per_product')}
+              >
+                {t('brand.mode_per_product', 'Per product')}
+              </button>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="allowProductRequests" className="text-base font-medium">
+                {t("brand.allow_product_requests", "Allow Product Requests")}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t("brand.allow_product_requests_hint", "Users can request products not in your catalog")}
+              </p>
+            </div>
+            <Switch
+              id="allowProductRequests"
+              checked={allowProductRequests}
+              onCheckedChange={setAllowProductRequests}
+            />
           </div>
         </CardContent>
       </Card>
@@ -685,24 +791,6 @@ const BrandProfile = () => {
               id="allowMessages"
               checked={allowMessages}
               onCheckedChange={setAllowMessages}
-            />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label htmlFor="allowProductRequests" className="text-base font-medium">
-                {t("brand.allow_product_requests", "Allow Product Requests")}
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                {t("brand.allow_product_requests_hint", "Users can request products not in your catalog")}
-              </p>
-            </div>
-            <Switch
-              id="allowProductRequests"
-              checked={allowProductRequests}
-              onCheckedChange={setAllowProductRequests}
             />
           </div>
 
