@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Pencil, Trash2, Loader2, Hourglass } from "lucide-react";
+import { Calendar, Pencil, Trash2, Loader2, Hourglass, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -674,7 +674,9 @@ const Events = () => {
   const [previewSlide, setPreviewSlide] = useState(0);
   const [reservationAction, setReservationAction] = useState<{ id: string; type: "approve" | "decline" } | null>(null);
   const [previewUserReservations, setPreviewUserReservations] = useState<Map<string, { id: string; status: string }>>(new Map());
+  const [previewAllReservations, setPreviewAllReservations] = useState<Map<string, { id: string; status: string; claimer_name: string; claimer_id: string }>>(new Map());
   const [previewUnclaimingId, setPreviewUnclaimingId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   useEffect(() => {
     if (!friendsEvents || friendsEvents.length === 0) return;
     if (friendParam) {
@@ -905,6 +907,8 @@ const Events = () => {
       setPreviewUnclaimingId(null);
       setPreviewClaimedIds((prev) => (prev.size === 0 ? prev : new Set<string>()));
       setPreviewUserReservations(new Map());
+      setPreviewAllReservations(new Map());
+      setCurrentUserId(null);
     }
   }, [previewOpen]);
 
@@ -914,6 +918,8 @@ const Events = () => {
     if (itemIds.length === 0) {
       setPreviewClaimedIds((prev) => (prev.size === 0 ? prev : new Set<string>()));
       setPreviewUserReservations(new Map());
+      setPreviewAllReservations(new Map());
+      setCurrentUserId(null);
       return;
     }
 
@@ -925,22 +931,51 @@ const Events = () => {
           if (!cancelled) {
             setPreviewClaimedIds((prev) => (prev.size === 0 ? prev : new Set<string>()));
             setPreviewUserReservations(new Map());
+            setCurrentUserId(null);
           }
           return;
         }
-        const { data, error } = await (supabase as any)
+        setCurrentUserId(user.id);
+        const { data, error} = await (supabase as any)
           .from('wishlist_reservations')
-          .select('item_id, id, status, reserved_by_id')
+          .select(`
+            item_id, 
+            id, 
+            status, 
+            reserved_by_id,
+            reserved_by:user_profiles!wishlist_reservations_reserved_by_id_fkey (
+              id,
+              full_name,
+              username
+            )
+          `)
           .in('item_id', itemIds);
         if (error) throw error;
         if (!cancelled) {
           const nextIds = new Set<string>((data || []).map((row: any) => String(row.item_id)));
           const userReservations = new Map<string, { id: string; status: string }>();
+          const allReservations = new Map<string, { id: string; status: string; claimer_name: string; claimer_id: string }>();
+          
           (data || []).forEach((row: any) => {
+            const itemId = String(row.item_id);
+            
+            // Track current user's reservations
             if (row.reserved_by_id === user.id) {
-              userReservations.set(String(row.item_id), { id: row.id, status: row.status });
+              userReservations.set(itemId, { id: row.id, status: row.status });
+            }
+            
+            // Track ALL approved reservations with claimer info
+            if (row.status === 'approved') {
+              const claimerName = row.reserved_by?.full_name || row.reserved_by?.username || 'Someone';
+              allReservations.set(itemId, {
+                id: row.id,
+                status: row.status,
+                claimer_name: claimerName,
+                claimer_id: row.reserved_by_id
+              });
             }
           });
+          
           setPreviewClaimedIds((prev) => {
             if (prev.size === nextIds.size && Array.from(nextIds).every((id) => prev.has(id))) {
               return prev;
@@ -948,11 +983,14 @@ const Events = () => {
             return nextIds;
           });
           setPreviewUserReservations(userReservations);
+          setPreviewAllReservations(allReservations);
         }
       } catch {
         if (!cancelled) {
           setPreviewClaimedIds((prev) => (prev.size === 0 ? prev : new Set<string>()));
           setPreviewUserReservations(new Map());
+          setPreviewAllReservations(new Map());
+          setCurrentUserId(null);
         }
       }
     })();
@@ -1756,7 +1794,7 @@ const Events = () => {
                                         <img
                                           src={item.image_url}
                                           alt={item.title || 'Preview'}
-                                          className="h-[80px] w-[80px] rounded-full object-cover ring-2 ring-white/30 shadow-[0_6px_18px_rgba(0,0,0,0.35)]"
+                                          className="h-[80px] w-[80px] rounded-full object-contain bg-white/90 ring-2 ring-white/30 shadow-[0_6px_18px_rgba(0,0,0,0.35)] p-1"
                                         />
                                       ) : (
                                         <div className="h-[80px] w-[80px] rounded-full bg-white/20 ring-2 ring-white/30" />
@@ -1778,12 +1816,24 @@ const Events = () => {
                                           </a>
                                         )}
                                         {(previewOwner?.allow_friends_claim ?? true) && (
-                                          <div className="mt-2 flex items-center justify-start gap-2">
+                                          <div className="mt-2 flex flex-col items-start gap-2">
                                             {(() => {
                                               const userReservation = previewUserReservations.get(item.id);
+                                              const otherReservation = previewAllReservations.get(item.id);
+                                              const isClaimedByOther = otherReservation && otherReservation.claimer_id !== currentUserId;
                                               const isClaimed = previewClaimedIds.has(item.id);
                                               const isClaiming = previewClaimingId === item.id;
                                               const isUnclaiming = previewUnclaimingId === item.id;
+                                              
+                                              // Show "Claimed by [Name]" badge if someone else claimed it
+                                              if (isClaimedByOther && otherReservation) {
+                                                return (
+                                                  <span className="text-xs text-white/90 bg-emerald-500/30 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                                                    <Check className="h-3 w-3" />
+                                                    {t('giftr.claimed_by', 'Claimed by {{name}}', { name: otherReservation.claimer_name })}
+                                                  </span>
+                                                );
+                                              }
                                               
                                               if (userReservation) {
                                                 return (

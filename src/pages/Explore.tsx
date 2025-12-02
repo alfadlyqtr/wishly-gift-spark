@@ -162,7 +162,7 @@ const Explore = () => {
       if (!s) return [];
       const { data, error } = await (supabase as any)
         .from("brand_products")
-        .select("id,name,description,image_url,is_findable,allow_add_as_item, brands!inner(id,brand_name,logo_url)")
+        .select("id,name,description,image_url,product_url,is_findable,allow_add_as_item, brands!inner(id,brand_name,logo_url)")
         .eq("is_findable", true)
         .or(`name.ilike.%${s}%,description.ilike.%${s}%`)
         .limit(20);
@@ -209,6 +209,19 @@ const Explore = () => {
           } as any,
         );
         return;
+      }
+
+      // Record a view for this brand product when the user opens the add-dialog
+      try {
+        await (supabase as any)
+          .from("brand_product_views")
+          .insert({
+            product_id: product.id,
+            viewer_id: me,
+            source: "explore_add", // track that this came from Explore > Add flow
+          });
+      } catch (viewErr) {
+        console.warn("Failed to record product view", viewErr);
       }
 
       setProductForAdd(product);
@@ -515,7 +528,24 @@ const Explore = () => {
                       key={p.id}
                       className="explore-product-row"
                       style={{ animationDelay: `${idx * 40}ms` }}
-                      onClick={() => setSelectedProductForModal(p)}
+                      onClick={async () => {
+                        try {
+                          const { data: auth } = await supabase.auth.getUser();
+                          const me = auth.user?.id;
+                          if (me) {
+                            await (supabase as any)
+                              .from("brand_product_views")
+                              .insert({
+                                product_id: p.id,
+                                viewer_id: me,
+                                source: "explore_card_open",
+                              });
+                          }
+                        } catch (viewErr) {
+                          console.warn("Failed to record product view (card open)", viewErr);
+                        }
+                        setSelectedProductForModal(p);
+                      }}
                     >
                       <div className="explore-product-row__image">
                         {p.image_url ? (
@@ -547,8 +577,23 @@ const Explore = () => {
                         <button
                           type="button"
                           className="explore-product-row__icon-btn"
-                          onClick={() => {
+                          onClick={async () => {
                             if (!p.brands?.id) return;
+                            try {
+                              const { data: auth } = await supabase.auth.getUser();
+                              const me = auth.user?.id;
+                              if (me) {
+                                await (supabase as any)
+                                  .from("brand_product_views")
+                                  .insert({
+                                    product_id: p.id,
+                                    viewer_id: me,
+                                    source: "explore_view_store_row",
+                                  });
+                              }
+                            } catch (viewErr) {
+                              console.warn("Failed to record product view (view store row)", viewErr);
+                            }
                             setSelectedBrandId(p.brands.id);
                             setIsBrandModalOpen(true);
                           }}
@@ -717,8 +762,23 @@ const Explore = () => {
                       <button
                         type="button"
                         className="explore-product-card__button-text flex items-center gap-1"
-                        onClick={() => {
+                        onClick={async () => {
                           if (!selectedProductForModal.brands?.id) return;
+                          try {
+                            const { data: auth } = await supabase.auth.getUser();
+                            const me = auth.user?.id;
+                            if (me && selectedProductForModal?.id) {
+                              await (supabase as any)
+                                .from("brand_product_views")
+                                .insert({
+                                  product_id: selectedProductForModal.id,
+                                  viewer_id: me,
+                                  source: "explore_view_store_modal",
+                                });
+                            }
+                          } catch (viewErr) {
+                            console.warn("Failed to record product view (view store modal)", viewErr);
+                          }
                           setSelectedBrandId(selectedProductForModal.brands.id);
                           setIsBrandModalOpen(true);
                         }}
@@ -776,19 +836,31 @@ const Explore = () => {
                   ? imagePreviewUrl
                   : productForAdd.image_url || null;
 
+              const itemData = {
+                wishlist_id: wishlistId,
+                title: effectiveTitle,
+                brand: effectiveBrand,
+                description: effectiveDescription,
+                desire,
+                image_url: imageUrlToSave,
+                item_url: productForAdd.product_url || null,
+                brand_product_id: productForAdd.id || null, // Link to brand product for analytics
+              };
+
+              console.log("🔍 Saving wishlist item with brand_product_id:", itemData.brand_product_id);
+              console.log("📦 Full product data:", productForAdd);
+              console.log("💾 Item data being saved:", itemData);
+
               const { error } = await (supabase as any)
                 .from("wishlist_items")
-                .insert({
-                  wishlist_id: wishlistId,
-                  title: effectiveTitle,
-                  brand: effectiveBrand,
-                  description: effectiveDescription,
-                  desire,
-                  image_url: imageUrlToSave,
-                  item_url: productForAdd.product_url || null,
-                });
+                .insert(itemData);
 
-              if (error) throw error;
+              if (error) {
+                console.error("❌ Error saving wishlist item:", error);
+                throw error;
+              }
+
+              console.log("✅ Wishlist item saved successfully!");
 
               toast.success(
                 t("explore.added_product_to_wishlist", "Added to your wishlist"),

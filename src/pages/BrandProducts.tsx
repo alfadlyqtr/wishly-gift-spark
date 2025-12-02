@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, ExternalLink } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Eye, CirclePlus, Heart } from "lucide-react";
 import { AddProductModal } from "@/components/brands/AddProductModal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,7 +21,7 @@ const BrandProducts = () => {
   const queryClient = useQueryClient();
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [modalFlags, setModalFlags] = useState<{ is_findable: boolean; allow_add_as_item: boolean } | null>(null);
-  const [viewMode, setViewMode] = useState<"card" | "grid" | "list">("card");
+  const [viewMode, setViewMode] = useState<"card" | "grid" | "list">("list");
   const [brandSettings, setBrandSettings] = useState<{ products_find_mode?: 'all_off' | 'all_on' | 'per_product'; products_add_mode?: 'all_off' | 'all_on' | 'per_product'; } | null>(null);
 
   // Fetch brand products
@@ -33,7 +33,7 @@ const BrandProducts = () => {
 
       const { data: brandData } = await (supabase as any)
         .from("brands")
-        .select("id")
+        .select("id, products_find_mode, products_add_mode")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -51,7 +51,31 @@ const BrandProducts = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      const baseProducts = (data || []) as any[];
+
+      // Fetch aggregated engagement metrics (views/adds/likes) for these products
+      const { data: analytics, error: analyticsError } = await (supabase as any).rpc(
+        "brand_dashboard_analytics",
+        { brand_uuid: brandData.id }
+      );
+
+      if (analyticsError) {
+        console.error("Error loading brand analytics for products:", analyticsError);
+      }
+
+      const metricsById: Record<string, { views: number; adds: number; likes: number }> = {};
+      for (const row of (analytics as any[] | null) || []) {
+        metricsById[row.product_id] = {
+          views: row.views_count ?? 0,
+          adds: row.adds_count ?? 0,
+          likes: row.likes_count ?? 0,
+        };
+      }
+
+      return baseProducts.map((p) => ({
+        ...p,
+        __metrics: metricsById[p.id] || { views: 0, adds: 0, likes: 0 },
+      }));
     },
   });
 
@@ -176,121 +200,76 @@ const BrandProducts = () => {
                   : "brand-product-list"
               }
             >
-              {products.map((product: any) => (
-                <div
-                  key={product.id}
-                  className={
-                    viewMode === "list"
-                      ? "flex items-center justify-between rounded-xl border bg-white px-3 py-2 text-sm hover:bg-muted cursor-pointer"
-                      : viewMode === "grid"
-                      ? "rounded-xl border bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer p-3 flex flex-col gap-2"
-                      : "brand-product-card"
-                  }
-                  onClick={() => setSelectedProduct(product)}
-                >
-                  {viewMode === "list" ? (
-                    <>
-                      <div className="flex items-center gap-2 min-w-0">
-                        {product.image_url && (
-                          <img
-                            src={product.image_url}
-                            alt={product.name}
-                            className="h-10 w-10 rounded-md object-cover flex-shrink-0"
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                            }}
-                          />
-                        )}
-                        <div className="min-w-0">
-                          <div className="text-[11px] text-muted-foreground">
-                            {product.category || t("brand.products_item_type", "Product")}
+              {products.map((product: any) => {
+                const metrics = (product as any).__metrics || { views: 0, adds: 0, likes: 0 };
+                return (
+                  <div
+                    key={product.id}
+                    className={
+                      viewMode === "list"
+                        ? "flex items-center justify-between rounded-xl border bg-white px-3 py-2 text-sm hover:bg-muted cursor-pointer"
+                        : viewMode === "grid"
+                        ? "rounded-xl border bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer p-3 flex flex-col gap-2"
+                        : "brand-product-card"
+                    }
+                    onClick={() => setSelectedProduct(product)}
+                  >
+                    {viewMode === "list" ? (
+                      <>
+                        <div className="flex items-center gap-2 min-w-0">
+                          {product.image_url && (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="h-10 w-10 rounded-md object-cover flex-shrink-0"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <div className="text-[11px] text-muted-foreground">
+                              {product.category || t("brand.products_item_type", "Product")}
+                            </div>
+                            <div className="text-sm font-medium truncate">{product.name}</div>
+                            <div className="mt-0.5 flex flex-wrap gap-1">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium ${
+                                  product.is_findable !== false
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                    : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                }`}
+                              >
+                                {product.is_findable !== false
+                                  ? t('brand.product_findable_short_on', 'Findable')
+                                  : t('brand.product_findable_short_off', 'Hidden')}
+                              </span>
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium ${
+                                  product.allow_add_as_item !== false
+                                    ? 'bg-sky-50 text-sky-700 border border-sky-100'
+                                    : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                }`}
+                              >
+                                {product.allow_add_as_item !== false
+                                  ? t('brand.product_addable_short_on', 'Can be added')
+                                  : t('brand.product_addable_short_off', 'Cannot be added')}
+                              </span>
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium bg-white border border-slate-100 text-slate-700 gap-1">
+                                <Eye className="h-3 w-3" />
+                                {metrics.views}
+                              </span>
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium bg-white border border-slate-100 text-slate-700 gap-1">
+                                <CirclePlus className="h-3 w-3" />
+                                {metrics.adds}
+                              </span>
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium bg-white border border-slate-100 text-slate-700 gap-1">
+                                <Heart className="h-3 w-3" />
+                                {metrics.likes}
+                              </span>
+                            </div>
                           </div>
-                          <div className="truncate text-sm font-medium">{product.name}</div>
-                          <div className="mt-0.5 flex flex-wrap gap-1">
-                            <span
-                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium ${
-                                product.is_findable !== false
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                                  : 'bg-slate-100 text-slate-600 border border-slate-200'
-                              }`}
-                            >
-                              {product.is_findable !== false
-                                ? t('brand.product_findable_short_on', 'Findable')
-                                : t('brand.product_findable_short_off', 'Hidden')}
-                            </span>
-                            <span
-                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium ${
-                                product.allow_add_as_item !== false
-                                  ? 'bg-sky-50 text-sky-700 border border-sky-100'
-                                  : 'bg-slate-100 text-slate-600 border border-slate-200'
-                              }`}
-                            >
-                              {product.allow_add_as_item !== false
-                                ? t('brand.product_addable_short_on', 'Can be added')
-                                : t('brand.product_addable_short_off', 'Cannot be added')}
-                            </span>
-                          </div>
                         </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteMutation.mutate(product.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </>
-                  ) : viewMode === "grid" ? (
-                    <>
-                      {product.image_url && (
-                        <img
-                          src={product.image_url}
-                          alt={product.name}
-                          className="w-full h-28 object-cover rounded-lg"
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                          }}
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[11px] text-muted-foreground mb-0.5">
-                          {product.category || t("brand.products_item_type", "Product")}
-                        </div>
-                        <div className="text-sm font-semibold truncate mb-0.5">{product.name}</div>
-                        <div className="mb-1 flex flex-wrap gap-1">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium ${
-                              product.is_findable !== false
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                                : 'bg-slate-100 text-slate-600 border border-slate-200'
-                            }`}
-                          >
-                            {product.is_findable !== false
-                              ? t('brand.product_findable_short_on', 'Findable')
-                              : t('brand.product_findable_short_off', 'Hidden')}
-                          </span>
-                          <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium ${
-                              product.allow_add_as_item !== false
-                                ? 'bg-sky-50 text-sky-700 border border-sky-100'
-                                : 'bg-slate-100 text-slate-600 border border-slate-200'
-                            }`}
-                          >
-                            {product.allow_add_as_item !== false
-                              ? t('brand.product_addable_short_on', 'Can be added')
-                              : t('brand.product_addable_short_off', 'Cannot be added')}
-                          </span>
-                        </div>
-                        {product.description && (
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {product.description}
-                          </p>
-                        )}
-                      </div>
-                      <div className="mt-1 flex justify-end">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -301,29 +280,25 @@ const BrandProducts = () => {
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="brand-product-card__img">
+                      </>
+                    ) : viewMode === "grid" ? (
+                      <>
                         {product.image_url && (
                           <img
                             src={product.image_url}
                             alt={product.name}
+                            className="w-full h-28 object-cover rounded-lg"
                             onError={(e) => {
                               e.currentTarget.style.display = "none";
                             }}
                           />
                         )}
-                      </div>
-
-                      <div className="brand-product-card__wrapper">
-                        <div>
-                          <div className="brand-product-card__subtitle">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[11px] text-muted-foreground mb-0.5">
                             {product.category || t("brand.products_item_type", "Product")}
                           </div>
-                          <div className="brand-product-card__title">{product.name}</div>
-                          <div className="mt-1 flex flex-wrap gap-1">
+                          <div className="text-sm font-semibold truncate mb-0.5">{product.name}</div>
+                          <div className="mb-1 flex flex-wrap gap-1">
                             <span
                               className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium ${
                                 product.is_findable !== false
@@ -346,20 +321,107 @@ const BrandProducts = () => {
                                 ? t('brand.product_addable_short_on', 'Can be added')
                                 : t('brand.product_addable_short_off', 'Cannot be added')}
                             </span>
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium bg-white border border-slate-100 text-slate-700 gap-1">
+                              <Eye className="h-3 w-3" />
+                              {metrics.views}
+                            </span>
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium bg-white border border-slate-100 text-slate-700 gap-1">
+                              <CirclePlus className="h-3 w-3" />
+                              {metrics.adds}
+                            </span>
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium bg-white border border-slate-100 text-slate-700 gap-1">
+                              <Heart className="h-3 w-3" />
+                              {metrics.likes}
+                            </span>
+                          </div>
+                          {product.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {product.description}
+                            </p>
+                          )}
+                        </div>
+                        <div className="mt-1 flex justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteMutation.mutate(product.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="brand-product-card__img">
+                          {product.image_url && (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          )}
+                        </div>
+
+                        <div className="brand-product-card__wrapper">
+                          <div>
+                            <div className="brand-product-card__subtitle">
+                              {product.category || t("brand.products_item_type", "Product")}
+                            </div>
+                            <div className="brand-product-card__title">{product.name}</div>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium ${
+                                  product.is_findable !== false
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                    : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                }`}
+                              >
+                                {product.is_findable !== false
+                                  ? t('brand.product_findable_short_on', 'Findable')
+                                  : t('brand.product_findable_short_off', 'Hidden')}
+                              </span>
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium ${
+                                  product.allow_add_as_item !== false
+                                    ? 'bg-sky-50 text-sky-700 border border-sky-100'
+                                    : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                }`}
+                              >
+                                {product.allow_add_as_item !== false
+                                  ? t('brand.product_addable_short_on', 'Can be added')
+                                  : t('brand.product_addable_short_off', 'Cannot be added')}
+                              </span>
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium bg-white border border-slate-100 text-slate-700 gap-1">
+                                <Eye className="h-3 w-3" />
+                                {metrics.views}
+                              </span>
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium bg-white border border-slate-100 text-slate-700 gap-1">
+                                <CirclePlus className="h-3 w-3" />
+                                {metrics.adds}
+                              </span>
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium bg-white border border-slate-100 text-slate-700 gap-1">
+                                <Heart className="h-3 w-3" />
+                                {metrics.likes}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="brand-product-card__icon">
+                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <polyline points="9 18 15 12 9 6" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
                           </div>
                         </div>
-                        <div className="brand-product-card__icon">
-                          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <polyline points="9 18 15 12 9 6" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </div>
-                      </div>
 
-                      {product.description && (
-                        <div className="brand-product-card__description">
-                          {product.description}
-                        </div>
-                      )}
+                        {product.description && (
+                          <div className="brand-product-card__description">
+                            {product.description}
+                          </div>
+                        )}
                       <div className="mt-3 flex items-center justify-end">
                         <Button
                           variant="ghost"
@@ -377,7 +439,8 @@ const BrandProducts = () => {
                     </>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
@@ -403,11 +466,11 @@ const BrandProducts = () => {
             <div className="space-y-3">
               {/* Product Image (small/medium) */}
               {selectedProduct.image_url && (
-                <div className="w-full rounded-xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+                <div className="w-full rounded-xl overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
                   <img
                     src={selectedProduct.image_url}
                     alt={selectedProduct.name}
-                    className="w-full h-40 sm:h-52 object-cover"
+                    className="w-full max-h-64 object-contain"
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
                     }}

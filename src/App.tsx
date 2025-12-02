@@ -25,6 +25,7 @@ import Messages from "./pages/Messages";
 import Chat from "./pages/Chat";
 import Notifications from "./pages/Notifications";
 import BrandDashboard from "./pages/BrandDashboard";
+import DebugDashboard from "./pages/DebugDashboard";
 import BrandProfile from "./pages/BrandProfile";
 import BrandProducts from "./pages/BrandProducts";
 import BrandProductDetail from "./pages/BrandProductDetail";
@@ -94,6 +95,7 @@ const App = () => (
             }
           >
             <Route path="/brand/dashboard" element={<BrandDashboard />} />
+            <Route path="/brand/debug" element={<DebugDashboard />} />
             <Route path="/brand/profile" element={<BrandProfile />} />
             <Route path="/brand/followers" element={<BrandFollowers />} />
             <Route path="/brand/following" element={<BrandFollowing />} />

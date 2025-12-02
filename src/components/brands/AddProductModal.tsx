@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 /**
  * AddProductModal
@@ -23,6 +24,7 @@ export type AddProductModalProps = React.PropsWithChildren<{}>;
 
 export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) => {
   const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   // Tab state and inputs
   const [activeTab, setActiveTab] = useState<"link" | "photo">("link");
@@ -124,8 +126,51 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
       // Expected shape (scaffold): { title, description, image_url, price, item_url }
       setTitle(data.title ?? title);
       setDescription(data.description ?? description);
-      setImageUrl(data.image_url ?? imageUrl);
       setItemUrl(data.item_url ?? url);
+      
+      // Download and upload external image to Supabase Storage
+      if (data.image_url) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            // Fetch the image
+            const imageResponse = await fetch(data.image_url);
+            const imageBlob = await imageResponse.blob();
+            
+            // Generate filename
+            const fileExt = data.image_url.split('.').pop()?.split('?')[0] || 'jpg';
+            const filePath = `brand-products/${user.id}/${Date.now()}.${fileExt}`;
+            
+            // Upload to Supabase Storage
+            const { error: uploadError } = await (supabase as any).storage
+              .from("brand-media")
+              .upload(filePath, imageBlob, {
+                cacheControl: "3600",
+                upsert: false,
+              });
+            
+            if (!uploadError) {
+              const { data: publicUrlData } = (supabase as any).storage
+                .from("brand-media")
+                .getPublicUrl(filePath);
+              
+              if (publicUrlData?.publicUrl) {
+                setImageUrl(publicUrlData.publicUrl);
+                console.log("✅ Image uploaded to Supabase Storage:", publicUrlData.publicUrl);
+              }
+            } else {
+              console.warn("⚠️ Failed to upload image, using external URL:", uploadError);
+              setImageUrl(data.image_url);
+            }
+          } else {
+            setImageUrl(data.image_url);
+          }
+        } catch (imgError) {
+          console.warn("⚠️ Failed to download/upload image, using external URL:", imgError);
+          setImageUrl(data.image_url);
+        }
+      }
+      
       toast.success("Product details fetched");
     } catch (e: any) {
       toast.error(e?.message || "Failed to fetch product details");
@@ -177,6 +222,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
         return;
       }
 
+      // Invalidate queries to refresh product list in real-time
+      await queryClient.invalidateQueries({ queryKey: ["brand-products"] });
+      await queryClient.invalidateQueries({ queryKey: ["brand-dashboard"] });
+      
       toast.success("Product added successfully");
       // Reset fields on success
       setUrl("");

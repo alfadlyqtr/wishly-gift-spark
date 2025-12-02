@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Link as LinkIcon, ArrowDownToLine, Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,6 +31,7 @@ type Props = {
   initialDescription?: string;
   initialDesire?: number; // 0..5
   initialImageUrl?: string | null;
+  initialUrl?: string;
   onSubmit?: (data: {
     wishlistId: string;
     title: string;
@@ -40,11 +41,12 @@ type Props = {
     imageFile?: File | null;
     imagePreviewUrl?: string | null;
     itemId?: string;
+    url?: string;
   }) => void | Promise<void>;
   trigger?: React.ReactNode;
 };
 
-export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWishlistId, itemId, initialWishlistId, initialTitle, initialBrand, initialDescription, initialDesire, initialImageUrl, onSubmit, trigger }: Props) {
+export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWishlistId, itemId, initialWishlistId, initialTitle, initialBrand, initialDescription, initialDesire, initialImageUrl, initialUrl, onSubmit, trigger }: Props) {
   const [wishlistId, setWishlistId] = useState(() => fixedWishlistId ?? initialWishlistId ?? "");
   const [title, setTitle] = useState("");
   const [brand, setBrand] = useState("");
@@ -52,6 +54,9 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
   const [desire, setDesire] = useState<number>(3);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [itemUrl, setItemUrl] = useState("");
+  const [urlInput, setUrlInput] = useState("");
+  const [isFetchingUrl, setIsFetchingUrl] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const { t, i18n } = useTranslation();
   const [isExtracting, setIsExtracting] = useState(false);
@@ -74,13 +79,17 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
       if (initialDescription) setDescription(initialDescription);
       if (typeof initialDesire === "number") setDesire(Math.max(0, Math.min(5, initialDesire)));
       if (initialImageUrl) setImageUrl(initialImageUrl);
+      if (initialUrl) {
+        setItemUrl(initialUrl);
+        setUrlInput(initialUrl);
+      }
       if (fixedWishlistId) {
         setWishlistId(fixedWishlistId);
       } else if (initialWishlistId) {
         setWishlistId(initialWishlistId);
       }
     }
-  }, [open, initialTitle, initialBrand, initialDescription, initialDesire, initialImageUrl, fixedWishlistId, initialWishlistId]);
+  }, [open, initialTitle, initialBrand, initialDescription, initialDesire, initialImageUrl, initialUrl, fixedWishlistId, initialWishlistId]);
 
   const canSubmit = useMemo(() => !!wishlistId && !!title, [wishlistId, title]);
 
@@ -302,6 +311,148 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
     return updated;
   };
 
+  const handleFetchUrl = async () => {
+    if (!urlInput) return;
+    
+    // Basic URL validation
+    let targetUrl = urlInput.trim();
+    if (!targetUrl.startsWith('http')) {
+      targetUrl = `https://${targetUrl}`;
+    }
+    
+    try {
+      setIsFetchingUrl(true);
+      
+      // Use VITE_SUPABASE_PUBLISHABLE_KEY or fallback to hardcoded values from client.ts
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://oefwopmeejfhzwojczqq.supabase.co";
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lZndvcG1lZWpmaHp3b2pjenFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyNDAyMDIsImV4cCI6MjA3NzgxNjIwMn0._r6kM1tzRcpBIuGW0m-lZWFecbZT4d1rHJVO3EzVueQ";
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/ai-gateway`;
+
+      // Using direct fetch like in AddProductModal to ensure compatibility
+      const res = await fetch(edgeFunctionUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${supabaseAnonKey}`,
+        },
+        body: JSON.stringify({ url: targetUrl }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('Gateway error response:', text);
+        throw new Error(text || `Gateway request failed (${res.status})`);
+      }
+
+      const data = await res.json();
+
+      let updated = false;
+      // Map ai-gateway response fields: { title, description, image_url, item_url, price? }
+      if (data.title) { setTitle(data.title); updated = true; }
+      
+      // Smart brand extraction
+      let extractedBrand = '';
+      if (data.brand) {
+        extractedBrand = data.brand;
+      } else if (data.title) {
+        // Try to extract brand from title using common brand patterns
+        const commonBrands = [
+          'Apple', 'Samsung', 'Xiaomi', 'Huawei', 'OnePlus', 'Google', 'Sony', 'LG', 'Nokia',
+          'Nike', 'Adidas', 'Puma', 'Reebok', 'Under Armour',
+          'Zara', 'H&M', 'Gucci', 'Prada', 'Louis Vuitton', 'Chanel',
+          'IKEA', 'Amazon', 'Microsoft', 'Dell', 'HP', 'Lenovo', 'Asus', 'Acer',
+          'Canon', 'Nikon', 'Fujifilm', 'GoPro', 'DJI',
+          'Lego', 'Mattel', 'Hasbro', 'Nintendo', 'PlayStation', 'Xbox'
+        ];
+        
+        const titleLower = data.title.toLowerCase();
+        for (const brand of commonBrands) {
+          if (titleLower.includes(brand.toLowerCase())) {
+            extractedBrand = brand;
+            break;
+          }
+        }
+        
+        // If still no brand, try first word of title (often the brand)
+        if (!extractedBrand) {
+          const firstWord = data.title.split(/[\s-]/)[0];
+          if (firstWord && firstWord.length > 2) {
+            extractedBrand = firstWord.charAt(0).toUpperCase() + firstWord.slice(1);
+          }
+        }
+      }
+      
+      // Last resort: extract from domain
+      if (!extractedBrand) {
+        try {
+          const urlObj = new URL(targetUrl);
+          const hostname = urlObj.hostname.replace('www.', '');
+          const domainParts = hostname.split('.');
+          // Skip common marketplace names
+          const skipDomains = ['amazon', 'ebay', 'walmart', 'target', 'lulu', 'noon', 'souq'];
+          const domainName = domainParts[0];
+          if (!skipDomains.includes(domainName.toLowerCase())) {
+            extractedBrand = domainName.charAt(0).toUpperCase() + domainName.slice(1);
+          }
+        } catch(e) { /* ignore */ }
+      }
+      
+      if (extractedBrand) {
+        setBrand(extractedBrand);
+        updated = true;
+      }
+
+      if (data.description) { 
+        setDescription(refineDescription(brand, data.description, DESC_MAX)); 
+        updated = true; 
+      }
+      
+      // Download and re-upload image to Supabase Storage to avoid CORS issues
+      if (data.image_url) {
+        try {
+          // Fetch the image as a blob
+          const imageResponse = await fetch(data.image_url);
+          if (imageResponse.ok) {
+            const blob = await imageResponse.blob();
+            
+            // Convert blob to File
+            const fileExt = data.image_url.split('.').pop()?.split('?')[0] || 'jpg';
+            const fileName = `fetched-${Date.now()}.${fileExt}`;
+            const file = new File([blob], fileName, { type: blob.type });
+            
+            // Set as imageFile so it gets uploaded when saving
+            setImageFile(file);
+            setImageUrl(URL.createObjectURL(blob));
+            updated = true;
+          } else {
+            // Fallback: just set the URL (might not work due to CORS)
+            setImageUrl(data.image_url);
+            updated = true;
+          }
+        } catch (imgErr) {
+          console.warn('Failed to download image, using direct URL:', imgErr);
+          setImageUrl(data.image_url);
+          updated = true;
+        }
+      }
+      
+      if (data.item_url) { setItemUrl(data.item_url); }
+      // If ai-gateway returns the original url, ensure we save it
+      if (!data.item_url && targetUrl) { setItemUrl(targetUrl); }
+
+      if (updated) {
+        toast.success(t('wish_item.fetch_success', 'Details fetched from link!'));
+      } else {
+        toast.info(t('wish_item.fetch_no_data', 'Could not find details, but link is saved.'));
+      }
+    } catch (err: any) {
+      console.error('Fetch error:', err);
+      toast.error(t('wish_item.fetch_error', 'Failed to fetch link details'));
+    } finally {
+      setIsFetchingUrl(false);
+    }
+  };
+
   const handleExtractFromImage = async () => {
     try {
       if (!imageFile) {
@@ -364,7 +515,16 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
   };
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    // Validation with helpful error messages
+    if (!wishlistId) {
+      toast.error(t("wish_item.error_no_wishlist", "Please select a wishlist first"));
+      return;
+    }
+    if (!title) {
+      toast.error(t("wish_item.error_no_title", "Please enter an item name"));
+      return;
+    }
+    
     await onSubmit?.({
       wishlistId,
       title,
@@ -374,6 +534,7 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
       imageFile,
       imagePreviewUrl: imageUrl ?? null,
       itemId,
+      url: itemUrl || urlInput || undefined,
     });
     // reset on success
     setTitle("");
@@ -382,6 +543,8 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
     setDesire(3);
     handleClearImage();
     setWishlistId("");
+    setItemUrl("");
+    setUrlInput("");
     onOpenChange?.(false);
   };
 
@@ -414,9 +577,55 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
               ) : null}
             </div>
 
-            {/* Upload (animated folder with sliding preview) */}
+            {/* Link Input - Fetch from URL */}
             <div className="input-div flex flex-col">
-              <Label className="mb-1">{t("wish_item.upload_label", "Upload Image")}</Label>
+              <Label className="mb-1" htmlFor="urlInput">{t("wish_item.paste_link_label", "Paste Link")}</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    <LinkIcon className="w-4 h-4" />
+                  </div>
+                  <Input
+                    id="urlInput"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    placeholder={t("wish_item.paste_link_placeholder", "https://...")}
+                    className="h-11 text-[15px] pl-9 pr-3 rounded-xl"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleFetchUrl();
+                      }
+                    }}
+                  />
+                </div>
+                <Button 
+                  type="button" 
+                  onClick={handleFetchUrl}
+                  disabled={!urlInput || isFetchingUrl}
+                  className="h-11 w-11 p-0 rounded-xl shrink-0"
+                  variant="outline"
+                >
+                  {isFetchingUrl ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowDownToLine className="w-5 h-5" />}
+                </Button>
+              </div>
+              <p className="mt-1.5 text-[11px] text-muted-foreground/80">{t("wish_item.paste_link_hint", "Fetch product details from any URL")}</p>
+            </div>
+
+            {/* Divider */}
+            <div className="relative my-5">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border/40"></div>
+              </div>
+              <div className="relative flex flex-col items-center gap-1">
+                <span className="bg-white px-3 text-xs font-semibold text-muted-foreground/60 uppercase tracking-wide">{t("wish_item.or", "OR")}</span>
+                <span className="bg-white px-3 text-[11px] text-muted-foreground/70 italic">{t("wish_item.ai_subtitle", "let's wishly ai take care")}</span>
+              </div>
+            </div>
+
+            {/* Upload Image - Extract with AI */}
+            <div className="input-div flex flex-col">
+              <Label className="mb-2">{t("wish_item.upload_label", "Upload Image")}</Label>
               {/* Inline keyframes for float */}
               <style>{`@keyframes folder-float {0%{transform:translateY(0)}50%{transform:translateY(-10px)}100%{transform:translateY(0)}}`}</style>
               <div
@@ -446,7 +655,7 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                     {/* cover acts as preview mask */}
                     <div className="absolute inset-0 rounded-[14px]" style={{ background: "linear-gradient(135deg,#ffe563,#ffc663)", boxShadow: "0 18px 30px rgba(0,0,0,0.26)" }} />
                     {imageUrl ? (
-                      <img src={imageUrl} alt="Preview" className="absolute inset-0 h-full w-full object-cover rounded-[14px]" />
+                      <img src={imageUrl} alt="Preview" className="absolute inset-0 h-full w-full object-contain rounded-[14px] bg-white p-1" />
                     ) : null}
                   </div>
                 </button>
@@ -538,9 +747,14 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
             </div>
 
             {/* Actions */}
-            <div className="button-div flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 pt-2 pb-[max(env(safe-area-inset-bottom),0px)]">
-              <Button type="button" variant="secondary" onClick={() => onOpenChange?.(false)} className="w-full sm:w-auto px-6">{t("common.cancel", "Cancel")}</Button>
-              <Button type="button" disabled={!canSubmit} onClick={handleSubmit} className="w-full sm:w-auto px-8 py-2 bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white rounded-xl">{itemId ? t("wish_item.update_button", "Update Wish") : t("wish_item.save_button", "Save to Wishlist")}</Button>
+            <div className="button-div flex flex-col items-center justify-center gap-2 pt-2 pb-[max(env(safe-area-inset-bottom),0px)]">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 w-full">
+                <Button type="button" variant="secondary" onClick={() => onOpenChange?.(false)} className="w-full sm:w-auto px-6">{t("common.cancel", "Cancel")}</Button>
+                <Button type="button" disabled={!canSubmit} onClick={handleSubmit} className="w-full sm:w-auto px-8 py-2 bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white rounded-xl">{itemId ? t("wish_item.update_button", "Update Wish") : t("wish_item.save_button", "Save to Wishlist")}</Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground/70 text-center italic mt-1">
+                {t("wish_item.double_check_hint", "✨ Quick check! Make sure everything looks good before saving")}
+              </p>
           </div>
         </div>
         </div>

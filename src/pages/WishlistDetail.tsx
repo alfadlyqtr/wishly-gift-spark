@@ -795,12 +795,22 @@ const WishlistDetail = () => {
                                 <img
                                   src={it.image_url}
                                   alt={it.title || 'Preview'}
-                                  className="h-[80px] w-[80px] rounded-full object-cover ring-2 ring-white/40 shadow-[0_6px_18px_rgba(0,0,0,0.35)]"
+                                  className="h-[80px] w-[80px] rounded-full object-contain bg-white/90 ring-2 ring-white/40 shadow-[0_6px_18px_rgba(0,0,0,0.35)] p-1"
                                   loading="lazy"
+                                  onError={(e) => {
+                                    // Hide broken image and show placeholder
+                                    e.currentTarget.style.display = 'none';
+                                    const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
+                                    if (placeholder) placeholder.style.display = 'block';
+                                  }}
                                 />
-                              ) : (
-                                <div className="h-[80px] w-[80px] rounded-full bg-gradient-to-br from-white/20 to-white/10 ring-2 ring-white/30" />
-                              )}
+                              ) : null}
+                              <div 
+                                className="h-[80px] w-[80px] rounded-full bg-gradient-to-br from-purple-400/30 to-pink-400/30 ring-2 ring-white/30 flex items-center justify-center"
+                                style={{ display: it.image_url ? 'none' : 'block' }}
+                              >
+                                <span className="text-2xl">📦</span>
+                              </div>
                                 </button>
                                 <div className={`min-w-0 flex-1 ${isAr ? 'text-right' : ''}`}>
                                   <div className="flex items-center justify-between gap-2">
@@ -1080,10 +1090,68 @@ const WishlistDetail = () => {
           initialDescription={editingItem.description || ''}
           initialDesire={editingItem.desire ?? 3}
           initialImageUrl={editingItem.image_url}
-          onSubmit={async () => {
-            setEditOpen(false);
-            setEditingItem(null);
-            await refetch();
+          onSubmit={async (data) => {
+            try {
+              // Handle image upload if there's a new file
+              let finalImageUrl = editingItem.image_url;
+              if (data.imageFile) {
+                console.log('Uploading new image file:', data.imageFile.name);
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                  const fileExt = data.imageFile.name.split('.').pop();
+                  const filePath = `wishlist-items/${user.id}/${Date.now()}.${fileExt}`;
+                  
+                  console.log('Uploading to path:', filePath);
+                  const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('wishlist-images')
+                    .upload(filePath, data.imageFile, {
+                      cacheControl: '3600',
+                      upsert: false
+                    });
+                  
+                  if (uploadError) {
+                    console.error('Upload error:', uploadError);
+                    toast.error(`Image upload failed: ${uploadError.message}`);
+                    // Continue with update but keep old image
+                  } else {
+                    console.log('Upload successful:', uploadData);
+                    const { data: urlData } = supabase.storage
+                      .from('wishlist-images')
+                      .getPublicUrl(filePath);
+                    finalImageUrl = urlData.publicUrl;
+                    console.log('New image URL:', finalImageUrl);
+                  }
+                }
+              } else if (data.imagePreviewUrl && data.imagePreviewUrl !== editingItem.image_url) {
+                // If there's a new preview URL (from fetch), use it
+                finalImageUrl = data.imagePreviewUrl;
+              }
+              
+              console.log('Final image URL to save:', finalImageUrl);
+
+              // Update the item in the database
+              const { error } = await supabase
+                .from('wishlist_items')
+                .update({
+                  wishlist_id: data.wishlistId,
+                  title: data.title,
+                  brand: data.brand || null,
+                  description: data.description || null,
+                  desire: data.desire,
+                  image_url: finalImageUrl,
+                  url: data.url || null,
+                })
+                .eq('id', editingItem.id);
+
+              if (error) throw error;
+              
+              toast.success(t('wishlist_detail.item_updated', 'Item updated successfully'));
+              setEditOpen(false);
+              setEditingItem(null);
+              await refetch();
+            } catch (err: any) {
+              toast.error(err?.message || t('wishlist_detail.update_failed', 'Failed to update item'));
+            }
           }}
         />
       )}
