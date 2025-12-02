@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Store, Instagram, Twitter, Facebook, Linkedin, Globe, X, UserPlus, UserCheck, BadgeCheck, Mail, Phone, MessageCircle, MapPin, Youtube, Plus } from "lucide-react";
+import { Store, Instagram, Twitter, Facebook, Linkedin, Globe, X, UserPlus, UserCheck, BadgeCheck, Mail, Phone, MessageCircle, MapPin, Youtube, Plus, Heart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -43,6 +43,7 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
   const [products, setProducts] = useState<any[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [selectedProductForModal, setSelectedProductForModal] = useState<any | null>(null);
+  const [selectedProductLiked, setSelectedProductLiked] = useState(false);
   const [productForWishAdd, setProductForWishAdd] = useState<any | null>(null);
   const wishlistsQuery = useWishlists();
   const wishlistOptions = (wishlistsQuery.data || []).map((w) => ({ id: w.id, name: w.title }));
@@ -93,6 +94,47 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
       setProductsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const loadSelectedProductLike = async () => {
+      try {
+        if (!selectedProductForModal?.id) {
+          setSelectedProductLiked(false);
+          return;
+        }
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setSelectedProductLiked(false);
+          return;
+        }
+
+        const { data, error } = await (supabase as any)
+          .from("brand_product_likes")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("product_id", selectedProductForModal.id)
+          .maybeSingle();
+
+        if (error) {
+          console.warn("Failed to load product like state", error);
+          setSelectedProductLiked(false);
+          return;
+        }
+
+        setSelectedProductLiked(!!data);
+      } catch (err) {
+        console.warn("Error loading product like state", err);
+        setSelectedProductLiked(false);
+      }
+    };
+
+    if (selectedProductForModal) {
+      loadSelectedProductLike();
+    } else {
+      setSelectedProductLiked(false);
+    }
+  }, [selectedProductForModal]);
 
   const checkFollowStatus = async () => {
     try {
@@ -149,6 +191,48 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
       toast.error(err.message || t("common.error", "Something went wrong"));
     } finally {
       setFollowLoading(false);
+    }
+  };
+
+  const handleToggleLikeSelectedProduct = async () => {
+    if (!selectedProductForModal?.id) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.message(
+          t("explore.login_required_title", "Log in to save items"),
+          {
+            description: t(
+              "explore.login_required_desc",
+              "Create an account or log in to save this product to a wishlist.",
+            ),
+          } as any,
+        );
+        return;
+      }
+
+      const productId = selectedProductForModal.id;
+      const alreadyLiked = selectedProductLiked;
+
+      if (alreadyLiked) {
+        await (supabase as any)
+          .from("brand_product_likes")
+          .delete()
+          .eq("product_id", productId)
+          .eq("user_id", user.id);
+      } else {
+        await (supabase as any)
+          .from("brand_product_likes")
+          .insert({
+            product_id: productId,
+            user_id: user.id,
+          });
+      }
+
+      setSelectedProductLiked(!alreadyLiked);
+    } catch (err: any) {
+      toast.error(err.message || t("common.error", "Something went wrong"));
     }
   };
 
@@ -416,6 +500,23 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
                         >
                           <Store className="h-3.5 w-3.5" />
                           <span>{t("explore.view_brand", "View store")}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`explore-product-card__button-icon ${
+                            selectedProductLiked ? "is-liked" : ""
+                          }`}
+                          onClick={handleToggleLikeSelectedProduct}
+                          aria-pressed={selectedProductLiked}
+                          aria-label={
+                            selectedProductLiked
+                              ? t("explore.unlike_product", "Unlike product")
+                              : t("explore.like_product", "Like product")
+                          }
+                        >
+                          <Heart
+                            className={`h-4 w-4 ${selectedProductLiked ? "fill-current" : ""}`}
+                          />
                         </button>
                         <button
                           type="button"

@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Store, Search, Filter, Users, Plus } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Store, Search, Filter, Users, Plus, Heart } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { requestFollow } from "@/lib/follow";
@@ -24,6 +24,9 @@ const Explore = () => {
   const [productsView, setProductsView] = useState<"card" | "list">("list");
   const [selectedProductForModal, setSelectedProductForModal] = useState<any | null>(null);
   const [cardGroupIndex, setCardGroupIndex] = useState<Record<string, number>>({});
+  const [likedProductIds, setLikedProductIds] = useState<Set<string>>(new Set());
+
+  const queryClient = useQueryClient();
 
   const { data: wishlistsData } = useWishlists();
   const wishlistOptions = useMemo(
@@ -174,6 +177,54 @@ const Explore = () => {
 
   const products = (productsQuery.data as any[]) || [];
 
+  // Stable list of product IDs for the useEffect dependency
+  const productIdList = useMemo(
+    () => products.map((p: any) => p.id).filter(Boolean).join(","),
+    [products],
+  );
+
+  useEffect(() => {
+    const loadLikedProducts = async () => {
+      try {
+        const ids = productIdList.split(",").filter(Boolean);
+        if (!ids.length) {
+          setLikedProductIds(new Set());
+          return;
+        }
+
+        const { data: auth } = await supabase.auth.getUser();
+        const me = auth.user?.id;
+        if (!me) {
+          setLikedProductIds(new Set());
+          return;
+        }
+
+        const { data, error } = await (supabase as any)
+          .from("brand_product_likes")
+          .select("product_id")
+          .eq("user_id", me)
+          .in("product_id", ids);
+
+        if (error) {
+          console.warn("Failed to load liked products", error);
+          return;
+        }
+
+        const next = new Set<string>();
+        for (const row of (data ?? []) as any[]) {
+          if (row.product_id) {
+            next.add(String(row.product_id));
+          }
+        }
+        setLikedProductIds(next);
+      } catch (err) {
+        console.warn("Error loading liked products", err);
+      }
+    };
+
+    loadLikedProducts();
+  }, [productIdList]);
+
   const productGroups = useMemo(() => {
     const groups: Record<string, { key: string; brand: any; items: any[] }> = {};
     for (const p of products) {
@@ -226,6 +277,65 @@ const Explore = () => {
 
       setProductForAdd(product);
       setIsAddDialogOpen(true);
+    } catch (e: any) {
+      toast.error(
+        e?.message ||
+          t("common.error_generic", "Something went wrong. Please try again."),
+      );
+    }
+  };
+
+  const handleToggleLike = async (product: any) => {
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const me = auth.user?.id;
+
+      if (!me) {
+        toast.message(
+          t("explore.login_required_title", "Log in to save items"),
+          {
+            description: t(
+              "explore.login_required_desc",
+              "Create an account or log in to save this product to a wishlist.",
+            ),
+          } as any,
+        );
+        return;
+      }
+
+      const productId = product.id;
+      const alreadyLiked = likedProductIds.has(productId);
+
+      if (alreadyLiked) {
+        await (supabase as any)
+          .from("brand_product_likes")
+          .delete()
+          .eq("product_id", productId)
+          .eq("user_id", me);
+      } else {
+        await (supabase as any)
+          .from("brand_product_likes")
+          .insert({
+            product_id: productId,
+            user_id: me,
+          });
+      }
+
+      setLikedProductIds((prev) => {
+        const next = new Set(prev);
+        if (alreadyLiked) {
+          next.delete(productId);
+        } else {
+          next.add(productId);
+        }
+        return next;
+      });
+
+      try {
+        queryClient.invalidateQueries();
+      } catch (err) {
+        console.warn("Failed to invalidate queries after like toggle", err);
+      }
     } catch (e: any) {
       toast.error(
         e?.message ||
@@ -442,6 +552,7 @@ const Explore = () => {
                     const p = group.items[clampedIndex] || group.items[0];
                     const total = group.items.length;
                     const currentDisplay = (clampedIndex % total) + 1;
+                    const isLiked = likedProductIds.has(p.id);
                     return (
                       <div key={group.key} className="flex justify-center">
                       <div className="explore-product-card w-full">
@@ -471,6 +582,17 @@ const Explore = () => {
 
                           <div className="explore-product-card__footer">
                             <div className="flex items-center gap-2 min-w-0">
+                              {p.brands?.logo_url && (
+                                <span className="explore-product-card__brand-avatar">
+                                  <img
+                                    src={p.brands.logo_url}
+                                    alt={p.brands.brand_name || t('explore.unknown_brand', 'Brand / Store')}
+                                    onError={(e: any) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
+                                </span>
+                              )}
                               <div className="explore-product-card__brand truncate">
                                 {p.brands?.brand_name || t('explore.unknown_brand', 'Brand / Store')}
                               </div>
@@ -501,6 +623,23 @@ const Explore = () => {
                               >
                                 <Store className="h-3.5 w-3.5" />
                                 <span>{t('explore.view_brand', 'View store')}</span>
+                              </button>
+                              <button
+                                type="button"
+                                className={`explore-product-card__button-icon ${
+                                  isLiked ? 'is-liked' : ''
+                                }`}
+                                onClick={() => handleToggleLike(p)}
+                                aria-pressed={isLiked}
+                                aria-label={
+                                  isLiked
+                                    ? t('explore.unlike_product', 'Unlike product')
+                                    : t('explore.like_product', 'Like product')
+                                }
+                              >
+                                <Heart
+                                  className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`}
+                                />
                               </button>
                               <button
                                 type="button"
@@ -563,6 +702,17 @@ const Explore = () => {
                           {p.name || t('explore.untitled_product', 'Untitled product')}
                         </div>
                         <div className="explore-product-row__meta">
+                          {p.brands?.logo_url && (
+                            <span className="explore-product-row__brand-avatar">
+                              <img
+                                src={p.brands.logo_url}
+                                alt={p.brands.brand_name || t('explore.unknown_brand', 'Brand / Store')}
+                                onError={(e: any) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            </span>
+                          )}
                           <span className="explore-product-row__brand">
                             {p.brands?.brand_name || t('explore.unknown_brand', 'Brand / Store')}
                           </span>
@@ -574,6 +724,30 @@ const Explore = () => {
                         </div>
                       </div>
                       <div className="explore-product-row__actions" onClick={(e) => e.stopPropagation()}>
+                        {(() => {
+                          const isLiked = likedProductIds.has(p.id);
+                          return (
+                            <button
+                              type="button"
+                              className={`explore-product-row__icon-btn ${
+                                isLiked ? 'is-liked' : ''
+                              }`}
+                              onClick={() => handleToggleLike(p)}
+                              aria-pressed={isLiked}
+                              aria-label={
+                                isLiked
+                                  ? t('explore.unlike_product', 'Unlike product')
+                                  : t('explore.like_product', 'Like product')
+                              }
+                            >
+                              <Heart
+                                className={`h-3.5 w-3.5 ${
+                                  isLiked ? 'fill-current' : ''
+                                }`}
+                              />
+                            </button>
+                          );
+                        })()}
                         <button
                           type="button"
                           className="explore-product-row__icon-btn"
@@ -755,8 +929,25 @@ const Explore = () => {
                   </div>
 
                   <div className="explore-product-card__footer">
-                    <div className="explore-product-card__brand truncate">
-                      {selectedProductForModal.brands?.brand_name || t('explore.unknown_brand', 'Brand / Store')}
+                    <div className="flex items-center gap-2 min-w-0">
+                      {selectedProductForModal.brands?.logo_url && (
+                        <span className="explore-product-card__brand-avatar">
+                          <img
+                            src={selectedProductForModal.brands.logo_url}
+                            alt={
+                              selectedProductForModal.brands.brand_name ||
+                              t('explore.unknown_brand', 'Brand / Store')
+                            }
+                            onError={(e: any) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        </span>
+                      )}
+                      <div className="explore-product-card__brand truncate">
+                        {selectedProductForModal.brands?.brand_name ||
+                          t('explore.unknown_brand', 'Brand / Store')}
+                      </div>
                     </div>
                     <div className="explore-product-card__actions">
                       <button
@@ -786,6 +977,30 @@ const Explore = () => {
                         <Store className="h-3.5 w-3.5" />
                         <span>{t('explore.view_brand', 'View store')}</span>
                       </button>
+                      {(() => {
+                        const isLiked = selectedProductForModal?.id
+                          ? likedProductIds.has(selectedProductForModal.id)
+                          : false;
+                        return (
+                          <button
+                            type="button"
+                            className={`explore-product-card__button-icon ${
+                              isLiked ? 'is-liked' : ''
+                            }`}
+                            onClick={() => handleToggleLike(selectedProductForModal)}
+                            aria-pressed={isLiked}
+                            aria-label={
+                              isLiked
+                                ? t('explore.unlike_product', 'Unlike product')
+                                : t('explore.like_product', 'Like product')
+                            }
+                          >
+                            <Heart
+                              className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`}
+                            />
+                          </button>
+                        );
+                      })()}
                       <button
                         type="button"
                         className={`explore-product-card__button-icon ${

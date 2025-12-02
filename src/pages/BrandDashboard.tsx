@@ -1,14 +1,20 @@
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Eye, CirclePlus, Heart, Users, BarChart3, Activity, Package } from "lucide-react";
 import { useState } from "react";
+import { brandFollowUser, brandUnfollowUser } from "@/lib/follow";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 const BrandDashboard = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("overview");
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [overviewDetail, setOverviewDetail] = useState<
+    null | "views" | "likes" | "wishlist" | "active" | "users"
+  >(null);
 
   // Fetch comprehensive brand analytics with real-time updates
   const { data: brandData } = useQuery({
@@ -73,12 +79,86 @@ const BrandDashboard = () => {
         0
       );
 
+      // Total likes across all products
+      const totalLikes = analyticsRows.reduce(
+        (sum, row) => sum + (row.likes_count ?? 0),
+        0
+      );
+
       // Unique wishlists that contain any of this brand's products
       const wishlistIdSet = new Set<string>();
       for (const row of analyticsRows) {
         (row.wishlist_ids || []).forEach((id) => {
           if (id) wishlistIdSet.add(id);
         });
+      }
+
+      // Track unique users who viewed or liked products
+      const likerIdSet = new Set<string>();
+      const viewerIdSet = new Set<string>();
+      const engagementByUser: Record<
+        string,
+        { likedProducts: Set<string>; viewedProducts: Set<string> }
+      > = {};
+
+      for (const row of analyticsRows) {
+        const productName = row.product_name || "Product";
+
+        (row.viewer_ids || []).forEach((id) => {
+          if (!id) return;
+          viewerIdSet.add(id);
+          if (!engagementByUser[id]) {
+            engagementByUser[id] = {
+              likedProducts: new Set<string>(),
+              viewedProducts: new Set<string>(),
+            };
+          }
+          engagementByUser[id].viewedProducts.add(productName);
+        });
+
+        (row.liker_ids || []).forEach((id) => {
+          if (!id) return;
+          likerIdSet.add(id);
+          if (!engagementByUser[id]) {
+            engagementByUser[id] = {
+              likedProducts: new Set<string>(),
+              viewedProducts: new Set<string>(),
+            };
+          }
+          engagementByUser[id].likedProducts.add(productName);
+        });
+      }
+
+      const engagedIds = Array.from(new Set<string>([...likerIdSet, ...viewerIdSet]));
+      const likerIds = Array.from(likerIdSet);
+      let likers: Array<{ id: string; name: string; username: string | null; avatar_url: string | null }> = [];
+
+      const profileMap: Record<string, { id: string; name: string; username: string | null; avatar_url: string | null }> = {};
+
+      if (engagedIds.length > 0) {
+        const { data: profiles, error: profilesError } = await (supabase as any)
+          .from("user_profiles")
+          .select("id, full_name, username, avatar_url")
+          .in("id", engagedIds)
+          .limit(20);
+
+        if (profilesError) {
+          console.error("❌ Error loading liker profiles:", profilesError);
+        } else {
+          (profiles || []).forEach((p: any) => {
+            const entry = {
+              id: p.id,
+              name: p.full_name || p.username || "User",
+              username: p.username || null,
+              avatar_url: p.avatar_url || null,
+            };
+            profileMap[p.id] = entry;
+          });
+
+          likers = likerIds
+            .map((id) => profileMap[id])
+            .filter(Boolean) as Array<{ id: string; name: string; username: string | null; avatar_url: string | null }>;
+        }
       }
 
       // Build maps for adds, views, and likes per product
@@ -91,20 +171,75 @@ const BrandDashboard = () => {
         likesByProduct[row.product_id] = row.likes_count ?? 0;
       }
 
-      const topProducts = (products || [])
-        .map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          image_url: p.image_url,
-          views: viewsByProduct[p.id] || 0,
-          adds: addsByProduct[p.id] || 0,
-          likes: likesByProduct[p.id] || 0,
-        }))
+      const productStats = (products || []).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        image_url: p.image_url,
+        views: viewsByProduct[p.id] || 0,
+        adds: addsByProduct[p.id] || 0,
+        likes: likesByProduct[p.id] || 0,
+      }));
+
+      const topProducts = [...productStats]
         .sort((a: any, b: any) => b.adds - a.adds)
         .slice(0, 5);
 
-      // Recent activity feed will be added later via a dedicated function.
+      // Build a simple recent activity feed summarizing who viewed/liked what
       const recentActivity: any[] = [];
+      for (const [userId, engagement] of Object.entries(engagementByUser)) {
+        const profile = profileMap[userId];
+        if (!profile) continue;
+
+        const likedNames = Array.from(engagement.likedProducts);
+        const viewedNames = Array.from(engagement.viewedProducts);
+
+        const parts: string[] = [];
+        if (likedNames.length > 0) {
+          const preview = likedNames.slice(0, 2).join(", ");
+          parts.push(
+            likedNames.length > 2
+              ? `liked ${preview} and others`
+              : `liked ${preview}`,
+          );
+        }
+
+        if (viewedNames.length > 0) {
+          const preview = viewedNames.slice(0, 2).join(", ");
+          parts.push(
+            viewedNames.length > 2
+              ? `viewed ${preview} and others`
+              : `viewed ${preview}`,
+          );
+        }
+
+        if (parts.length === 0) continue;
+
+        recentActivity.push({
+          userId: profile.id,
+          user: profile.name,
+          username: profile.username,
+          avatar_url: profile.avatar_url,
+          action: parts.join(" · "),
+          time: "Recently",
+        });
+      }
+
+      const userEngagement = Object.entries(engagementByUser).flatMap(
+        ([userId, engagement]) => {
+          const profile = profileMap[userId];
+          if (!profile) return [] as any[];
+          return [
+            {
+              id: profile.id,
+              name: profile.name,
+              username: profile.username,
+              avatar_url: profile.avatar_url,
+              likedProducts: Array.from(engagement.likedProducts),
+              viewedProducts: Array.from(engagement.viewedProducts),
+            },
+          ];
+        },
+      );
 
       return {
         brandId: brand.id,
@@ -112,7 +247,12 @@ const BrandDashboard = () => {
         productCount: products?.length || 0,
         totalViews,
         wishlistAdds,
-        uniqueUsers: wishlistIdSet.size,
+        totalLikes,
+        uniqueUsers: engagedIds.length,
+        uniqueLikers: likerIds.length,
+        likers,
+        userEngagement,
+        products: productStats,
         topProducts,
         recentActivity,
       };
@@ -124,12 +264,17 @@ const BrandDashboard = () => {
   const stats = {
     totalViews: brandData?.totalViews || 0,
     wishlistAdds: brandData?.wishlistAdds || 0,
+    totalLikes: brandData?.totalLikes || 0,
     activeProducts: brandData?.productCount || 0,
     uniqueUsers: brandData?.uniqueUsers || 0,
+    uniqueLikers: brandData?.uniqueLikers || 0,
   };
 
+  const allProducts = brandData?.products || [];
   const topProducts = brandData?.topProducts || [];
   const recentActivity = brandData?.recentActivity || [];
+  const likers = brandData?.likers || [];
+  const userEngagement = brandData?.userEngagement || [];
 
   // Helper function to format time ago
   function getTimeAgo(dateString: string) {
@@ -165,31 +310,36 @@ const BrandDashboard = () => {
 
       {/* Tabs for Mobile-First Design */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 bg-white/70 backdrop-blur border border-white/40 p-1 rounded-full">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(var(--brand-cool-start))] data-[state=active]:to-[hsl(var(--brand-warm-end))] data-[state=active]:text-white rounded-full">
-            <BarChart3 className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Overview</span>
-          </TabsTrigger>
-          <TabsTrigger value="products" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(var(--brand-cool-start))] data-[state=active]:to-[hsl(var(--brand-warm-end))] data-[state=active]:text-white rounded-full">
-            <Package className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Products</span>
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(var(--brand-cool-start))] data-[state=active]:to-[hsl(var(--brand-warm-end))] data-[state=active]:text-white rounded-full">
-            <BarChart3 className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Analytics</span>
-          </TabsTrigger>
-          <TabsTrigger value="activity" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(var(--brand-cool-start))] data-[state=active]:to-[hsl(var(--brand-warm-end))] data-[state=active]:text-white rounded-full">
-            <Activity className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Activity</span>
-          </TabsTrigger>
-        </TabsList>
+        <div className="w-full overflow-x-auto pb-1">
+          <TabsList className="inline-flex min-w-max bg-white/70 backdrop-blur border border-white/40 px-1 py-1 rounded-full gap-1">
+            <TabsTrigger value="overview" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(var(--brand-cool-start))] data-[state=active]:to-[hsl(var(--brand-warm-end))] data-[state=active]:text-white rounded-full px-3 py-1.5 text-xs sm:text-sm">
+              <BarChart3 className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">{t("brand.dashboard_tab_overview", "Overview")}</span>
+            </TabsTrigger>
+            <TabsTrigger value="products" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(var(--brand-cool-start))] data-[state=active]:to-[hsl(var(--brand-warm-end))] data-[state=active]:text-white rounded-full px-3 py-1.5 text-xs sm:text-sm">
+              <Package className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">{t("brand.dashboard_tab_products", "Products")}</span>
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(var(--brand-cool-start))] data-[state=active]:to-[hsl(var(--brand-warm-end))] data-[state=active]:text-white rounded-full px-3 py-1.5 text-xs sm:text-sm">
+              <BarChart3 className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">{t("brand.dashboard_tab_analytics", "Analytics")}</span>
+            </TabsTrigger>
+            <TabsTrigger value="activity" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(var(--brand-cool-start))] data-[state=active]:to-[hsl(var(--brand-warm-end))] data-[state=active]:text-white rounded-full px-3 py-1.5 text-xs sm:text-sm">
+              <Activity className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">{t("brand.dashboard_tab_activity", "Activity")}</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* OVERVIEW TAB */}
         <TabsContent value="overview" className="space-y-6">
           {/* Hero Stats Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Total Views Card */}
-            <Card className="bg-white/70 backdrop-blur border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card
+              className="bg-white/70 backdrop-blur border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
+              onClick={() => setOverviewDetail("views")}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/20 to-[hsl(var(--brand-cool-end))]/20">
@@ -199,13 +349,16 @@ const BrandDashboard = () => {
                 <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-cool-end))] mb-1">
                   {stats.totalViews.toLocaleString()}
                 </div>
-                <div className="text-sm text-muted-foreground">Product Views</div>
-                <div className="text-xs text-muted-foreground mt-2">Last 30 days</div>
+                <div className="text-sm text-muted-foreground">{t("brand.dashboard_card_views", "Product Views")}</div>
+                <div className="text-xs text-muted-foreground mt-2">{t("brand.dashboard_card_views_sub", "Last 30 days")}</div>
               </CardContent>
             </Card>
 
             {/* Wishlist Adds Card */}
-            <Card className="bg-white/70 backdrop-blur border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card
+              className="bg-white/70 backdrop-blur border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
+              onClick={() => setOverviewDetail("wishlist")}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
@@ -215,13 +368,86 @@ const BrandDashboard = () => {
                 <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-rose-500 mb-1">
                   {stats.wishlistAdds.toLocaleString()}
                 </div>
-                <div className="text-sm text-muted-foreground">Wishlist Adds</div>
-                <div className="text-xs text-muted-foreground mt-2">All time</div>
+                <div className="text-sm text-muted-foreground">{t("brand.dashboard_card_wishlist_adds", "Wishlist Adds")}</div>
+                <div className="text-xs text-muted-foreground mt-2">{t("brand.dashboard_card_wishlist_adds_sub", "All time")}</div>
+              </CardContent>
+            </Card>
+
+            {/* Likes Card */}
+            <Card
+              className="bg-white/70 backdrop-blur border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
+              onClick={() => setOverviewDetail("likes")}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-rose-500/20 to-pink-500/20">
+                    <Heart className="h-6 w-6 text-rose-500" />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-rose-500 to-pink-500 mb-1">
+                  {stats.totalLikes.toLocaleString()}
+                </div>
+                <div className="text-sm text-muted-foreground">{t("brand.dashboard_card_likes", "Likes")}</div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  {stats.uniqueLikers > 0
+                    ? t("brand.dashboard_card_likes_sub", "{{count}} users liked your products", { count: stats.uniqueLikers.toLocaleString() })
+                    : t("brand.dashboard_card_likes_empty", "No likes yet")}
+                </div>
+                {likers && likers.length > 0 && (
+                  <div className="mt-3 flex -space-x-2">
+                    {likers.slice(0, 5).map((user: any) => {
+                      const engagement = userEngagement.find((u: any) => u.id === user.id) || null;
+                      return (
+                        <button
+                          key={user.id}
+                          type="button"
+                          className="inline-flex h-7 w-7 rounded-full border-2 border-white overflow-hidden bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[hsl(var(--brand-cool-start))]"
+                          title={user.name}
+                          onClick={() =>
+                            setSelectedUser(
+                              engagement || {
+                                id: user.id,
+                                name: user.name,
+                                username: user.username,
+                                avatar_url: user.avatar_url,
+                                likedProducts: [],
+                                viewedProducts: [],
+                              },
+                            )
+                          }
+                        >
+                          {user.avatar_url ? (
+                            <img
+                              src={user.avatar_url}
+                              alt={user.name}
+                              className="h-full w-full object-cover"
+                              onError={(e: any) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-white">
+                              {user.name?.charAt(0)?.toUpperCase() || "?"}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                    {likers.length > 5 && (
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-white/80 text-[10px] text-muted-foreground">
+                        +{likers.length - 5}
+                      </span>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             {/* Active Products Card */}
-            <Card className="bg-white/70 backdrop-blur border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card
+              className="bg-white/70 backdrop-blur border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
+              onClick={() => setOverviewDetail("active")}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
@@ -231,12 +457,15 @@ const BrandDashboard = () => {
                 <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-teal-500 mb-1">
                   {stats.activeProducts}
                 </div>
-                <div className="text-sm text-muted-foreground">Active Products</div>
+                <div className="text-sm text-muted-foreground">{t("brand.dashboard_card_active_products", "Active Products")}</div>
               </CardContent>
             </Card>
 
             {/* Unique Users Card */}
-            <Card className="bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/10 to-[hsl(var(--brand-warm-end))]/10 backdrop-blur border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card
+              className="bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/10 to-[hsl(var(--brand-warm-end))]/10 backdrop-blur border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
+              onClick={() => setOverviewDetail("users")}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 rounded-xl bg-gradient-to-br from-[hsl(var(--brand-warm-start))]/20 to-[hsl(var(--brand-warm-end))]/20">
@@ -246,26 +475,55 @@ const BrandDashboard = () => {
                 <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-warm-start))] to-[hsl(var(--brand-warm-end))] mb-1">
                   {stats.uniqueUsers.toLocaleString()}
                 </div>
-                <div className="text-sm text-muted-foreground">Unique Users</div>
-                <div className="text-xs text-muted-foreground mt-2">With your products</div>
+                <div className="text-sm text-muted-foreground">{t("brand.dashboard_card_unique_users", "Unique Users")}</div>
+                <div className="text-xs text-muted-foreground mt-2">{t("brand.dashboard_card_unique_users_sub", "With your products")}</div>
               </CardContent>
             </Card>
           </div>
+
+          {/* Compact recent activity preview */}
+          {recentActivity && recentActivity.length > 0 && (
+            <Card className="bg-white/70 backdrop-blur border border-white/40 shadow-md">
+              <CardContent className="px-4 py-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Activity className="h-4 w-4 text-[hsl(var(--brand-cool-start))]" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Recent activity
+                  </span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4 text-[11px] text-muted-foreground min-w-0">
+                  {recentActivity.slice(0, 3).map((item: any, index: number) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-1 min-w-0"
+                    >
+                      <span className="font-semibold truncate max-w-[90px] sm:max-w-[120px]">
+                        {item.user}
+                      </span>
+                      <span className="text-muted-foreground/80 truncate max-w-[160px] sm:max-w-[220px]">
+                        {item.action}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Performance Chart */}
           <Card className="bg-white/70 backdrop-blur border border-white/40 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-[hsl(var(--brand-cool-start))]" />
-                Weekly Performance
+                {t("brand.dashboard_weekly_performance", "Weekly Performance")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-64 flex items-center justify-center text-muted-foreground">
                 <div className="text-center">
                   <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                  <p>Analytics tracking coming soon</p>
-                  <p className="text-sm mt-2">We'll track views, adds, and engagement here</p>
+                  <p>{t("brand.dashboard_weekly_performance_soon", "Analytics tracking coming soon")}</p>
+                  <p className="text-sm mt-2">{t("brand.dashboard_weekly_performance_sub", "We'll track views, adds, and engagement here")}</p>
                 </div>
               </div>
             </CardContent>
@@ -276,7 +534,7 @@ const BrandDashboard = () => {
         <TabsContent value="products" className="space-y-6">
           <Card className="bg-white/70 backdrop-blur border border-white/40 shadow-lg">
             <CardHeader>
-              <CardTitle>Top Performing Products</CardTitle>
+              <CardTitle>{t("brand.dashboard_top_products_title", "Top Performing Products")}</CardTitle>
             </CardHeader>
             <CardContent>
               {topProducts.length > 0 ? (
@@ -317,8 +575,8 @@ const BrandDashboard = () => {
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
                   <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                  <p>No product data yet</p>
-                  <p className="text-sm mt-2">Add products and they'll appear here once users interact with them</p>
+                  <p>{t("brand.dashboard_top_products_empty", "No product data yet")}</p>
+                  <p className="text-sm mt-2">{t("brand.dashboard_top_products_empty_sub", "Add products and they'll appear here once users interact with them")}</p>
                 </div>
               )}
             </CardContent>
@@ -329,14 +587,70 @@ const BrandDashboard = () => {
         <TabsContent value="analytics" className="space-y-6">
           <Card className="bg-white/70 backdrop-blur border border-white/40 shadow-lg">
             <CardHeader>
-              <CardTitle>Detailed Analytics</CardTitle>
+              <CardTitle>{t("brand.dashboard_analytics_title", "Detailed Analytics")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                <p>Advanced analytics coming soon</p>
-                <p className="text-sm mt-2">Geographic data, peak times, and engagement metrics</p>
-              </div>
+              {allProducts && allProducts.length > 0 ? (
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200/70 text-xs text-muted-foreground uppercase tracking-wide">
+                        <th className="py-2 pr-2 text-left font-semibold">{t("brand.dashboard_analytics_col_product", "Product")}</th>
+                        <th className="py-2 px-2 text-right font-semibold whitespace-nowrap">{t("brand.dashboard_analytics_col_views", "Views")}</th>
+                        <th className="py-2 px-2 text-right font-semibold whitespace-nowrap">{t("brand.dashboard_analytics_col_wishlist_adds", "Wishlist adds")}</th>
+                        <th className="py-2 pl-2 text-right font-semibold whitespace-nowrap">{t("brand.dashboard_analytics_col_likes", "Likes")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allProducts
+                        .slice()
+                        .sort((a: any, b: any) => (b.views || 0) - (a.views || 0))
+                        .map((p: any) => (
+                          <tr key={p.id} className="border-b border-slate-100 last:border-0">
+                            <td className="py-2 pr-2 align-top">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {p.image_url ? (
+                                  <img
+                                    src={p.image_url}
+                                    alt={p.name || "product"}
+                                    className="h-8 w-8 rounded-md object-cover flex-shrink-0"
+                                    onError={(e: any) => {
+                                      e.currentTarget.style.display = "none";
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="h-8 w-8 rounded-md bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/20 to-[hsl(var(--brand-warm-end))]/20 flex items-center justify-center text-[10px] text-[hsl(var(--brand-cool-start))] flex-shrink-0">
+                                    <Package className="h-4 w-4" />
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="font-medium text-foreground truncate">
+                                    {p.name || t("brand.dashboard_untitled_product", "Untitled product")}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-2 px-2 text-right align-top whitespace-nowrap">
+                              {p.views?.toLocaleString?.() || 0}
+                            </td>
+                            <td className="py-2 px-2 text-right align-top whitespace-nowrap">
+                              {p.adds?.toLocaleString?.() || 0}
+                            </td>
+                            <td className="py-2 pl-2 text-right align-top whitespace-nowrap">
+                              {p.likes?.toLocaleString?.() || 0}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                  <p>{t("brand.dashboard_analytics_empty", "No analytics data yet")}</p>
+                  <p className="text-sm mt-2">{t("brand.dashboard_analytics_empty_sub", "Once users view, add, and like your products, you'll see per-product metrics here.")}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -347,7 +661,7 @@ const BrandDashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5 text-[hsl(var(--brand-cool-start))]" />
-                Recent Activity
+                {t("brand.dashboard_activity_title", "Recent Activity")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -358,9 +672,37 @@ const BrandDashboard = () => {
                       key={index}
                       className="flex items-start gap-3 p-3 rounded-lg bg-gradient-to-r from-white/50 to-white/30 border border-white/40 hover:border-[hsl(var(--brand-cool-start))]/30 transition-all"
                     >
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] flex items-center justify-center text-white font-semibold text-sm">
-                        {activity.user.charAt(0).toUpperCase()}
-                      </div>
+                      <button
+                        type="button"
+                        className="w-10 h-10 rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] flex items-center justify-center text-white font-semibold text-sm overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[hsl(var(--brand-cool-start))] cursor-pointer"
+                        title={activity.user}
+                        onClick={() => {
+                          const engagement = userEngagement.find((u: any) => u.id === activity.userId) || null;
+                          setSelectedUser(
+                            engagement || {
+                              id: activity.userId,
+                              name: activity.user,
+                              username: activity.username,
+                              avatar_url: activity.avatar_url,
+                              likedProducts: [],
+                              viewedProducts: [],
+                            },
+                          );
+                        }}
+                      >
+                        {activity.avatar_url ? (
+                          <img
+                            src={activity.avatar_url}
+                            alt={activity.user}
+                            className="h-full w-full object-cover"
+                            onError={(e: any) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          activity.user.charAt(0).toUpperCase()
+                        )}
+                      </button>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm text-foreground">
                           <span className="font-semibold">{activity.user}</span>
@@ -375,14 +717,269 @@ const BrandDashboard = () => {
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
                   <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                  <p>No activity yet</p>
-                  <p className="text-sm mt-2">Activity will appear when users add your products to wishlists</p>
+                  <p>{t("brand.dashboard_activity_empty", "No activity yet")}</p>
+                  <p className="text-sm mt-2">{t("brand.dashboard_activity_empty_sub", "Activity will appear when users add your products to wishlists")}</p>
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Overview detail modal (for Wishlist Adds / Active Products / Unique Users) */}
+      {overviewDetail && (
+        <Dialog
+          open={!!overviewDetail}
+          onOpenChange={(open) => {
+            if (!open) setOverviewDetail(null);
+          }}
+        >
+          <DialogContent className="max-w-sm sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
+                {overviewDetail === "views" && (
+                  <>
+                    <Eye className="h-4 w-4 text-[hsl(var(--brand-cool-start))]" />
+                    <span>Product views – which products</span>
+                  </>
+                )}
+                {overviewDetail === "likes" && (
+                  <>
+                    <Heart className="h-4 w-4 text-rose-500" />
+                    <span>Likes – which products</span>
+                  </>
+                )}
+                {overviewDetail === "wishlist" && (
+                  <>
+                    <CirclePlus className="h-4 w-4 text-emerald-500" />
+                    <span>Wishlist adds – which products</span>
+                  </>
+                )}
+                {overviewDetail === "active" && (
+                  <>
+                    <Package className="h-4 w-4 text-emerald-500" />
+                    <span>Active products</span>
+                  </>
+                )}
+                {overviewDetail === "users" && (
+                  <>
+                    <Users className="h-4 w-4 text-[hsl(var(--brand-warm-start))]" />
+                    <span>Unique users – who they are</span>
+                  </>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 text-sm max-h-80 overflow-y-auto">
+              {overviewDetail === "views" && (
+                <div>
+                  {allProducts && allProducts.length > 0 ? (
+                    <ul className="space-y-1">
+                      {allProducts
+                        .slice()
+                        .sort((a: any, b: any) => (b.views || 0) - (a.views || 0))
+                        .map((p: any) => (
+                          <li
+                            key={p.id}
+                            className="flex items-center justify-between gap-2 text-xs"
+                          >
+                            <span className="truncate max-w-[180px]">{p.name || "Untitled product"}</span>
+                            <span className="text-muted-foreground">
+                              {p.views?.toLocaleString?.() || 0} views
+                            </span>
+                          </li>
+                        ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No view data yet.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {overviewDetail === "likes" && (
+                <div>
+                  {allProducts && allProducts.length > 0 ? (
+                    <ul className="space-y-1">
+                      {allProducts
+                        .slice()
+                        .sort((a: any, b: any) => (b.likes || 0) - (a.likes || 0))
+                        .map((p: any) => (
+                          <li
+                            key={p.id}
+                            className="flex items-center justify-between gap-2 text-xs"
+                          >
+                            <span className="truncate max-w-[180px]">{p.name || "Untitled product"}</span>
+                            <span className="text-muted-foreground">
+                              {p.likes?.toLocaleString?.() || 0} likes
+                            </span>
+                          </li>
+                        ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No like data yet.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {overviewDetail === "wishlist" && (
+                <div>
+                  {allProducts && allProducts.length > 0 ? (
+                    <ul className="space-y-1">
+                      {allProducts
+                        .slice()
+                        .sort((a: any, b: any) => (b.adds || 0) - (a.adds || 0))
+                        .map((p: any) => (
+                          <li
+                            key={p.id}
+                            className="flex items-center justify-between gap-2 text-xs"
+                          >
+                            <span className="truncate max-w-[180px]">{p.name || "Untitled product"}</span>
+                            <span className="text-muted-foreground">
+                              {p.adds?.toLocaleString?.() || 0} adds
+                            </span>
+                          </li>
+                        ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No wishlist data yet.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {overviewDetail === "active" && (
+                <div>
+                  {allProducts && allProducts.length > 0 ? (
+                    <ul className="space-y-1">
+                      {allProducts.map((p: any) => (
+                        <li
+                          key={p.id}
+                          className="flex items-center justify-between gap-2 text-xs"
+                        >
+                          <span className="truncate max-w-[180px]">{p.name || "Untitled product"}</span>
+                          <span className="text-muted-foreground flex gap-2">
+                            <span>{p.views?.toLocaleString?.() || 0} views</span>
+                            <span>{p.adds?.toLocaleString?.() || 0} adds</span>
+                            <span>{p.likes?.toLocaleString?.() || 0} likes</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No active products yet.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {overviewDetail === "users" && (
+                <div>
+                  {userEngagement && userEngagement.length > 0 ? (
+                    <ul className="space-y-2">
+                      {userEngagement.map((u: any) => (
+                        <li key={u.id} className="text-xs">
+                          <div className="font-semibold truncate max-w-[220px]">
+                            {u.name}
+                          </div>
+                          <div className="text-muted-foreground mt-0.5">
+                            {(u.likedProducts?.length || 0) > 0 && (
+                              <span>
+                                Liked {u.likedProducts.length} product
+                                {u.likedProducts.length === 1 ? "" : "s"}
+                              </span>
+                            )}
+                            {(u.likedProducts?.length || 0) > 0 &&
+                              (u.viewedProducts?.length || 0) > 0 && <span> · </span>}
+                            {(u.viewedProducts?.length || 0) > 0 && (
+                              <span>
+                                Viewed {u.viewedProducts.length} product
+                                {u.viewedProducts.length === 1 ? "" : "s"}
+                              </span>
+                            )}
+                            {(u.likedProducts?.length || 0) === 0 &&
+                              (u.viewedProducts?.length || 0) === 0 && (
+                                <span>No engagement recorded.</span>
+                              )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No unique user data yet.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* User engagement card modal (opened from Likes avatars) */}
+      {selectedUser && (
+        <Dialog
+          open={!!selectedUser}
+          onOpenChange={(open) => {
+            if (!open) setSelectedUser(null);
+          }}
+        >
+          <DialogContent className="max-w-xs sm:max-w-sm border-0 bg-transparent shadow-none p-0">
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/90 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.1)] p-4">
+              <div className="flex items-center gap-3 min-w-0">
+                {selectedUser.avatar_url ? (
+                  <span className="relative flex shrink-0 overflow-hidden rounded-full h-11 w-11 ring-2 ring-white/80">
+                    <img
+                      src={selectedUser.avatar_url}
+                      alt={selectedUser.name || "avatar"}
+                      className="h-full w-full object-cover"
+                      onError={(e: any) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  </span>
+                ) : (
+                  <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white ring-1 ring-white/60 shadow-[0_6px_14px_rgba(200,80,192,0.28)]">
+                    <Users className="h-5 w-5" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <div className="font-semibold truncate text-base">{selectedUser.name || "User"}</div>
+                  {selectedUser.username && (
+                    <div className="text-sm text-muted-foreground">@{selectedUser.username}</div>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="explore-follow-btn shrink-0"
+                onClick={async () => {
+                  try {
+                    await brandFollowUser(selectedUser.id);
+                  } catch (err) {
+                    console.warn("Follow failed", err);
+                  }
+                }}
+              >
+                <span className="explore-follow-btn-fold" aria-hidden="true" />
+                <span className="explore-follow-btn-points" aria-hidden="true">
+                  {Array.from({ length: 10 }).map((_, i) => (
+                    <span key={i} className="explore-follow-btn-point" />
+                  ))}
+                </span>
+                <span className="explore-follow-btn-inner">
+                  {t("explore.following", "Following")}
+                </span>
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
