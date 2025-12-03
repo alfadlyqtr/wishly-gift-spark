@@ -348,6 +348,10 @@ const Notifications = () => {
                           return t('notifications.activity_wishlist_created', 'You created a new wishlist');
                         case "wishlist_updated":
                           return t('notifications.activity_wishlist_updated', 'You updated a wishlist');
+                        case "question_answered":
+                          const brandName = a.metadata?.brand_name || "A brand";
+                          const productName = a.metadata?.product_name || "a product";
+                          return t('notifications.activity_question_answered', '{{brand}} answered your question about {{product}}', { brand: brandName, product: productName });
                         default:
                           return t('notifications.activity_update', 'Update');
                       }

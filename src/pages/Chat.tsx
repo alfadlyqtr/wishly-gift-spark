@@ -146,6 +146,25 @@ const Chat = () => {
         }
       }
 
+      // 3) If we found the other user, check if they're a brand and use brand name/logo
+      if (other && other.id) {
+        const { data: brandData } = await (supabase as any)
+          .from("brands")
+          .select("brand_name, logo_url")
+          .eq("user_id", other.id)
+          .maybeSingle();
+        
+        if (brandData) {
+          // Override with brand info
+          other = {
+            ...other,
+            full_name: brandData.brand_name || other.full_name,
+            avatar_url: brandData.logo_url || other.avatar_url,
+            is_brand: true,
+          };
+        }
+      }
+
       if (!other) {
         // Truly only you in this thread
         return {

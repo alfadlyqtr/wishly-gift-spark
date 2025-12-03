@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +11,12 @@ const Messages = () => {
   const [q, setQ] = useState("");
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const qc = useQueryClient();
+
+  // Determine if we're inside the brand app shell or the personal app shell
+  const isBrandContext = location.pathname.startsWith("/brand");
+  const chatBase = isBrandContext ? "/brand" : "";
 
   const { data } = useQuery({
     queryKey: ["threads"],
@@ -89,6 +94,28 @@ const Messages = () => {
           }
         }
 
+        // Check if the other user is a brand and use brand name/logo
+        if (other && other.id) {
+          try {
+            const { data: brandData } = await (supabase as any)
+              .from("brands")
+              .select("brand_name, logo_url")
+              .eq("user_id", other.id)
+              .maybeSingle();
+            
+            if (brandData) {
+              other = {
+                ...other,
+                full_name: brandData.brand_name || other.full_name,
+                avatar_url: brandData.logo_url || other.avatar_url,
+                is_brand: true,
+              };
+            }
+          } catch {
+            // ignore brand fetch errors
+          }
+        }
+
         let name = "Conversation";
         let avatar_url: string | null = null;
 
@@ -148,7 +175,10 @@ const Messages = () => {
             {t('messages.title', 'Messages')}
           </h2>
         </div>
-        <AddButton ariaLabel={t('messages.new_conversation', 'New conversation')} onClick={() => navigate('/chat/new')} />
+        <AddButton
+          ariaLabel={t('messages.new_conversation', 'New conversation')}
+          onClick={() => navigate(`${chatBase}/chat/new`)}
+        />
       </div>
 
       {/* Search bar styled like Explore */}
@@ -181,7 +211,7 @@ const Messages = () => {
           return (
           <div
             key={thread.id}
-            onClick={() => navigate(`/chat/${thread.id}`)}
+            onClick={() => navigate(`${chatBase}/chat/${thread.id}`)}
             className="w-full flex items-center justify-between rounded-3xl bg-[rgba(200,80,192,0.04)] backdrop-blur px-5 py-3 border border-[hsl(var(--brand-cool-start))]/35 shadow-md hover:border-[hsl(var(--brand-cool-start))]/70 hover:shadow-lg hover:bg-[rgba(200,80,192,0.08)] transition-all duration-150 cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">

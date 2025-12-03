@@ -115,9 +115,9 @@ function summarizeVision(visionJson: any) {
 
 async function deepseekStructure(args: {
   text: string; logos: string[]; labels: string[]; colors: { hex: string; score: number }[]; 
-  webGuess?: string; webEntities?: string[]; locale: "en" | "ar";
+  webGuess?: string; webEntities?: string[]; locale: "en" | "ar"; mode?: "wish" | "brand";
 }) {
-  const { text, logos, labels, colors, webGuess = '', webEntities = [], locale } = args
+  const { text, logos, labels, colors, webGuess = '', webEntities = [], locale, mode = 'wish' } = args
   
   // Extract color names (top 2 only)
   const colorNames = colors.map(c => hexToColorName(c.hex).name).filter(Boolean).slice(0, 2)
@@ -139,9 +139,30 @@ async function deepseekStructure(args: {
   // Try Deepseek for natural description
   try {
     const gatewayUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/ai-gateway`
-    const sys = locale === 'ar'
-      ? `أنت Wishly. أعِد JSON: {title, brand, description, url}. الوصف: جملة واحدة طبيعية تصف المنتج بدون ذكر العلامة التجارية. مثال: "نظارة شمسية مربعة فاخرة بإطار أسود وتفاصيل ذهبية". بدون أسعار.`
-      : `You are Wishly. Return JSON: {title, brand, description, url}. Description: ONE natural sentence describing the product WITHOUT mentioning the brand name. Example: "Luxury square sunglasses with black acetate frame and gold-tone hardware". No prices.`
+    const sys = (() => {
+      if (mode === 'brand') {
+        return locale === 'ar'
+          ? `أنت Wishly، وتساعد علامة تجارية على كتابة وصف منتج للاستخدام في لوحة تحكم تجارية.
+أعِد JSON: {title, brand, description, url}.
+القواعد:
+- الوصف جملة أو جملتان بحد أقصى، بلغة محايدة ومهنية.
+- بدون أي ضمائر بصيغة المتكلم (مثل "أنا" أو "نحن")، وبدون تعبيرات مشاعر أو إيموجي.
+- لا تستخدم عبارات مثل "أحب" أو "أريد" أو "أتمنى".
+- ركّز على الحقائق (النوع، الخامات، المزايا الرئيسية) بدون أسعار.`
+          : `You are Wishly helping a brand write neutral product copy for a dashboard.
+Return JSON: {title, brand, description, url}.
+Rules for description:
+- ONE or TWO concise sentences, neutral and professional.
+- NO first-person pronouns (no "I", "we", "me", "us") and no emojis.
+- Do not use phrases like "I love", "I want", "I wish".
+- Focus on factual details (type, materials, key features), no pricing or discounts.`
+      }
+
+      // Default "wish" mode – keep existing behavior
+      return locale === 'ar'
+        ? `أنت Wishly. أعِد JSON: {title, brand, description, url}. الوصف: جملة واحدة طبيعية تصف المنتج بدون ذكر العلامة التجارية. مثال: "نظارة شمسية مربعة فاخرة بإطار أسود وتفاصيل ذهبية". بدون أسعار.`
+        : `You are Wishly. Return JSON: {title, brand, description, url}. Description: ONE natural sentence describing the product WITHOUT mentioning the brand name. Example: "Luxury square sunglasses with black acetate frame and gold-tone hardware". No prices.`
+    })()
     
     const colorDesc = colorNames.join(locale === 'ar' ? ' و' : ' and ')
     const content = locale === 'ar'
@@ -192,7 +213,7 @@ async function deepseekStructure(args: {
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   try {
-    const { image_base64, locale = 'en' } = await req.json()
+    const { image_base64, locale = 'en', mode } = await req.json()
     if (!image_base64) throw new Error('image_base64 is required')
     
     const vision = await visionAnnotate(image_base64)
@@ -204,7 +225,8 @@ serve(async (req) => {
       colors: summary.colors, 
       webGuess: summary.webGuess, 
       webEntities: summary.webEntities, 
-      locale 
+      locale,
+      mode,
     })
     
     return new Response(JSON.stringify({

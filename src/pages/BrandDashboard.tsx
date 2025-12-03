@@ -3,21 +3,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Eye, CirclePlus, Heart, Users, BarChart3, Activity, Package, Settings2, ExternalLink } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Eye, CirclePlus, Heart, Users, BarChart3, Activity, Package, Settings2, ExternalLink, MessageCircle, Send, CheckCircle2, Clock } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { brandFollowUser, brandUnfollowUser } from "@/lib/follow";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const BrandDashboard = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [overviewDetail, setOverviewDetail] = useState<
     null | "views" | "likes" | "wishlist" | "active" | "users"
   >(null);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
 
   // Fetch comprehensive brand analytics with real-time updates
   const { data: brandData } = useQuery({
@@ -259,6 +264,103 @@ const BrandDashboard = () => {
   const recentActivity = brandData?.recentActivity || [];
   const likers = brandData?.likers || [];
   const userEngagement = brandData?.userEngagement || [];
+  const brandId = (brandData as any)?.brandId;
+
+  // Fetch all questions for this brand's products
+  const { data: brandQuestions, isLoading: questionsLoading } = useQuery({
+    queryKey: ["brand-questions", brandId],
+    queryFn: async () => {
+      if (!brandId) return [];
+      
+      // Get all product IDs for this brand
+      const { data: products } = await (supabase as any)
+        .from("brand_products")
+        .select("id")
+        .eq("brand_id", brandId);
+      
+      if (!products || products.length === 0) return [];
+      
+      const productIds = products.map((p: any) => p.id);
+      
+      // Get all questions for these products
+      const { data: questions, error } = await (supabase as any)
+        .from("product_questions")
+        .select(`
+          *,
+          user_profiles:user_id (
+            username,
+            full_name,
+            avatar_url
+          ),
+          brand_products:product_id (
+            id,
+            name,
+            image_url
+          )
+        `)
+        .in("product_id", productIds)
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      return questions || [];
+    },
+    enabled: !!brandId,
+    refetchInterval: 10000, // Refresh every 10 seconds
+  });
+
+  // Answer a question mutation
+  const answerMutation = useMutation({
+    mutationFn: async ({ questionId, answer, userId, productName }: { questionId: string; answer: string; userId: string; productName: string }) => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) throw new Error("Not authenticated");
+
+      const { error } = await (supabase as any)
+        .from("product_questions")
+        .update({
+          answer,
+          answered_at: new Date().toISOString(),
+          answered_by: auth.user.id,
+          status: "answered",
+        })
+        .eq("id", questionId);
+
+      if (error) throw error;
+
+      // Create a notification activity for the user who asked the question
+      try {
+        await (supabase as any)
+          .from("activities")
+          .insert({
+            user_id: userId,
+            type: "question_answered",
+            metadata: {
+              question_id: questionId,
+              product_name: productName,
+              brand_name: brandName,
+              answer_preview: answer.slice(0, 100),
+            },
+          });
+      } catch (notifErr) {
+        console.warn("Failed to create notification for question answer:", notifErr);
+      }
+    },
+    onSuccess: () => {
+      setReplyingTo(null);
+      setReplyText("");
+      queryClient.invalidateQueries({ queryKey: ["brand-questions", brandId] });
+      toast.success(t("brand.question_answered", "Answer posted!"));
+    },
+    onError: (e: any) => {
+      toast.error(e?.message || t("brand.question_answer_error", "Failed to post answer"));
+    },
+  });
+
+  const handleAnswer = (questionId: string, userId: string, productName: string) => {
+    if (!replyText.trim()) return;
+    answerMutation.mutate({ questionId, answer: replyText.trim(), userId, productName });
+  };
+
+  const unansweredCount = (brandQuestions || []).filter((q: any) => q.status === "unanswered").length;
 
   // Helper function to format time ago
   function getTimeAgo(dateString: string) {
@@ -311,6 +413,15 @@ const BrandDashboard = () => {
             <TabsTrigger value="activity" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(var(--brand-cool-start))] data-[state=active]:to-[hsl(var(--brand-warm-end))] data-[state=active]:text-white rounded-full px-3 py-1.5 text-xs sm:text-sm">
               <Activity className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">{t("brand.dashboard_tab_activity", "Activity")}</span>
+            </TabsTrigger>
+            <TabsTrigger value="questions" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(var(--brand-cool-start))] data-[state=active]:to-[hsl(var(--brand-warm-end))] data-[state=active]:text-white rounded-full px-3 py-1.5 text-xs sm:text-sm relative">
+              <MessageCircle className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">{t("brand.dashboard_tab_questions", "Questions")}</span>
+              {unansweredCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-[10px] font-bold text-white flex items-center justify-center">
+                  {unansweredCount > 9 ? "9+" : unansweredCount}
+                </span>
+              )}
             </TabsTrigger>
           </TabsList>
         </div>
@@ -886,6 +997,160 @@ const BrandDashboard = () => {
                   <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
                   <p>{t("brand.dashboard_activity_empty", "No activity yet")}</p>
                   <p className="text-sm mt-2">{t("brand.dashboard_activity_empty_sub", "Activity will appear when users add your products to wishlists")}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* QUESTIONS TAB */}
+        <TabsContent value="questions" className="space-y-6">
+          <Card className="bg-white/70 backdrop-blur border border-white/40 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageCircle className="h-5 w-5 text-[hsl(var(--brand-cool-start))]" />
+                {t("brand.dashboard_questions_title", "Customer Questions")}
+                {unansweredCount > 0 && (
+                  <span className="ml-2 px-2 py-0.5 rounded-full bg-rose-500 text-xs font-bold text-white">
+                    {unansweredCount} {t("brand.dashboard_questions_new", "new")}
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {questionsLoading ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {t("brand.dashboard_questions_loading", "Loading questions...")}
+                </div>
+              ) : !brandQuestions || brandQuestions.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <MessageCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                  <p>{t("brand.dashboard_questions_empty", "No questions yet")}</p>
+                  <p className="text-sm mt-2">{t("brand.dashboard_questions_empty_sub", "Questions from users will appear here")}</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {brandQuestions.map((q: any) => (
+                    <div
+                      key={q.id}
+                      className="rounded-xl bg-gradient-to-r from-white/85 to-white/70 border border-[hsl(var(--brand-cool-start))]/40 shadow-[0_10px_30px_rgba(15,23,42,0.12)] p-4 space-y-3"
+                    >
+                      {/* Product info */}
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {q.brand_products?.image_url && (
+                          <img
+                            src={q.brand_products.image_url}
+                            alt={q.brand_products.name}
+                            className="h-8 w-8 rounded-lg object-cover"
+                          />
+                        )}
+                        <span className="font-medium text-foreground">
+                          {q.brand_products?.name || "Unknown product"}
+                        </span>
+                      </div>
+
+                      {/* Question */}
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] flex items-center justify-center text-white font-semibold text-xs overflow-hidden">
+                          {q.user_profiles?.avatar_url ? (
+                            <img
+                              src={q.user_profiles.avatar_url}
+                              alt={q.user_profiles.full_name || q.user_profiles.username}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            (q.user_profiles?.full_name || q.user_profiles?.username || "U").charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">
+                              {q.user_profiles?.full_name || q.user_profiles?.username || "User"}
+                            </span>
+                            <span>·</span>
+                            <span>{getTimeAgo(q.created_at)}</span>
+                            {q.status === "unanswered" ? (
+                              <span className="inline-flex items-center gap-0.5 text-amber-600">
+                                <Clock className="h-3 w-3" />
+                                {t("brand.question_awaiting", "Awaiting reply")}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-0.5 text-green-600">
+                                <CheckCircle2 className="h-3 w-3" />
+                                {t("brand.question_answered", "Answered")}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm">{q.question}</p>
+                        </div>
+                      </div>
+
+                      {/* Answer */}
+                      {q.answer && (
+                        <div className="ml-11 pl-3 border-l-2 border-[hsl(var(--brand-cool-start))]/40">
+                          <div className="text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">{t("brand.question_your_reply", "Your reply")}</span>
+                            {q.answered_at && (
+                              <>
+                                <span className="mx-1">·</span>
+                                <span>{getTimeAgo(q.answered_at)}</span>
+                              </>
+                            )}
+                          </div>
+                          <p className="text-sm text-slate-700">{q.answer}</p>
+                        </div>
+                      )}
+
+                      {/* Reply box */}
+                      {q.status === "unanswered" && (
+                        <>
+                          {replyingTo === q.id ? (
+                            <div className="ml-11 space-y-2">
+                              <Textarea
+                                placeholder={t("brand.question_reply_placeholder", "Type your answer...")}
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                rows={2}
+                                className="text-sm resize-none"
+                              />
+                              <div className="flex gap-2 justify-end">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setReplyingTo(null);
+                                    setReplyText("");
+                                  }}
+                                >
+                                  {t("common.cancel", "Cancel")}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleAnswer(q.id, q.user_id, q.brand_products?.name || "Product")}
+                                  disabled={!replyText.trim() || answerMutation.isPending}
+                                  className="gap-1.5"
+                                >
+                                  <Send className="h-3.5 w-3.5" />
+                                  {answerMutation.isPending ? t("brand.question_posting", "Posting...") : t("brand.question_post_answer", "Post answer")}
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="ml-11">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setReplyingTo(q.id)}
+                                className="text-xs"
+                              >
+                                {t("brand.question_reply", "Reply")}
+                              </Button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>

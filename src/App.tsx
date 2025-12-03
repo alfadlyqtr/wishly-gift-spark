@@ -102,6 +102,8 @@ const App = () => (
             <Route path="/brand/products" element={<BrandProducts />} />
             <Route path="/brand/products/:id" element={<BrandProductDetail />} />
             <Route path="/brand/explore" element={<Explore />} />
+            <Route path="/brand/messages" element={<Messages />} />
+            <Route path="/brand/chat/:id" element={<Chat />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

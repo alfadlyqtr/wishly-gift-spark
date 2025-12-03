@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Camera, Globe, Instagram, Twitter, Facebook, Linkedin, Mail, Phone, MapPin, Save, Building2, ExternalLink, Bell, MessageSquare, Users, Shield, TrendingUp, Settings as SettingsIcon, Youtube, UserPlus, UserCheck, MessageCircle, Plus, X } from "lucide-react";
+import { Camera, Globe, Instagram, Twitter, Facebook, Linkedin, Mail, Phone, MapPin, Save, Building2, ExternalLink, Bell, MessageSquare, Users, Shield, TrendingUp, Settings as SettingsIcon, Youtube, UserPlus, UserCheck, MessageCircle, Plus, X, LogOut } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -965,6 +965,22 @@ const BrandProfile = () => {
             {t("brand.save_profile", "Save Profile")}
           </span>
         )}
+      </Button>
+
+      {/* Sign Out Button */}
+      <Button
+        variant="outline"
+        onClick={async () => {
+          await supabase.auth.signOut();
+          toast.success(t("auth.logout_success", "Logged out successfully"));
+          navigate("/login");
+        }}
+        className="w-full border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 py-6 text-lg font-semibold"
+      >
+        <span className="flex items-center gap-2">
+          <LogOut className="h-5 w-5" />
+          {t("auth.sign_out", "Sign Out")}
+        </span>
       </Button>
     </div>
   );

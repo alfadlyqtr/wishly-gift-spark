@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Store, Building2, Bell, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, Store, Building2, Bell, MessageSquare } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import wishlyLogo from "@/assets/wishly-logo.png";
@@ -38,10 +38,8 @@ export const BrandLayout = () => {
     fetchBrandInfo();
   }, []);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    toast.success(t("auth.logout_success", "Logged out successfully"));
-    navigate("/login");
+  const handleMessages = () => {
+    navigate("/brand/messages");
   };
 
   return (
@@ -68,9 +66,9 @@ export const BrandLayout = () => {
               variant="ghost"
               size="icon"
               className="text-slate-600"
-              onClick={handleLogout}
+              onClick={handleMessages}
             >
-              <LogOut className="h-5 w-5" />
+              <MessageSquare className="h-5 w-5" />
             </Button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Store, Search, Filter, Users, Plus, Heart } from "lucide-react";
+import { Store, Search, Filter, Users, Plus, Heart, MessageCircle, Send } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -9,10 +10,13 @@ import { BrandProfileModal } from "@/components/BrandProfileModal";
 import WishAddDialog from "@/components/wishes/WishAddDialog";
 import { useWishlists } from "@/hooks/use-wishlists";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ProductQuestions } from "@/components/products/ProductQuestions";
+import { openOrCreateDirectThread } from "@/lib/messages";
 import "./ExploreProductsCard.css";
 
 const Explore = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [mode, setMode] = useState<"brands" | "products" | "users">("brands");
   const [q, setQ] = useState("");
   const debouncedQ = useMemo(() => q.trim(), [q]);
@@ -25,8 +29,26 @@ const Explore = () => {
   const [selectedProductForModal, setSelectedProductForModal] = useState<any | null>(null);
   const [cardGroupIndex, setCardGroupIndex] = useState<Record<string, number>>({});
   const [likedProductIds, setLikedProductIds] = useState<Set<string>>(new Set());
+  const [messagingBrand, setMessagingBrand] = useState(false);
 
   const queryClient = useQueryClient();
+
+  // Handler to message a brand (uses brand's user_id - the owner's account)
+  const handleMessageBrand = async (brandOwnerId: string) => {
+    try {
+      setMessagingBrand(true);
+      const { id: threadId, error } = await openOrCreateDirectThread(brandOwnerId);
+      if (error) throw error;
+      if (threadId) {
+        setSelectedProductForModal(null);
+        navigate(`/chat/${threadId}`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || t("explore.message_brand_error", "Failed to start conversation"));
+    } finally {
+      setMessagingBrand(false);
+    }
+  };
 
   const { data: wishlistsData } = useWishlists();
   const wishlistOptions = useMemo(
@@ -165,7 +187,7 @@ const Explore = () => {
       if (!s) return [];
       const { data, error } = await (supabase as any)
         .from("brand_products")
-        .select("id,name,description,image_url,product_url,is_findable,allow_add_as_item, brands!inner(id,brand_name,logo_url)")
+        .select("id,name,description,image_url,product_url,is_findable,allow_add_as_item, brands!inner(id,brand_name,logo_url,user_id)")
         .eq("is_findable", true)
         .or(`name.ilike.%${s}%,description.ilike.%${s}%`)
         .limit(20);
@@ -928,6 +950,14 @@ const Explore = () => {
                     </p>
                   </div>
 
+                  {/* Questions section - Instagram style */}
+                  <ProductQuestions
+                    productId={selectedProductForModal.id}
+                    brandUserId={selectedProductForModal.brands?.user_id}
+                    brandName={selectedProductForModal.brands?.brand_name || "Brand"}
+                    brandLogo={selectedProductForModal.brands?.logo_url}
+                  />
+
                   <div className="explore-product-card__footer">
                     <div className="flex items-center gap-2 min-w-0">
                       {selectedProductForModal.brands?.logo_url && (
@@ -952,7 +982,7 @@ const Explore = () => {
                     <div className="explore-product-card__actions">
                       <button
                         type="button"
-                        className="explore-product-card__button-text flex items-center gap-1"
+                        className="explore-product-card__button-icon"
                         onClick={async () => {
                           if (!selectedProductForModal.brands?.id) return;
                           try {
@@ -973,10 +1003,21 @@ const Explore = () => {
                           setSelectedBrandId(selectedProductForModal.brands.id);
                           setIsBrandModalOpen(true);
                         }}
+                        aria-label={t('explore.view_brand', 'View store')}
                       >
                         <Store className="h-3.5 w-3.5" />
-                        <span>{t('explore.view_brand', 'View store')}</span>
                       </button>
+                      {selectedProductForModal.brands?.user_id && (
+                        <button
+                          type="button"
+                          className="explore-product-card__button-icon"
+                          onClick={() => handleMessageBrand(selectedProductForModal.brands.user_id)}
+                          disabled={messagingBrand}
+                          aria-label={t('explore.message_brand', 'Message')}
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                       {(() => {
                         const isLiked = selectedProductForModal?.id
                           ? likedProductIds.has(selectedProductForModal.id)
