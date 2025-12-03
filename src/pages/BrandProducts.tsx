@@ -2,12 +2,13 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, ExternalLink, Eye, CirclePlus, Heart } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Eye, CirclePlus, Heart, Pencil } from "lucide-react";
 import { AddProductModal } from "@/components/brands/AddProductModal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -17,12 +18,38 @@ import {
 import "./BrandProductsCard.css";
 
 const BrandProducts = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [modalFlags, setModalFlags] = useState<{ is_findable: boolean; allow_add_as_item: boolean } | null>(null);
   const [viewMode, setViewMode] = useState<"card" | "grid" | "list">("list");
   const [brandSettings, setBrandSettings] = useState<{ products_find_mode?: 'all_off' | 'all_on' | 'per_product'; products_add_mode?: 'all_off' | 'all_on' | 'per_product'; } | null>(null);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<{ name: string; description: string; product_url: string } | null>(null);
+  const [selectedTone, setSelectedTone] = useState<"tidy" | "confident" | "pro" | "sales" | "aggressive" | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+
+  const edgeFunctionUrl = useMemo(() => {
+    if (!supabaseUrl) return "";
+    return `${supabaseUrl}/functions/v1/ai-gateway`;
+  }, [supabaseUrl]);
+
+  const handleCloseModal = () => {
+    setSelectedProduct(null);
+
+    // Remove productId from query params so the modal doesn’t auto-reopen
+    const params = new URLSearchParams(location.search);
+    if (params.has("productId")) {
+      params.delete("productId");
+      navigate({ pathname: location.pathname, search: params.toString() ? `?${params.toString()}` : "" }, { replace: true });
+    }
+  };
 
   // Fetch brand products
   const { data: products, isLoading } = useQuery({
@@ -79,6 +106,99 @@ const BrandProducts = () => {
     },
   });
 
+  const handleAiTone = async (tone: "tidy" | "confident" | "pro" | "sales" | "aggressive") => {
+    if (!editForm || !selectedProduct) return;
+
+    if (!edgeFunctionUrl || !supabaseAnonKey) {
+      toast.error(t("brand.ai_gateway_not_configured", "AI gateway is not configured."));
+      return;
+    }
+
+    try {
+      setIsAiLoading(true);
+      const res = await fetch(edgeFunctionUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${supabaseAnonKey}`,
+        },
+        body: JSON.stringify({
+          mode: "rewrite-description",
+          tone,
+          name: editForm.name,
+          description: editForm.description,
+          product_url: editForm.product_url,
+          locale: i18n.language,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || `AI request failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      if (data && (typeof data.description === "string" || typeof data.name === "string")) {
+        const rawName = typeof data.name === "string" ? data.name.trim() : "";
+        const nextName = rawName
+          ? rawName.slice(0, 90)
+          : editForm.name;
+
+        const nextDescription = typeof data.description === "string" && data.description.trim().length > 0
+          ? data.description
+          : editForm.description;
+
+        setEditForm((prev) => (prev ? { ...prev, name: nextName, description: nextDescription } : prev));
+        setSelectedTone(tone);
+        toast.success(t("brand.ai_tone_success", "Description updated with AI"));
+      } else {
+        toast.error(t("brand.ai_tone_error_missing", "AI did not return a description."));
+      }
+    } catch (error: any) {
+      console.error("AI tone error", error);
+      toast.error(
+        error?.message ||
+          t("brand.ai_tone_error", "Couldn't update description with AI. Please try again."),
+      );
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const updateProductDetails = useMutation({
+    mutationFn: async ({ id, name, description, product_url }: { id: string; name: string; description: string; product_url: string }) => {
+      const { error } = await (supabase as any)
+        .from("brand_products")
+        .update({ name, description, product_url })
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["brand-products"] });
+      toast.success(t("brand.product_updated", "Product updated successfully"));
+      setIsEditing(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || t("brand.product_update_error", "Failed to update product settings"));
+    },
+  });
+
+  // If navigated from BrandDashboard with a productId query param, auto-open that product in the modal
+  useEffect(() => {
+    if (!products || products.length === 0) return;
+    if (selectedProduct) return;
+
+    const params = new URLSearchParams(location.search);
+    const productId = params.get("productId");
+    if (!productId) return;
+
+    const found = products.find((p: any) => p.id === productId);
+    if (found) {
+      setSelectedProduct(found);
+    }
+  }, [products, location.search, selectedProduct]);
+
   const updateProductFlags = useMutation({
     mutationFn: async ({ id, is_findable, allow_add_as_item }: { id: string; is_findable?: boolean; allow_add_as_item?: boolean }) => {
       const updates: any = {};
@@ -94,7 +214,7 @@ const BrandProducts = () => {
       queryClient.invalidateQueries({ queryKey: ["brand-products"] });
     },
     onError: (error: any) => {
-      toast.error(error.message || "Failed to update product settings");
+      toast.error(error.message || t("brand.product_update_error", "Failed to update product settings"));
     },
   });
 
@@ -119,8 +239,18 @@ const BrandProducts = () => {
         is_findable: selectedProduct.is_findable !== false,
         allow_add_as_item: selectedProduct.allow_add_as_item !== false,
       });
+      setIsEditing(false);
+      setEditForm({
+        name: selectedProduct.name || "",
+        description: selectedProduct.description || "",
+        product_url: selectedProduct.product_url || "",
+      });
+      setSelectedTone(null);
     } else {
       setModalFlags(null);
+      setIsEditing(false);
+      setEditForm(null);
+      setSelectedTone(null);
     }
   }, [selectedProduct]);
 
@@ -136,10 +266,10 @@ const BrandProducts = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["brand-products"] });
-      toast.success("Product deleted successfully");
+      toast.success(t("brand.product_deleted", "Product deleted successfully"));
     },
     onError: (error: any) => {
-      toast.error(error.message || "Failed to delete product");
+      toast.error(error.message || t("brand.product_delete_error", "Failed to delete product"));
     },
   });
 
@@ -162,21 +292,21 @@ const BrandProducts = () => {
                 className={`px-2 py-1 rounded-full ${viewMode === "card" ? "bg-white shadow-sm" : "text-muted-foreground"}`}
                 onClick={() => setViewMode("card")}
               >
-                Card
+                {t("brand.view_card", "Card")}
               </button>
               <button
                 type="button"
                 className={`px-2 py-1 rounded-full ${viewMode === "grid" ? "bg-white shadow-sm" : "text-muted-foreground"}`}
                 onClick={() => setViewMode("grid")}
               >
-                Grid
+                {t("brand.view_grid", "Grid")}
               </button>
               <button
                 type="button"
                 className={`px-2 py-1 rounded-full ${viewMode === "list" ? "bg-white shadow-sm" : "text-muted-foreground"}`}
                 onClick={() => setViewMode("list")}
               >
-                Line
+                {t("brand.view_list", "List")}
               </button>
             </div>
             <AddProductModal>
@@ -189,7 +319,7 @@ const BrandProducts = () => {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading products...</p>
+            <p className="text-sm text-muted-foreground">{t("brand.loading_products", "Loading products...")}</p>
           ) : products && products.length > 0 ? (
             <div
               className={
@@ -454,7 +584,7 @@ const BrandProducts = () => {
       </Card>
 
       {/* Product Detail Modal - compact sheet */}
-      <Dialog open={!!selectedProduct} onOpenChange={() => setSelectedProduct(null)}>
+      <Dialog open={!!selectedProduct} onOpenChange={(open) => { if (!open) handleCloseModal(); }}>
         <DialogContent className="max-w-md sm:max-w-lg p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg font-semibold">
@@ -462,7 +592,7 @@ const BrandProducts = () => {
             </DialogTitle>
           </DialogHeader>
 
-          {selectedProduct && (
+          {selectedProduct && editForm && (
             <div className="space-y-3">
               {/* Product Image (small/medium) */}
               {selectedProduct.image_url && (
@@ -478,30 +608,108 @@ const BrandProducts = () => {
                 </div>
               )}
 
-              {/* Product Description */}
-              {selectedProduct.description && (
-                <div>
-                  <h3 className="text-sm font-semibold mb-1">Description</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">
-                    {selectedProduct.description}
+              {/* Product Name + Description */}
+              <div>
+                <h3 className="text-sm font-semibold mb-1">{t("brand.field_name", "Brand Name")}</h3>
+                {isEditing ? (
+                  <input
+                    className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs sm:text-sm"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  />
+                ) : (
+                  <p className="text-xs sm:text-sm text-foreground whitespace-pre-wrap">
+                    {editForm.name || selectedProduct.name}
                   </p>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1 gap-2">
+                  <h3 className="text-sm font-semibold">
+                    {t("brand.product_description", "Description")}
+                  </h3>
+                  {isEditing && (
+                    <div className="inline-flex items-center gap-2">
+                      <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] px-3 py-0.5 text-[11px] font-medium text-white shadow-sm">
+                        <span aria-hidden="true">✨</span>
+                        {isAiLoading
+                          ? t("brand.ai_badge_working", "Wishly AI · working…")
+                          : t("brand.ai_badge_label", "Wishly AI")}
+                      </span>
+                      <select
+                        className="text-[11px] rounded-full border border-[hsl(var(--brand-cool-start))]/35 bg-white px-3 py-1 text-slate-700 shadow-sm hover:border-[hsl(var(--brand-cool-start))]/70 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--brand-cool-start))]/60"
+                        value={selectedTone || ""}
+                        disabled={isAiLoading}
+                        aria-label={t("brand.ai_tone_helper", "AI tone helper")}
+                        onChange={(e) => {
+                          const value = e.target.value as
+                            | ""
+                            | "tidy"
+                            | "confident"
+                            | "pro"
+                            | "sales"
+                            | "aggressive";
+                          if (!value) return;
+                          handleAiTone(value);
+                        }}
+                      >
+                        <option value="">
+                          {t("brand.ai_tone_label", "AI tone")}
+                        </option>
+                        <option value="tidy">
+                          {t("brand.ai_tone_tidy", "AI tidy (shorter)")}
+                        </option>
+                        <option value="confident">
+                          {t("brand.ai_tone_confident", "Confident")}
+                        </option>
+                        <option value="pro">
+                          {t("brand.ai_tone_pro", "Pro")}
+                        </option>
+                        <option value="sales">
+                          {t("brand.ai_tone_sales", "Sales person")}
+                        </option>
+                        <option value="aggressive">
+                          {t("brand.ai_tone_aggressive", "High-energy sales")}
+                        </option>
+                      </select>
+                    </div>
+                  )}
                 </div>
-              )}
+                {isEditing ? (
+                  <textarea
+                    className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs sm:text-sm min-h-[80px]"
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  />
+                ) : (
+                  <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">
+                    {editForm.description}
+                  </p>
+                )}
+              </div>
 
               {/* Product URL */}
-              {selectedProduct.product_url && (
-                <div>
-                  <h3 className="text-sm font-semibold mb-1">Product Link</h3>
+              <div>
+                <h3 className="text-sm font-semibold mb-1">{t("brand.product_link", "Product Link")}</h3>
+                {isEditing ? (
+                  <input
+                    className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs sm:text-sm mb-2"
+                    value={editForm.product_url}
+                    onChange={(e) => setEditForm({ ...editForm, product_url: e.target.value })}
+                  />
+                ) : null}
+                {editForm.product_url && (
                   <Button
                     variant="outline"
                     className="w-full justify-center text-xs sm:text-sm"
-                    onClick={() => window.open(selectedProduct.product_url, "_blank")}
+                    onClick={() => window.open(editForm.product_url, "_blank")}
                   >
                     <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                    View on Brand Website
+                    {t("brand.view_on_website", "View on Brand Website")}
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Product visibility settings */}
               <div className="mt-1 flex items-center justify-between gap-3 border rounded-lg px-3 py-2 bg-muted/40">
@@ -536,25 +744,52 @@ const BrandProducts = () => {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 pt-2">
+              <div className="flex flex-wrap gap-2 pt-2">
                 <Button
                   variant="outline"
-                  className="flex-1 text-xs sm:text-sm"
-                  onClick={() => setSelectedProduct(null)}
+                  className="flex-1 min-w-[90px] text-xs sm:text-sm"
+                  onClick={handleCloseModal}
                 >
-                  Close
+                  {t("brand.close", "Close")}
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-1 min-w-[100px] text-xs sm:text-sm bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-white shadow-sm hover:shadow-md hover:scale-[1.02] transition-transform"
+                  aria-label={t("brand.dashboard_edit_product", "Edit product")}
+                  disabled={updateProductDetails.isPending}
+                  onClick={() => {
+                    if (!selectedProduct || !editForm) return;
+                    if (!isEditing) {
+                      setIsEditing(true);
+                      return;
+                    }
+                    updateProductDetails.mutate({
+                      id: selectedProduct.id,
+                      name: editForm.name,
+                      description: editForm.description,
+                      product_url: editForm.product_url,
+                    });
+                  }}
+                >
+                  <Pencil className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  {isEditing
+                    ? updateProductDetails.isPending
+                      ? t("brand.saving", "Saving...")
+                      : t("brand.save_profile", "Save Profile")
+                    : t("brand.dashboard_edit_product", "Edit product")}
                 </Button>
                 <Button
                   variant="destructive"
                   className="text-xs sm:text-sm"
                   onClick={() => {
+                    if (!selectedProduct) return;
                     deleteMutation.mutate(selectedProduct.id);
-                    setSelectedProduct(null);
+                    handleCloseModal();
                   }}
                   disabled={deleteMutation.isPending}
                 >
                   <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  Delete
+                  {t("common.delete", "Delete")}
                 </Button>
               </div>
             </div>

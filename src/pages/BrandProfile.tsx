@@ -724,7 +724,7 @@ const BrandProfile = () => {
             {t("brand.store_locations", "Store Locations")}
           </CardTitle>
           <CardDescription>
-            Add Google Maps links for your physical store locations
+            {t("brand.store_locations_desc", "Add Google Maps links for your physical store locations")}
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">

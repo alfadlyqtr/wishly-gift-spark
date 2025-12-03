@@ -409,7 +409,10 @@
     "products_subtitle": "Manage the items you want to appear in Wishly",
     "products_add": "Add Product",
     "insights_title": "Insights & Analytics",
-    "insights_subtitle": "Understand how Wishly users engage with your brand"
+    "insights_subtitle": "Understand how Wishly users engage with your brand",
+    "dashboard_top_products_subtitle": "Quick controls for your best products - tap a row to manage it.",
+    "dashboard_manage_products": "Manage all products",
+    "dashboard_edit_product": "Edit product"
   },
   "zodiac": {
     "aries": "Aries",

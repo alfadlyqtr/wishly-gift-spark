@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/button';
 import { Languages } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export const LanguageToggle = () => {
   const { i18n } = useTranslation();
@@ -10,15 +10,38 @@ export const LanguageToggle = () => {
     i18n.changeLanguage(newLang);
   };
 
+  const isEn = i18n.language === 'en';
+
   return (
-    <Button
-      variant="ghost"
-      size="sm"
+    <div
+      role="switch"
+      aria-checked={isEn}
       onClick={toggleLanguage}
-      className="gap-2"
+      className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-2 py-1 shadow-sm hover:shadow-md cursor-pointer select-none transition-shadow"
     >
-      <Languages className="h-4 w-4" />
-      {i18n.language === 'en' ? 'ع' : 'EN'}
-    </Button>
+      <Languages className="h-4 w-4 text-muted-foreground" />
+      <div className="flex text-[11px] font-semibold rounded-full bg-muted/60 p-0.5">
+        <span
+          className={cn(
+            'px-2 py-0.5 rounded-full transition-colors',
+            isEn
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground'
+          )}
+        >
+          EN
+        </span>
+        <span
+          className={cn(
+            'px-2 py-0.5 rounded-full transition-colors',
+            !isEn
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground'
+          )}
+        >
+          ع
+        </span>
+      </div>
+    </div>
   );
 };

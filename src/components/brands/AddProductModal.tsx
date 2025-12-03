@@ -96,7 +96,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
     }
   };
 
-  const handleScrape = async () => {
+  const handleScrape = async (tone?: "tidy" | "confident" | "pro" | "sales" | "aggressive") => {
     if (!url) {
       toast.error("Please paste a URL first.");
       return;
@@ -108,6 +108,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
 
     try {
       setLoadingScrape(true);
+
+      // Step 1: Scrape the URL
       const res = await fetch(edgeFunctionUrl, {
         method: "POST",
         headers: {
@@ -123,25 +125,53 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
       }
 
       const data = await res.json();
-      // Expected shape (scaffold): { title, description, image_url, price, item_url }
-      setTitle(data.title ?? title);
-      setDescription(data.description ?? description);
+      // Expected shape: { title, description, image_url, item_url }
+      let finalTitle = data.title ?? title;
+      let finalDescription = data.description ?? description;
+      setTitle(finalTitle);
+      setDescription(finalDescription);
       setItemUrl(data.item_url ?? url);
-      
-      // Download and upload external image to Supabase Storage
+
+      // Step 2: If a tone was selected, rewrite the description with AI
+      if (tone && finalDescription) {
+        try {
+          const rewriteRes = await fetch(edgeFunctionUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${supabaseAnonKey}`,
+            },
+            body: JSON.stringify({
+              mode: "rewrite-description",
+              tone,
+              name: finalTitle,
+              description: finalDescription,
+              product_url: data.item_url ?? url,
+              locale: "en",
+            }),
+          });
+
+          if (rewriteRes.ok) {
+            const rewriteData = await rewriteRes.json();
+            if (rewriteData.name) setTitle(rewriteData.name);
+            if (rewriteData.description) setDescription(rewriteData.description);
+          }
+        } catch (rewriteErr) {
+          console.warn("AI rewrite failed, keeping scraped description:", rewriteErr);
+        }
+      }
+
+      // Step 3: Download and upload external image to Supabase Storage
       if (data.image_url) {
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            // Fetch the image
             const imageResponse = await fetch(data.image_url);
             const imageBlob = await imageResponse.blob();
             
-            // Generate filename
             const fileExt = data.image_url.split('.').pop()?.split('?')[0] || 'jpg';
             const filePath = `brand-products/${user.id}/${Date.now()}.${fileExt}`;
             
-            // Upload to Supabase Storage
             const { error: uploadError } = await (supabase as any).storage
               .from("brand-media")
               .upload(filePath, imageBlob, {
@@ -156,17 +186,14 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
               
               if (publicUrlData?.publicUrl) {
                 setImageUrl(publicUrlData.publicUrl);
-                console.log("✅ Image uploaded to Supabase Storage:", publicUrlData.publicUrl);
               }
             } else {
-              console.warn("⚠️ Failed to upload image, using external URL:", uploadError);
               setImageUrl(data.image_url);
             }
           } else {
             setImageUrl(data.image_url);
           }
         } catch (imgError) {
-          console.warn("⚠️ Failed to download/upload image, using external URL:", imgError);
           setImageUrl(data.image_url);
         }
       }
@@ -245,41 +272,71 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="w-[92vw] max-w-xl rounded-2xl border border-white/70 bg-white/95 shadow-[0_18px_45px_rgba(15,23,42,0.28)]">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle>Add Product</DialogTitle>
-              <DialogDescription>Paste a link, type a description, or upload a photo.</DialogDescription>
-            </div>
-            <DialogClose asChild>
-              <button aria-label="Close" className="rounded-md px-2 py-1 text-sm hover:bg-muted">✕</button>
-            </DialogClose>
-          </div>
+          <DialogTitle>Add Product</DialogTitle>
+          <DialogDescription>Paste a link, type a description, or upload a photo.</DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-6">
+        <div className="mt-2 space-y-4">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-3 sm:px-4 sm:py-4 shadow-sm">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-            <TabsList>
-              <TabsTrigger value="link">URL / Text</TabsTrigger>
-              <TabsTrigger value="photo">Photo Upload</TabsTrigger>
+            <TabsList className="inline-flex rounded-full bg-muted px-1 py-0.5 text-xs font-medium">
+              <TabsTrigger
+                value="link"
+                className="rounded-full px-3 py-1 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground"
+              >
+                URL / Text
+              </TabsTrigger>
+              <TabsTrigger
+                value="photo"
+                className="rounded-full px-3 py-1 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground"
+              >
+                Photo Upload
+              </TabsTrigger>
             </TabsList>
-            <TabsContent value="link" className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="url">Paste URL</Label>
+
+            <TabsContent value="link" className="flex flex-col gap-4 mt-4 min-h-[420px]">
+              {/* Paste URL row */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <Label htmlFor="url">Paste URL</Label>
+                  <div className="inline-flex items-center gap-2">
+                    <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] px-3 py-0.5 text-[11px] font-medium text-white shadow-sm">
+                      <span aria-hidden="true">✨</span>
+                      {loadingScrape ? "Wishly AI · fetching…" : "Wishly AI"}
+                    </span>
+                    <select
+                      className="text-[11px] rounded-full border border-[hsl(var(--brand-cool-start))]/35 bg-white px-3 py-1 text-slate-700 shadow-sm hover:border-[hsl(var(--brand-cool-start))]/70 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--brand-cool-start))]/60"
+                      value=""
+                      disabled={loadingScrape || !url}
+                      aria-label="AI fetch style"
+                      onChange={(e) => {
+                        const tone = e.target.value as "" | "tidy" | "confident" | "pro" | "sales" | "aggressive";
+                        if (!tone) return;
+                        handleScrape(tone);
+                      }}
+                    >
+                      <option value="">{loadingScrape ? "Fetching…" : "Fetch"}</option>
+                      <option value="tidy">AI tidy (shorter)</option>
+                      <option value="confident">Confident</option>
+                      <option value="pro">Pro</option>
+                      <option value="sales">Sales person</option>
+                      <option value="aggressive">High-energy sales</option>
+                    </select>
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <Input
                     id="url"
+                    type="url"
                     placeholder="https://example.com/product"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                   />
-                  <Button type="button" onClick={handleScrape} disabled={loadingScrape || !url}>
-                    {loadingScrape ? "Scraping..." : "Fetch"}
-                  </Button>
                 </div>
               </div>
 
+              {/* Manual description */}
               <div className="space-y-2">
                 <Label htmlFor="manual">Or describe the item</Label>
                 <Textarea
@@ -291,6 +348,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
                 />
               </div>
 
+              {/* Editable fields */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="title">Product Name</Label>
@@ -310,18 +368,17 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
                     id="image_url"
                     value={imageUrl}
                     onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="Right-click product image → Copy image address → paste here"
+                    placeholder="Right-click product image → Copy image address"
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Tip: On the product page, right-click the main image and choose
-                    {" "}
+                    Tip: On the product page, right-click the main image and choose{" "}
                     <span className="font-medium">Copy image address</span>, then paste it here.
                   </p>
                 </div>
               </div>
             </TabsContent>
 
-            <TabsContent value="photo" className="space-y-4 pt-4">
+            <TabsContent value="photo" className="space-y-4 pt-4 min-h-[420px] flex flex-col">
               <div className="space-y-2">
                 <Label htmlFor="photo_file">Upload image file</Label>
                 <Input
@@ -340,9 +397,11 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
               </div>
             </TabsContent>
           </Tabs>
+          </div>
+
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="mt-4">
           <Button variant="secondary" onClick={() => setOpen(false)} disabled={saving}>
             Cancel
           </Button>

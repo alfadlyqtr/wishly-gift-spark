@@ -16,9 +16,90 @@ serve(async (req) => {
   }
 
   try {
-    // 1. Get the URL from request body
-    const { url } = await req.json();
+    const body = await req.json();
+    const { url, mode, tone, name, description, product_url, locale } = body ?? {};
 
+    // If mode is rewrite-description, use DeepSeek to rewrite copy and return early
+    if (mode === 'rewrite-description') {
+      if (!DEEPSEEK_API_KEY) {
+        throw new Error('DeepSeek API key is not set in project secrets.');
+      }
+
+      const systemPrompt = `You are a copywriter helping a brand edit a product description inside a dashboard.
+You must respond ONLY with valid JSON, no explanations or markdown.
+
+Return a JSON object with this shape:
+{
+  "name": "refined product name (same language as input)",
+  "description": "rewritten description"
+}
+
+Rules for the "name" field:
+- Must be a single concise product title, not a full sentence.
+- No marketing phrases, no calls to action.
+- No duplicated description text.
+- Max 90 characters.
+
+Tone options and rules:
+- tidy: shorter and cleaner than the original. Max 2-3 sentences. Remove repetition.
+- confident: strong, clear, but still professional.
+- pro: more technical/spec driven, less marketing, but readable.
+- sales: friendly, persuasive, focused on benefits.
+- aggressive: high-energy sales copy with urgency, but do not invent fake discounts.
+
+Always keep product facts accurate and do not change currency or numbers.
+Language: ${locale || 'en'}.
+`; 
+
+      const userContent = `tone: ${tone || 'tidy'}
+product name: ${name || ''}
+current description: ${description || ''}
+product url: ${product_url || ''}`;
+
+      const deepseekResponse = await fetch(DEEPSEEK_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userContent },
+          ],
+          temperature: 0.6,
+          max_tokens: 300,
+        }),
+      });
+
+      if (!deepseekResponse.ok) {
+        const errorBody = await deepseekResponse.text();
+        console.error('DeepSeek rewrite API Error:', errorBody);
+        throw new Error('Failed to rewrite description with AI.');
+      }
+
+      const aiResult = await deepseekResponse.json();
+      const aiContent = aiResult.choices?.[0]?.message?.content || '{}';
+
+      let rewritten: { name?: string; description?: string } = {};
+      try {
+        const jsonStr = aiContent.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
+        rewritten = JSON.parse(jsonStr);
+      } catch (e) {
+        console.error('Failed to parse DeepSeek rewrite response as JSON:', aiContent);
+        rewritten = {};
+      }
+
+      return new Response(JSON.stringify({
+        name: rewritten.name ?? name ?? '',
+        description: rewritten.description ?? description ?? '',
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // 1. Get the URL from request body for scraping mode
     if (!url) {
       throw new Error('URL is required');
     }
@@ -51,18 +132,36 @@ serve(async (req) => {
     const basicDesc = descMatch ? descMatch[1].trim() : '';
     const basicImage = ogImageMatch ? ogImageMatch[1].trim() : '';
 
-    // 4. Use DeepSeek to extract structured product info
-    const prompt = `Extract product information from this webpage content. Return ONLY a JSON object with these fields: title, description, image_url, item_url.
+    // 4. Use DeepSeek to extract structured product info from the page HTML
+    const prompt = `You are helping build a product catalog. Read this product page HTML and return ONLY a JSON object with these fields:
+{
+  "title": "clean product name (no store name, no 'Buy', no marketing phrase)",
+  "description": "rich product description (3-6 sentences, focused on specs and real details)",
+  "image_url": "best main product image URL",
+  "item_url": "canonical product URL"
+}
 
-Title from page: ${basicTitle}
-Description from page: ${basicDesc}
-Image from page: ${basicImage}
-URL: ${url}
+Guidelines for title:
+- Short, product-focused.
+- Remove words like "Buy", "Shop", and the store name (Apple, Amazon, etc.).
+- Do NOT copy the whole description into the title.
 
-HTML snippet (first 2000 chars):
-${html.substring(0, 2000)}
+Guidelines for description:
+- Use information from the page (features, specs, variants) instead of generic marketing fluff.
+- Prefer concrete details: chip, memory, storage, size, material, color, etc.
+- 3-6 sentences max. No bullet points, no markdown.
+- Do NOT invent fake discounts or availability.
 
-Return ONLY valid JSON, no markdown, no explanation:`;
+You may use these extracted hints, but you are NOT required to keep them exactly:
+- Raw <title>: ${basicTitle}
+- Raw meta description: ${basicDesc}
+- Raw og:image: ${basicImage}
+- URL: ${url}
+
+HTML snippet (first 4000 characters):
+${html.substring(0, 4000)}
+
+Return ONLY valid JSON, no markdown, no explanation.`;
 
     const deepseekResponse = await fetch(DEEPSEEK_API_URL, {
       method: 'POST',
@@ -118,9 +217,22 @@ Return ONLY valid JSON, no markdown, no explanation:`;
       };
     }
 
-    // 5. Return structured product data
+    // 5. Return structured product data with a cleaned-up title
+    const rawTitle = (productData.title || basicTitle || 'Product').trim();
+    let cleanedTitle = rawTitle;
+
+    // Remove leading marketing verbs like "Buy" or "Shop"
+    cleanedTitle = cleanedTitle.replace(/^(Buy|Shop)\s+/i, '');
+
+    // Remove trailing store name sections like "- Apple" or "| Apple"
+    cleanedTitle = cleanedTitle.replace(/\s*[-–|]\s*(Apple|Amazon|Best Buy|Target).*$/i, '');
+
+    if (!cleanedTitle.trim()) {
+      cleanedTitle = rawTitle;
+    }
+
     return new Response(JSON.stringify({
-      title: productData.title || basicTitle || 'Product',
+      title: cleanedTitle,
       description: productData.description || basicDesc || '',
       image_url: productData.image_url || basicImage || '',
       item_url: productData.item_url || url,

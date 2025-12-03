@@ -2,14 +2,17 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, CirclePlus, Heart, Users, BarChart3, Activity, Package } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Eye, CirclePlus, Heart, Users, BarChart3, Activity, Package, Settings2, ExternalLink } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { brandFollowUser, brandUnfollowUser } from "@/lib/follow";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 const BrandDashboard = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [overviewDetail, setOverviewDetail] = useState<
@@ -193,34 +196,15 @@ const BrandDashboard = () => {
         const likedNames = Array.from(engagement.likedProducts);
         const viewedNames = Array.from(engagement.viewedProducts);
 
-        const parts: string[] = [];
-        if (likedNames.length > 0) {
-          const preview = likedNames.slice(0, 2).join(", ");
-          parts.push(
-            likedNames.length > 2
-              ? `liked ${preview} and others`
-              : `liked ${preview}`,
-          );
-        }
-
-        if (viewedNames.length > 0) {
-          const preview = viewedNames.slice(0, 2).join(", ");
-          parts.push(
-            viewedNames.length > 2
-              ? `viewed ${preview} and others`
-              : `viewed ${preview}`,
-          );
-        }
-
-        if (parts.length === 0) continue;
+        if (likedNames.length === 0 && viewedNames.length === 0) continue;
 
         recentActivity.push({
           userId: profile.id,
           user: profile.name,
           username: profile.username,
           avatar_url: profile.avatar_url,
-          action: parts.join(" · "),
-          time: "Recently",
+          likedNames,
+          viewedNames,
         });
       }
 
@@ -293,14 +277,14 @@ const BrandDashboard = () => {
       {/* Header */}
       <div className="mb-6">
         <h1
-          className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] mb-1"
-          style={{ WebkitTextStroke: "0.5px rgba(0, 0, 0, 0.85)" }}
+          className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)] mb-1"
+          style={{ WebkitTextStroke: "0.6px rgba(15, 23, 42, 0.85)" }}
         >
           {t("brand.dashboard_title", "Brand Dashboard")}
         </h1>
         <p
-          className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-          style={{ WebkitTextStroke: "0.5px rgba(0, 0, 0, 0.85)" }}
+          className="text-[11px] sm:text-sm font-extrabold text-slate-800 drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]"
+          style={{ WebkitTextStroke: "0.4px rgba(15, 23, 42, 0.5)" }}
         >
           {brandName
             ? t("brand.dashboard_welcome", "Welcome {{name}}", { name: brandName })
@@ -390,7 +374,7 @@ const BrandDashboard = () => {
                 <div className="text-sm text-muted-foreground">{t("brand.dashboard_card_likes", "Likes")}</div>
                 <div className="text-xs text-muted-foreground mt-2">
                   {stats.uniqueLikers > 0
-                    ? t("brand.dashboard_card_likes_sub", "{{count}} users liked your products", { count: stats.uniqueLikers.toLocaleString() })
+                    ? t("brand.dashboard_card_likes_sub", "{{count}} users liked your products", { count: stats.uniqueLikers })
                     : t("brand.dashboard_card_likes_empty", "No likes yet")}
                 </div>
                 {likers && likers.length > 0 && (
@@ -481,35 +465,6 @@ const BrandDashboard = () => {
             </Card>
           </div>
 
-          {/* Compact recent activity preview */}
-          {recentActivity && recentActivity.length > 0 && (
-            <Card className="bg-white/70 backdrop-blur border border-white/40 shadow-md">
-              <CardContent className="px-4 py-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Activity className="h-4 w-4 text-[hsl(var(--brand-cool-start))]" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Recent activity
-                  </span>
-                </div>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4 text-[11px] text-muted-foreground min-w-0">
-                  {recentActivity.slice(0, 3).map((item: any, index: number) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-1 min-w-0"
-                    >
-                      <span className="font-semibold truncate max-w-[90px] sm:max-w-[120px]">
-                        {item.user}
-                      </span>
-                      <span className="text-muted-foreground/80 truncate max-w-[160px] sm:max-w-[220px]">
-                        {item.action}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Performance Chart */}
           <Card className="bg-white/70 backdrop-blur border border-white/40 shadow-lg">
             <CardHeader>
@@ -519,11 +474,110 @@ const BrandDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                  <p>{t("brand.dashboard_weekly_performance_soon", "Analytics tracking coming soon")}</p>
-                  <p className="text-sm mt-2">{t("brand.dashboard_weekly_performance_sub", "We'll track views, adds, and engagement here")}</p>
+              <div className="relative overflow-hidden rounded-2xl bg-white/90 border border-white/70 shadow-[0_18px_45px_rgba(148,163,184,0.35)] px-4 py-4 sm:px-6 sm:py-5">
+                <div className="absolute inset-px rounded-[18px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))]/6 via-[hsl(var(--brand-cool-end))]/8 to-[hsl(var(--brand-warm-end))]/6" aria-hidden="true" />
+                <div className="relative space-y-4 text-slate-900">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-cool-end))] text-white shadow-[0_10px_25px_rgba(148,163,184,0.55)]">
+                        <BarChart3 className="h-4 w-4" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold tracking-wide text-slate-900">
+                          {t("brand.dashboard_weekly_performance", "Weekly Performance")}
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          {t("brand.dashboard_card_views_sub", "Last 30 days")}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px]">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/70 bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">
+                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        {t("brand.dashboard_live_label", "Live")}
+                      </span>
+                      <span className="text-slate-500 font-bold">
+                        {t("brand.dashboard_last_window", "Brand activity snapshot")}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 text-xs">
+                    <div className="rounded-xl bg-white/80 border border-slate-200 px-3 py-2 flex flex-col gap-1">
+                      <div className="flex items-center gap-1.5 text-[hsl(var(--brand-cool-start))]">
+                        <Eye className="h-3.5 w-3.5" />
+                        <span className="text-[10px] uppercase tracking-wide text-slate-500">
+                          {t("brand.dashboard_card_views", "Product Views")}
+                        </span>
+                      </div>
+                      <span className="text-xl font-semibold leading-tight text-slate-900">
+                        {stats.totalViews.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="rounded-xl bg-white/80 border border-slate-200 px-3 py-2 flex flex-col gap-1">
+                      <div className="flex items-center gap-1.5 text-emerald-600">
+                        <CirclePlus className="h-3.5 w-3.5" />
+                        <span className="text-[10px] uppercase tracking-wide text-slate-500">
+                          {t("brand.dashboard_card_wishlist_adds", "Wishlist Adds")}
+                        </span>
+                      </div>
+                      <span className="text-xl font-semibold leading-tight text-slate-900">
+                        {stats.wishlistAdds.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="rounded-xl bg-white/80 border border-slate-200 px-3 py-2 flex flex-col gap-1">
+                      <div className="flex items-center gap-1.5 text-rose-600">
+                        <Heart className="h-3.5 w-3.5" />
+                        <span className="text-[10px] uppercase tracking-wide text-slate-500">
+                          {t("brand.dashboard_card_likes", "Likes")}
+                        </span>
+                      </div>
+                      <span className="text-xl font-semibold leading-tight text-slate-900">
+                        {stats.totalLikes.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[11px] text-slate-600">
+                      <span>{t("brand.dashboard_performance_mini_chart_label", "Engagement mix")}</span>
+                    </div>
+                    <div className="flex items-end gap-4 h-14">
+                      {[{
+                        key: "views",
+                        label: t("brand.dashboard_card_views", "Views"),
+                        value: stats.totalViews,
+                      }, {
+                        key: "adds",
+                        label: t("brand.dashboard_card_wishlist_adds", "Adds"),
+                        value: stats.wishlistAdds,
+                      }, {
+                        key: "likes",
+                        label: t("brand.dashboard_card_likes", "Likes"),
+                        value: stats.totalLikes,
+                      }].map((metric) => {
+                        const max = Math.max(
+                          stats.totalViews || 0,
+                          stats.wishlistAdds || 0,
+                          stats.totalLikes || 0,
+                        ) || 1;
+                        const height = Math.round(((metric.value || 0) / max) * 100);
+                        return (
+                          <div key={metric.key} className="flex-1 flex flex-col items-center gap-1">
+                            <div className="flex-1 w-full rounded-full bg-slate-100 flex items-end justify-center px-3 py-1 overflow-hidden shadow-[0_6px_18px_rgba(148,163,184,0.55)]">
+                              <div
+                                className="w-full max-w-[18px] rounded-full bg-gradient-to-t from-[hsl(var(--brand-warm-end))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-cool-start))]"
+                                style={{ height: `${height}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] text-slate-600">
+                              {metric.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -533,16 +587,31 @@ const BrandDashboard = () => {
         {/* PRODUCTS TAB */}
         <TabsContent value="products" className="space-y-6">
           <Card className="bg-white/70 backdrop-blur border border-white/40 shadow-lg">
-            <CardHeader>
-              <CardTitle>{t("brand.dashboard_top_products_title", "Top Performing Products")}</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <div>
+                <CardTitle>{t("brand.dashboard_top_products_title", "Top Performing Products")}</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t("brand.dashboard_top_products_subtitle", "Quick controls for your best products – tap a row to manage it.")}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden sm:inline-flex text-xs"
+                onClick={() => navigate("/brand/products")}
+              >
+                <Settings2 className="h-3.5 w-3.5 mr-1" />
+                {t("brand.dashboard_manage_products", "Manage all products")}
+              </Button>
             </CardHeader>
             <CardContent>
               {topProducts.length > 0 ? (
                 <div className="space-y-3">
                   {topProducts.map((product: any, index: number) => (
-                    <div 
+                    <div
                       key={product.id}
-                      className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-white/50 to-white/30 border border-white/40 hover:border-[hsl(var(--brand-cool-start))]/50 transition-all duration-300"
+                      className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-white/50 to-white/30 border border-[hsl(var(--brand-cool-start))]/40 shadow-sm hover:border-[hsl(var(--brand-cool-start))]/70 transition-all duration-300 cursor-pointer"
+                      onClick={() => navigate(`/brand/products?productId=${product.id}`)}
                     >
                       {product.image_url ? (
                         <img src={product.image_url} alt={product.name} className="w-12 h-12 rounded-lg object-cover" />
@@ -552,23 +621,36 @@ const BrandDashboard = () => {
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-foreground mb-1 truncate">{product.name}</div>
-                        <div className="flex gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
+                        <div className="font-semibold text-foreground mb-0.5 truncate">{product.name}</div>
+                        <div className="flex flex-wrap gap-2 text-[11px] sm:text-xs">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(59,130,246,0.06)] text-[hsl(var(--brand-cool-start))] px-2 py-0.5 border border-[rgba(59,130,246,0.18)]">
                             <Eye className="h-3 w-3" />
                             {product.views.toLocaleString()}
                           </span>
-                          <span className="flex items-center gap-1">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(16,185,129,0.06)] text-emerald-600 px-2 py-0.5 border border-[rgba(16,185,129,0.18)]">
                             <CirclePlus className="h-3 w-3" />
                             {product.adds}
                           </span>
-                          <span className="flex items-center gap-1">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(244,63,94,0.06)] text-rose-600 px-2 py-0.5 border border-[rgba(244,63,94,0.18)]">
                             <Heart className="h-3 w-3" />
                             {product.likes}
                           </span>
                         </div>
                       </div>
-                      <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))]">#{index + 1}</div>
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))]">#{index + 1}</div>
+                        <button
+                          type="button"
+                          className="h-8 w-8 rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-white shadow-md hover:shadow-lg hover:scale-105 transition-all duration-200 flex items-center justify-center"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/brand/products?productId=${product.id}`);
+                          }}
+                          title={t("brand.dashboard_view_product", "View product")}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -591,59 +673,123 @@ const BrandDashboard = () => {
             </CardHeader>
             <CardContent>
               {allProducts && allProducts.length > 0 ? (
-                <div className="w-full overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200/70 text-xs text-muted-foreground uppercase tracking-wide">
-                        <th className="py-2 pr-2 text-left font-semibold">{t("brand.dashboard_analytics_col_product", "Product")}</th>
-                        <th className="py-2 px-2 text-right font-semibold whitespace-nowrap">{t("brand.dashboard_analytics_col_views", "Views")}</th>
-                        <th className="py-2 px-2 text-right font-semibold whitespace-nowrap">{t("brand.dashboard_analytics_col_wishlist_adds", "Wishlist adds")}</th>
-                        <th className="py-2 pl-2 text-right font-semibold whitespace-nowrap">{t("brand.dashboard_analytics_col_likes", "Likes")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {allProducts
-                        .slice()
-                        .sort((a: any, b: any) => (b.views || 0) - (a.views || 0))
-                        .map((p: any) => (
-                          <tr key={p.id} className="border-b border-slate-100 last:border-0">
-                            <td className="py-2 pr-2 align-top">
-                              <div className="flex items-center gap-2 min-w-0">
-                                {p.image_url ? (
-                                  <img
-                                    src={p.image_url}
-                                    alt={p.name || "product"}
-                                    className="h-8 w-8 rounded-md object-cover flex-shrink-0"
-                                    onError={(e: any) => {
-                                      e.currentTarget.style.display = "none";
-                                    }}
-                                  />
-                                ) : (
-                                  <div className="h-8 w-8 rounded-md bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/20 to-[hsl(var(--brand-warm-end))]/20 flex items-center justify-center text-[10px] text-[hsl(var(--brand-cool-start))] flex-shrink-0">
-                                    <Package className="h-4 w-4" />
-                                  </div>
-                                )}
-                                <div className="min-w-0">
-                                  <div className="font-medium text-foreground truncate">
-                                    {p.name || t("brand.dashboard_untitled_product", "Untitled product")}
+                <>
+                  {/* Mobile: stacked cards, no horizontal scroll */}
+                  <div className="space-y-3 md:hidden">
+                    {allProducts
+                      .slice()
+                      .sort((a: any, b: any) => (b.views || 0) - (a.views || 0))
+                      .map((p: any) => (
+                        <div
+                          key={p.id}
+                          className="rounded-2xl bg-white/90 border border-slate-200 shadow-sm px-3 py-2.5 flex items-center gap-3"
+                        >
+                          {p.image_url ? (
+                            <img
+                              src={p.image_url}
+                              alt={p.name || "product"}
+                              className="h-10 w-10 rounded-lg object-cover flex-shrink-0"
+                              onError={(e: any) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/20 to-[hsl(var(--brand-warm-end))]/20 flex items-center justify-center text-[hsl(var(--brand-cool-start))] flex-shrink-0">
+                              <Package className="h-5 w-5" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium text-slate-900 truncate">
+                              {p.name || t("brand.dashboard_untitled_product", "Untitled product")}
+                            </div>
+                            <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(59,130,246,0.06)] text-[hsl(var(--brand-cool-start))] px-1.5 py-0.5 border border-[rgba(59,130,246,0.18)]">
+                                <Eye className="h-3 w-3" />
+                                {p.views?.toLocaleString?.() || 0}
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(16,185,129,0.06)] text-emerald-600 px-1.5 py-0.5 border border-[rgba(16,185,129,0.18)]">
+                                <CirclePlus className="h-3 w-3" />
+                                {p.adds?.toLocaleString?.() || 0}
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(244,63,94,0.06)] text-rose-600 px-1.5 py-0.5 border border-[rgba(244,63,94,0.18)]">
+                                <Heart className="h-3 w-3" />
+                                {p.likes?.toLocaleString?.() || 0}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+
+                  {/* Desktop / tablet: keep table layout */}
+                  <div className="hidden md:block w-full overflow-x-auto">
+                    <table className="w-full text-sm rounded-2xl overflow-hidden border border-white/60 bg-white/90 shadow-[0_18px_40px_rgba(148,163,184,0.35)]">
+                      <thead className="bg-gradient-to-r from-[hsl(var(--brand-cool-start))]/10 via-[hsl(var(--brand-cool-end))]/8 to-[hsl(var(--brand-warm-end))]/10">
+                        <tr className="text-xs text-slate-600 uppercase tracking-wide">
+                          <th className="py-3 pr-3 text-left font-semibold">{t("brand.dashboard_analytics_col_product", "Product")}</th>
+                          <th className="py-3 px-3 text-right font-semibold whitespace-nowrap">{t("brand.dashboard_analytics_col_views", "Views")}</th>
+                          <th className="py-3 px-3 text-right font-semibold whitespace-nowrap">{t("brand.dashboard_analytics_col_wishlist_adds", "Wishlist adds")}</th>
+                          <th className="py-3 pl-3 text-right font-semibold whitespace-nowrap">{t("brand.dashboard_analytics_col_likes", "Likes")}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100/80">
+                        {allProducts
+                          .slice()
+                          .sort((a: any, b: any) => (b.views || 0) - (a.views || 0))
+                          .map((p: any, index: number) => (
+                            <tr
+                              key={p.id}
+                              className={`transition-colors ${
+                                index % 2 === 0 ? "bg-slate-50/60" : "bg-white/80"
+                              } hover:bg-[rgba(191,219,254,0.25)]`}
+                            >
+                              <td className="py-3 pr-3 align-top">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {p.image_url ? (
+                                    <img
+                                      src={p.image_url}
+                                      alt={p.name || "product"}
+                                      className="h-8 w-8 rounded-md object-cover flex-shrink-0"
+                                      onError={(e: any) => {
+                                        e.currentTarget.style.display = "none";
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="h-8 w-8 rounded-md bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/20 to-[hsl(var(--brand-warm-end))]/20 flex items-center justify-center text-[10px] text-[hsl(var(--brand-cool-start))] flex-shrink-0">
+                                      <Package className="h-4 w-4" />
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <div className="font-medium text-slate-900 truncate">
+                                      {p.name || t("brand.dashboard_untitled_product", "Untitled product")}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="py-2 px-2 text-right align-top whitespace-nowrap">
-                              {p.views?.toLocaleString?.() || 0}
-                            </td>
-                            <td className="py-2 px-2 text-right align-top whitespace-nowrap">
-                              {p.adds?.toLocaleString?.() || 0}
-                            </td>
-                            <td className="py-2 pl-2 text-right align-top whitespace-nowrap">
-                              {p.likes?.toLocaleString?.() || 0}
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
+                              </td>
+                              <td className="py-3 px-3 text-right align-top whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(59,130,246,0.06)] text-[hsl(var(--brand-cool-start))] px-2 py-0.5 border border-[rgba(59,130,246,0.18)] text-xs sm:text-[13px]">
+                                  <Eye className="h-3 w-3" />
+                                  {p.views?.toLocaleString?.() || 0}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 text-right align-top whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(16,185,129,0.06)] text-emerald-600 px-2 py-0.5 border border-[rgba(16,185,129,0.18)] text-xs sm:text-[13px]">
+                                  <CirclePlus className="h-3 w-3" />
+                                  {p.adds?.toLocaleString?.() || 0}
+                                </span>
+                              </td>
+                              <td className="py-3 pl-3 text-right align-top whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(244,63,94,0.06)] text-rose-600 px-2 py-0.5 border border-[rgba(244,63,94,0.18)] text-xs sm:text-[13px]">
+                                  <Heart className="h-3 w-3" />
+                                  {p.likes?.toLocaleString?.() || 0}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
                   <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
@@ -670,7 +816,7 @@ const BrandDashboard = () => {
                   {recentActivity.map((activity: any, index: number) => (
                     <div 
                       key={index}
-                      className="flex items-start gap-3 p-3 rounded-lg bg-gradient-to-r from-white/50 to-white/30 border border-white/40 hover:border-[hsl(var(--brand-cool-start))]/30 transition-all"
+                      className="flex items-start gap-3 p-3 rounded-xl bg-gradient-to-r from-white/85 to-white/70 border border-[hsl(var(--brand-cool-start))]/40 shadow-[0_10px_30px_rgba(15,23,42,0.12)] hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(15,23,42,0.18)] transition-all duration-300"
                     >
                       <button
                         type="button"
@@ -707,9 +853,30 @@ const BrandDashboard = () => {
                         <div className="text-sm text-foreground">
                           <span className="font-semibold">{activity.user}</span>
                           {' '}
-                          <span className="text-muted-foreground">{activity.action}</span>
+                          <span className="text-muted-foreground">
+                            {(() => {
+                              const parts: string[] = [];
+                              if (activity.likedNames?.length > 0) {
+                                const preview = activity.likedNames.slice(0, 2).join(", ");
+                                parts.push(
+                                  activity.likedNames.length > 2
+                                    ? t("brand.activity_liked_others", "liked {{products}} and others", { products: preview })
+                                    : t("brand.activity_liked", "liked {{products}}", { products: preview })
+                                );
+                              }
+                              if (activity.viewedNames?.length > 0) {
+                                const preview = activity.viewedNames.slice(0, 2).join(", ");
+                                parts.push(
+                                  activity.viewedNames.length > 2
+                                    ? t("brand.activity_viewed_others", "viewed {{products}} and others", { products: preview })
+                                    : t("brand.activity_viewed", "viewed {{products}}", { products: preview })
+                                );
+                              }
+                              return parts.join(" · ");
+                            })()}
+                          </span>
                         </div>
-                        <div className="text-xs text-muted-foreground mt-1">{activity.time}</div>
+                        <div className="text-xs text-muted-foreground mt-1">{t("brand.activity_time_recently", "Recently")}</div>
                       </div>
                     </div>
                   ))}
@@ -740,31 +907,31 @@ const BrandDashboard = () => {
                 {overviewDetail === "views" && (
                   <>
                     <Eye className="h-4 w-4 text-[hsl(var(--brand-cool-start))]" />
-                    <span>Product views – which products</span>
+                    <span>{t("brand.modal_views_title", "Product views – which products")}</span>
                   </>
                 )}
                 {overviewDetail === "likes" && (
                   <>
                     <Heart className="h-4 w-4 text-rose-500" />
-                    <span>Likes – which products</span>
+                    <span>{t("brand.modal_likes_title", "Likes – which products")}</span>
                   </>
                 )}
                 {overviewDetail === "wishlist" && (
                   <>
                     <CirclePlus className="h-4 w-4 text-emerald-500" />
-                    <span>Wishlist adds – which products</span>
+                    <span>{t("brand.modal_wishlist_title", "Wishlist adds – which products")}</span>
                   </>
                 )}
                 {overviewDetail === "active" && (
                   <>
                     <Package className="h-4 w-4 text-emerald-500" />
-                    <span>Active products</span>
+                    <span>{t("brand.modal_active_title", "Active products")}</span>
                   </>
                 )}
                 {overviewDetail === "users" && (
                   <>
                     <Users className="h-4 w-4 text-[hsl(var(--brand-warm-start))]" />
-                    <span>Unique users – who they are</span>
+                    <span>{t("brand.modal_users_title", "Unique users – who they are")}</span>
                   </>
                 )}
               </DialogTitle>
@@ -782,16 +949,16 @@ const BrandDashboard = () => {
                             key={p.id}
                             className="flex items-center justify-between gap-2 text-xs"
                           >
-                            <span className="truncate max-w-[180px]">{p.name || "Untitled product"}</span>
+                            <span className="truncate max-w-[180px]">{p.name || t("brand.dashboard_untitled_product", "Untitled product")}</span>
                             <span className="text-muted-foreground">
-                              {p.views?.toLocaleString?.() || 0} views
+                              {p.views?.toLocaleString?.() || 0} {t("brand.metric_views", "views")}
                             </span>
                           </li>
                         ))}
                     </ul>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      No view data yet.
+                      {t("brand.no_view_data", "No view data yet.")}
                     </p>
                   )}
                 </div>
@@ -809,16 +976,16 @@ const BrandDashboard = () => {
                             key={p.id}
                             className="flex items-center justify-between gap-2 text-xs"
                           >
-                            <span className="truncate max-w-[180px]">{p.name || "Untitled product"}</span>
+                            <span className="truncate max-w-[180px]">{p.name || t("brand.dashboard_untitled_product", "Untitled product")}</span>
                             <span className="text-muted-foreground">
-                              {p.likes?.toLocaleString?.() || 0} likes
+                              {p.likes?.toLocaleString?.() || 0} {t("brand.metric_likes", "likes")}
                             </span>
                           </li>
                         ))}
                     </ul>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      No like data yet.
+                      {t("brand.no_like_data", "No like data yet.")}
                     </p>
                   )}
                 </div>
@@ -836,16 +1003,16 @@ const BrandDashboard = () => {
                             key={p.id}
                             className="flex items-center justify-between gap-2 text-xs"
                           >
-                            <span className="truncate max-w-[180px]">{p.name || "Untitled product"}</span>
+                            <span className="truncate max-w-[180px]">{p.name || t("brand.dashboard_untitled_product", "Untitled product")}</span>
                             <span className="text-muted-foreground">
-                              {p.adds?.toLocaleString?.() || 0} adds
+                              {p.adds?.toLocaleString?.() || 0} {t("brand.metric_adds", "adds")}
                             </span>
                           </li>
                         ))}
                     </ul>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      No wishlist data yet.
+                      {t("brand.no_wishlist_data", "No wishlist data yet.")}
                     </p>
                   )}
                 </div>
@@ -860,18 +1027,18 @@ const BrandDashboard = () => {
                           key={p.id}
                           className="flex items-center justify-between gap-2 text-xs"
                         >
-                          <span className="truncate max-w-[180px]">{p.name || "Untitled product"}</span>
+                          <span className="truncate max-w-[180px]">{p.name || t("brand.dashboard_untitled_product", "Untitled product")}</span>
                           <span className="text-muted-foreground flex gap-2">
-                            <span>{p.views?.toLocaleString?.() || 0} views</span>
-                            <span>{p.adds?.toLocaleString?.() || 0} adds</span>
-                            <span>{p.likes?.toLocaleString?.() || 0} likes</span>
+                            <span>{p.views?.toLocaleString?.() || 0} {t("brand.metric_views", "views")}</span>
+                            <span>{p.adds?.toLocaleString?.() || 0} {t("brand.metric_adds", "adds")}</span>
+                            <span>{p.likes?.toLocaleString?.() || 0} {t("brand.metric_likes", "likes")}</span>
                           </span>
                         </li>
                       ))}
                     </ul>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      No active products yet.
+                      {t("brand.no_active_products", "No active products yet.")}
                     </p>
                   )}
                 </div>
@@ -889,21 +1056,19 @@ const BrandDashboard = () => {
                           <div className="text-muted-foreground mt-0.5">
                             {(u.likedProducts?.length || 0) > 0 && (
                               <span>
-                                Liked {u.likedProducts.length} product
-                                {u.likedProducts.length === 1 ? "" : "s"}
+                                {t("brand.user_liked_count", "Liked {{count}} product(s)", { count: u.likedProducts.length })}
                               </span>
                             )}
                             {(u.likedProducts?.length || 0) > 0 &&
                               (u.viewedProducts?.length || 0) > 0 && <span> · </span>}
                             {(u.viewedProducts?.length || 0) > 0 && (
                               <span>
-                                Viewed {u.viewedProducts.length} product
-                                {u.viewedProducts.length === 1 ? "" : "s"}
+                                {t("brand.user_viewed_count", "Viewed {{count}} product(s)", { count: u.viewedProducts.length })}
                               </span>
                             )}
                             {(u.likedProducts?.length || 0) === 0 &&
                               (u.viewedProducts?.length || 0) === 0 && (
-                                <span>No engagement recorded.</span>
+                                <span>{t("brand.no_engagement", "No engagement recorded.")}</span>
                               )}
                           </div>
                         </li>
@@ -911,7 +1076,7 @@ const BrandDashboard = () => {
                     </ul>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      No unique user data yet.
+                      {t("brand.no_user_data", "No unique user data yet.")}
                     </p>
                   )}
                 </div>
