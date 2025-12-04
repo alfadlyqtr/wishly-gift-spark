@@ -917,8 +917,6 @@ const WishlistDetail = () => {
                                       type="button"
                                       className="text-white/90 hover:text-white transition"
                                       onClick={async () => {
-                                        const ok = window.confirm("Delete this item?");
-                                        if (!ok) return;
                                         const { error } = await supabase.from("wishlist_items").delete().eq("id", it.id);
                                         if (error) {
                                           toast.error(error.message || "Failed to delete");

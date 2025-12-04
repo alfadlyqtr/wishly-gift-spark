@@ -180,6 +180,20 @@ const Explore = () => {
     enabled: mode === "brands" && debouncedQ.length > 0,
   });
 
+  function getEffectiveFindableForExploreProduct(p: any) {
+    const mode = p.brands?.products_find_mode || "per_product";
+    if (mode === "all_off") return false;
+    if (mode === "all_on") return true;
+    return p.is_findable !== false;
+  }
+
+  function getEffectiveCanAddForExploreProduct(p: any) {
+    const mode = p.brands?.products_add_mode || "per_product";
+    if (mode === "all_off") return false;
+    if (mode === "all_on") return true;
+    return p.allow_add_as_item !== false;
+  }
+
   const productsQuery = useQuery({
     queryKey: ["explore", "products", debouncedQ],
     queryFn: async () => {
@@ -187,12 +201,13 @@ const Explore = () => {
       if (!s) return [];
       const { data, error } = await (supabase as any)
         .from("brand_products")
-        .select("id,name,description,image_url,product_url,is_findable,allow_add_as_item, brands!inner(id,brand_name,logo_url,user_id)")
-        .eq("is_findable", true)
+        .select(
+          "id,name,description,image_url,product_url,is_findable,allow_add_as_item, brands!inner(id,brand_name,logo_url,user_id,products_find_mode,products_add_mode,allow_product_requests,allow_questions,allow_likes,show_store_link)"
+        )
         .or(`name.ilike.%${s}%,description.ilike.%${s}%`)
         .limit(20);
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).filter((p: any) => getEffectiveFindableForExploreProduct(p));
     },
     enabled: mode === "products" && debouncedQ.length > 0,
   });
@@ -266,7 +281,7 @@ const Explore = () => {
   }, [products]);
 
   const handleAddAsItemClick = async (product: any) => {
-    if (product.allow_add_as_item === false) return;
+    if (!getEffectiveCanAddForExploreProduct(product)) return;
 
     try {
       const { data: auth } = await supabase.auth.getUser();
@@ -634,46 +649,55 @@ const Explore = () => {
                               )}
                             </div>
                             <div className="explore-product-card__actions">
-                              <button
-                                type="button"
-                                className="explore-product-card__button-text flex items-center gap-1"
-                                onClick={() => {
-                                  if (!p.brands?.id) return;
-                                  setSelectedBrandId(p.brands.id);
-                                  setIsBrandModalOpen(true);
-                                }}
-                              >
-                                <Store className="h-3.5 w-3.5" />
-                                <span>{t('explore.view_brand', 'View store')}</span>
-                              </button>
+                              {p.brands?.show_store_link !== false && (
+                                <button
+                                  type="button"
+                                  className="explore-product-card__button-text flex items-center gap-1"
+                                  onClick={() => {
+                                    if (!p.brands?.id) return;
+                                    setSelectedBrandId(p.brands.id);
+                                    setIsBrandModalOpen(true);
+                                  }}
+                                >
+                                  <Store className="h-3.5 w-3.5" />
+                                  <span>{t('explore.view_brand', 'View store')}</span>
+                                </button>
+                              )}
+                              {p.brands?.allow_likes !== false && (
+                                <button
+                                  type="button"
+                                  className={`explore-product-card__button-icon ${
+                                    isLiked ? 'is-liked' : ''
+                                  }`}
+                                  onClick={() => handleToggleLike(p)}
+                                  aria-pressed={isLiked}
+                                  aria-label={
+                                    isLiked
+                                      ? t('explore.unlike_product', 'Unlike product')
+                                      : t('explore.like_product', 'Like product')
+                                  }
+                                >
+                                  <Heart
+                                    className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`}
+                                  />
+                                </button>
+                              )}
+                              {(() => {
+                                const canAdd = getEffectiveCanAddForExploreProduct(p);
+                                return (
                               <button
                                 type="button"
                                 className={`explore-product-card__button-icon ${
-                                  isLiked ? 'is-liked' : ''
-                                }`}
-                                onClick={() => handleToggleLike(p)}
-                                aria-pressed={isLiked}
-                                aria-label={
-                                  isLiked
-                                    ? t('explore.unlike_product', 'Unlike product')
-                                    : t('explore.like_product', 'Like product')
-                                }
-                              >
-                                <Heart
-                                  className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`}
-                                />
-                              </button>
-                              <button
-                                type="button"
-                                className={`explore-product-card__button-icon ${
-                                  p.allow_add_as_item === false ? 'disabled' : ''
+                                  !canAdd ? 'disabled' : ''
                                 }`}
                                 onClick={() => handleAddAsItemClick(p)}
-                                disabled={p.allow_add_as_item === false}
+                                disabled={!canAdd}
                                 aria-label={t('explore.add_as_item', 'Add as item')}
                               >
                                 <Plus className="h-4 w-4" />
                               </button>
+                                );
+                              })()}
                             </div>
                           </div>
                         </div>
@@ -746,7 +770,7 @@ const Explore = () => {
                         </div>
                       </div>
                       <div className="explore-product-row__actions" onClick={(e) => e.stopPropagation()}>
-                        {(() => {
+                        {p.brands?.allow_likes !== false && (() => {
                           const isLiked = likedProductIds.has(p.id);
                           return (
                             <button
@@ -770,44 +794,51 @@ const Explore = () => {
                             </button>
                           );
                         })()}
-                        <button
-                          type="button"
-                          className="explore-product-row__icon-btn"
-                          onClick={async () => {
-                            if (!p.brands?.id) return;
-                            try {
-                              const { data: auth } = await supabase.auth.getUser();
-                              const me = auth.user?.id;
-                              if (me) {
-                                await (supabase as any)
-                                  .from("brand_product_views")
-                                  .insert({
-                                    product_id: p.id,
-                                    viewer_id: me,
-                                    source: "explore_view_store_row",
-                                  });
+                        {p.brands?.show_store_link !== false && (
+                          <button
+                            type="button"
+                            className="explore-product-row__icon-btn"
+                            onClick={async () => {
+                              if (!p.brands?.id) return;
+                              try {
+                                const { data: auth } = await supabase.auth.getUser();
+                                const me = auth.user?.id;
+                                if (me) {
+                                  await (supabase as any)
+                                    .from("brand_product_views")
+                                    .insert({
+                                      product_id: p.id,
+                                      viewer_id: me,
+                                      source: "explore_view_store_row",
+                                    });
+                                }
+                              } catch (viewErr) {
+                                console.warn("Failed to record product view (view store row)", viewErr);
                               }
-                            } catch (viewErr) {
-                              console.warn("Failed to record product view (view store row)", viewErr);
-                            }
-                            setSelectedBrandId(p.brands.id);
-                            setIsBrandModalOpen(true);
-                          }}
-                          aria-label={t('explore.view_brand', 'View store')}
-                        >
-                          <Store className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          className={`explore-product-row__icon-btn ${
-                            p.allow_add_as_item === false ? 'is-disabled' : ''
-                          }`}
-                          onClick={() => p.allow_add_as_item === false ? undefined : handleAddAsItemClick(p)}
-                          disabled={p.allow_add_as_item === false}
-                          aria-label={t('explore.add_as_item', 'Add as item')}
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
+                              setSelectedBrandId(p.brands.id);
+                              setIsBrandModalOpen(true);
+                            }}
+                            aria-label={t('explore.view_brand', 'View store')}
+                          >
+                            <Store className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        {(() => {
+                          const canAdd = getEffectiveCanAddForExploreProduct(p);
+                          return (
+                            <button
+                              type="button"
+                              className={`explore-product-row__icon-btn ${
+                                !canAdd ? 'is-disabled' : ''
+                              }`}
+                              onClick={() => (canAdd ? handleAddAsItemClick(p) : undefined)}
+                              disabled={!canAdd}
+                              aria-label={t('explore.add_as_item', 'Add as item')}
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          );
+                        })()}
                       </div>
                     </div>
                   ))}
@@ -950,13 +981,15 @@ const Explore = () => {
                     </p>
                   </div>
 
-                  {/* Questions section - Instagram style */}
-                  <ProductQuestions
-                    productId={selectedProductForModal.id}
-                    brandUserId={selectedProductForModal.brands?.user_id}
-                    brandName={selectedProductForModal.brands?.brand_name || "Brand"}
-                    brandLogo={selectedProductForModal.brands?.logo_url}
-                  />
+                  {/* Questions section - Instagram style (controlled by brand setting) */}
+                  {selectedProductForModal.brands?.allow_questions !== false && (
+                    <ProductQuestions
+                      productId={selectedProductForModal.id}
+                      brandUserId={selectedProductForModal.brands?.user_id}
+                      brandName={selectedProductForModal.brands?.brand_name || "Brand"}
+                      brandLogo={selectedProductForModal.brands?.logo_url}
+                    />
+                  )}
 
                   <div className="explore-product-card__footer">
                     <div className="flex items-center gap-2 min-w-0">
@@ -980,45 +1013,48 @@ const Explore = () => {
                       </div>
                     </div>
                     <div className="explore-product-card__actions">
-                      <button
-                        type="button"
-                        className="explore-product-card__button-icon"
-                        onClick={async () => {
-                          if (!selectedProductForModal.brands?.id) return;
-                          try {
-                            const { data: auth } = await supabase.auth.getUser();
-                            const me = auth.user?.id;
-                            if (me && selectedProductForModal?.id) {
-                              await (supabase as any)
-                                .from("brand_product_views")
-                                .insert({
-                                  product_id: selectedProductForModal.id,
-                                  viewer_id: me,
-                                  source: "explore_view_store_modal",
-                                });
-                            }
-                          } catch (viewErr) {
-                            console.warn("Failed to record product view (view store modal)", viewErr);
-                          }
-                          setSelectedBrandId(selectedProductForModal.brands.id);
-                          setIsBrandModalOpen(true);
-                        }}
-                        aria-label={t('explore.view_brand', 'View store')}
-                      >
-                        <Store className="h-3.5 w-3.5" />
-                      </button>
-                      {selectedProductForModal.brands?.user_id && (
+                      {selectedProductForModal.brands?.show_store_link !== false && (
                         <button
                           type="button"
                           className="explore-product-card__button-icon"
-                          onClick={() => handleMessageBrand(selectedProductForModal.brands.user_id)}
-                          disabled={messagingBrand}
-                          aria-label={t('explore.message_brand', 'Message')}
+                          onClick={async () => {
+                            if (!selectedProductForModal.brands?.id) return;
+                            try {
+                              const { data: auth } = await supabase.auth.getUser();
+                              const me = auth.user?.id;
+                              if (me && selectedProductForModal?.id) {
+                                await (supabase as any)
+                                  .from("brand_product_views")
+                                  .insert({
+                                    product_id: selectedProductForModal.id,
+                                    viewer_id: me,
+                                    source: "explore_view_store_modal",
+                                  });
+                              }
+                            } catch (viewErr) {
+                              console.warn("Failed to record product view (view store modal)", viewErr);
+                            }
+                            setSelectedBrandId(selectedProductForModal.brands.id);
+                            setIsBrandModalOpen(true);
+                          }}
+                          aria-label={t('explore.view_brand', 'View store')}
                         >
-                          <Send className="h-3.5 w-3.5" />
+                          <Store className="h-3.5 w-3.5" />
                         </button>
                       )}
-                      {(() => {
+                      {selectedProductForModal.brands?.user_id &&
+                        selectedProductForModal.brands?.allow_product_requests !== false && (
+                          <button
+                            type="button"
+                            className="explore-product-card__button-icon"
+                            onClick={() => handleMessageBrand(selectedProductForModal.brands.user_id)}
+                            disabled={messagingBrand}
+                            aria-label={t('explore.message_brand', 'Message')}
+                          >
+                            <Send className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      {selectedProductForModal.brands?.allow_likes !== false && (() => {
                         const isLiked = selectedProductForModal?.id
                           ? likedProductIds.has(selectedProductForModal.id)
                           : false;
@@ -1042,21 +1078,26 @@ const Explore = () => {
                           </button>
                         );
                       })()}
-                      <button
-                        type="button"
-                        className={`explore-product-card__button-icon ${
-                          selectedProductForModal.allow_add_as_item === false ? 'disabled' : ''
-                        }`}
-                        onClick={() =>
-                          selectedProductForModal.allow_add_as_item === false
-                            ? undefined
-                            : handleAddAsItemClick(selectedProductForModal)
-                        }
-                        disabled={selectedProductForModal.allow_add_as_item === false}
-                        aria-label={t('explore.add_as_item', 'Add as item')}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
+                      {(() => {
+                        const canAdd = getEffectiveCanAddForExploreProduct(
+                          selectedProductForModal,
+                        );
+                        return (
+                          <button
+                            type="button"
+                            className={`explore-product-card__button-icon ${
+                              !canAdd ? 'disabled' : ''
+                            }`}
+                            onClick={() =>
+                              canAdd ? handleAddAsItemClick(selectedProductForModal) : undefined
+                            }
+                            disabled={!canAdd}
+                            aria-label={t('explore.add_as_item', 'Add as item')}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -1106,6 +1147,66 @@ const Explore = () => {
               console.log("🔍 Saving wishlist item with brand_product_id:", itemData.brand_product_id);
               console.log("📦 Full product data:", productForAdd);
               console.log("💾 Item data being saved:", itemData);
+
+              // Prevent adding the same Explore product twice to the same wishlist
+              // 1) Check by brand_product_id when present
+              if (itemData.brand_product_id) {
+                const { data: existingByBrand, error: existingBrandErr } = await (supabase as any)
+                  .from("wishlist_items")
+                  .select("id")
+                  .eq("wishlist_id", itemData.wishlist_id)
+                  .eq("brand_product_id", itemData.brand_product_id)
+                  .maybeSingle();
+
+                if (!existingBrandErr && existingByBrand) {
+                  toast.success(
+                    t(
+                      "explore.already_in_wishlist",
+                      "This product is already in this wishlist.",
+                    ),
+                  );
+                  return;
+                }
+              }
+
+              // 3) Final guard: avoid duplicates by same title + brand in this wishlist
+              const { data: existingByName, error: existingNameErr } = await (supabase as any)
+                .from("wishlist_items")
+                .select("id")
+                .eq("wishlist_id", itemData.wishlist_id)
+                .ilike("title", itemData.title)
+                .ilike("brand", itemData.brand)
+                .maybeSingle();
+
+              if (!existingNameErr && existingByName) {
+                toast.success(
+                  t(
+                    "explore.already_in_wishlist",
+                    "This product is already in this wishlist.",
+                  ),
+                );
+                return;
+              }
+
+              // 2) Fallback: if we have a product URL, avoid duplicates by URL as well
+              if (itemData.item_url) {
+                const { data: existingByUrl, error: existingUrlErr } = await (supabase as any)
+                  .from("wishlist_items")
+                  .select("id")
+                  .eq("wishlist_id", itemData.wishlist_id)
+                  .eq("item_url", itemData.item_url)
+                  .maybeSingle();
+
+                if (!existingUrlErr && existingByUrl) {
+                  toast.success(
+                    t(
+                      "explore.already_in_wishlist",
+                      "This product is already in this wishlist.",
+                    ),
+                  );
+                  return;
+                }
+              }
 
               const { error } = await (supabase as any)
                 .from("wishlist_items")

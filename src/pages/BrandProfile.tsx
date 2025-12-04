@@ -121,6 +121,9 @@ const BrandProfile = () => {
   const [showAnalyticsPublicly, setShowAnalyticsPublicly] = useState(false);
   const [productsFindMode, setProductsFindMode] = useState<'all_off' | 'all_on' | 'per_product'>('per_product');
   const [productsAddMode, setProductsAddMode] = useState<'all_off' | 'all_on' | 'per_product'>('per_product');
+  const [allowQuestions, setAllowQuestions] = useState(true);
+  const [allowLikes, setAllowLikes] = useState(true);
+  const [showStoreLink, setShowStoreLink] = useState(true);
 
   useEffect(() => {
     fetchBrandData();
@@ -171,6 +174,9 @@ const BrandProfile = () => {
         setShowAnalyticsPublicly(data.show_analytics_publicly === true);
         setProductsFindMode((data.products_find_mode as any) || 'per_product');
         setProductsAddMode((data.products_add_mode as any) || 'per_product');
+        setAllowQuestions(data.allow_questions !== false);
+        setAllowLikes(data.allow_likes !== false);
+        setShowStoreLink(data.show_store_link !== false);
       }
     } catch (err: any) {
       toast.error(err.message || t("brand.profile_load_error", "Failed to load brand data"));
@@ -248,6 +254,9 @@ const BrandProfile = () => {
           show_analytics_publicly: showAnalyticsPublicly,
           products_find_mode: productsFindMode,
           products_add_mode: productsAddMode,
+          allow_questions: allowQuestions,
+          allow_likes: allowLikes,
+          show_store_link: showStoreLink,
           updated_at: new Date().toISOString(),
         })
         .eq("id", brand.id);
@@ -412,6 +421,60 @@ const BrandProfile = () => {
               id="allowProductRequests"
               checked={allowProductRequests}
               onCheckedChange={setAllowProductRequests}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="allowQuestions" className="text-base font-medium">
+                {t("brand.allow_questions", "Allow Questions")}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t("brand.allow_questions_hint", "Users can ask questions on your product cards")}
+              </p>
+            </div>
+            <Switch
+              id="allowQuestions"
+              checked={allowQuestions}
+              onCheckedChange={setAllowQuestions}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="allowLikes" className="text-base font-medium">
+                {t("brand.allow_likes", "Allow Likes")}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t("brand.allow_likes_hint", "Users can like your products")}
+              </p>
+            </div>
+            <Switch
+              id="allowLikes"
+              checked={allowLikes}
+              onCheckedChange={setAllowLikes}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="showStoreLink" className="text-base font-medium">
+                {t("brand.show_store_link", "Show Store Link")}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t("brand.show_store_link_hint", "Show store icon on product cards")}
+              </p>
+            </div>
+            <Switch
+              id="showStoreLink"
+              checked={showStoreLink}
+              onCheckedChange={setShowStoreLink}
             />
           </div>
         </CardContent>

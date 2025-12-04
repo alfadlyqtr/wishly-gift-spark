@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Eye, CirclePlus, Heart, Users, BarChart3, Activity, Package, Settings2, ExternalLink, MessageCircle, Send, CheckCircle2, Clock } from "lucide-react";
+import { Eye, CirclePlus, Heart, Users, BarChart3, Activity, Package, Settings2, ExternalLink, MessageCircle, Send, CheckCircle2, Clock, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { brandFollowUser, brandUnfollowUser } from "@/lib/follow";
@@ -271,27 +271,31 @@ const BrandDashboard = () => {
     queryKey: ["brand-questions", brandId],
     queryFn: async () => {
       if (!brandId) return [];
-      
-      // Get all product IDs for this brand
-      const { data: products } = await (supabase as any)
+
+      // Step 1: Get all product IDs for this brand
+      const { data: products, error: productsError } = await (supabase as any)
         .from("brand_products")
         .select("id")
         .eq("brand_id", brandId);
-      
-      if (!products || products.length === 0) return [];
-      
+
+      if (productsError) {
+        console.error("Error fetching brand products:", productsError);
+        throw productsError;
+      }
+
+      if (!products || products.length === 0) {
+        console.log("No products found for brand:", brandId);
+        return [];
+      }
+
       const productIds = products.map((p: any) => p.id);
-      
-      // Get all questions for these products
-      const { data: questions, error } = await (supabase as any)
+      console.log("Brand product IDs:", productIds);
+
+      // Step 2: Get all questions for these products
+      const { data: questions, error: questionsError } = await (supabase as any)
         .from("product_questions")
         .select(`
           *,
-          user_profiles:user_id (
-            username,
-            full_name,
-            avatar_url
-          ),
           brand_products:product_id (
             id,
             name,
@@ -300,8 +304,13 @@ const BrandDashboard = () => {
         `)
         .in("product_id", productIds)
         .order("created_at", { ascending: false });
-      
-      if (error) throw error;
+
+      if (questionsError) {
+        console.error("Error fetching questions:", questionsError);
+        throw questionsError;
+      }
+
+      console.log("Questions found:", questions?.length || 0);
       return questions || [];
     },
     enabled: !!brandId,
@@ -359,6 +368,32 @@ const BrandDashboard = () => {
     if (!replyText.trim()) return;
     answerMutation.mutate({ questionId, answer: replyText.trim(), userId, productName });
   };
+
+  // Delete question mutation (brand can remove questions about their products)
+  const deleteQuestionMutation = useMutation({
+    mutationFn: async (questionId: string) => {
+      const { error } = await (supabase as any)
+        .from("product_questions")
+        .delete()
+        .eq("id", questionId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_data, questionId: string) => {
+      // Optimistically remove from cache so UI updates immediately
+      queryClient.setQueryData(["brand-questions", brandId], (old: any) => {
+        if (!old || !Array.isArray(old)) return old;
+        return old.filter((q: any) => q.id !== questionId);
+      });
+
+      // Also trigger refetch to stay in sync with server
+      queryClient.invalidateQueries({ queryKey: ["brand-questions", brandId] });
+      toast.success(t("brand.question_deleted", "Question deleted"));
+    },
+    onError: (e: any) => {
+      toast.error(e?.message || t("brand.question_delete_error", "Failed to delete question"));
+    },
+  });
 
   const unansweredCount = (brandQuestions || []).filter((q: any) => q.status === "unanswered").length;
 
@@ -1063,23 +1098,36 @@ const BrandDashboard = () => {
                           )}
                         </div>
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                            <span className="font-medium text-foreground">
-                              {q.user_profiles?.full_name || q.user_profiles?.username || "User"}
-                            </span>
-                            <span>·</span>
-                            <span>{getTimeAgo(q.created_at)}</span>
-                            {q.status === "unanswered" ? (
-                              <span className="inline-flex items-center gap-0.5 text-amber-600">
-                                <Clock className="h-3 w-3" />
-                                {t("brand.question_awaiting", "Awaiting reply")}
+                          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-foreground">
+                                {q.user_profiles?.full_name || q.user_profiles?.username || "User"}
                               </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-0.5 text-green-600">
-                                <CheckCircle2 className="h-3 w-3" />
-                                {t("brand.question_answered", "Answered")}
-                              </span>
-                            )}
+                              <span>·</span>
+                              <span>{getTimeAgo(q.created_at)}</span>
+                              {q.status === "unanswered" ? (
+                                <span className="inline-flex items-center gap-0.5 text-amber-600">
+                                  <Clock className="h-3 w-3" />
+                                  {t("brand.question_awaiting", "Awaiting reply")}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-0.5 text-green-600">
+                                  <CheckCircle2 className="h-3 w-3" />
+                                  {t("brand.question_answered", "Answered")}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 rounded-full border border-rose-100 bg-rose-50/70 px-2 py-0.5 text-[11px] font-medium text-rose-600 shadow-sm hover:bg-rose-100 hover:border-rose-200 transition-colors disabled:opacity-60 disabled:cursor-default"
+                              onClick={() => deleteQuestionMutation.mutate(q.id)}
+                              disabled={deleteQuestionMutation.isPending}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              {deleteQuestionMutation.isPending
+                                ? t("brand.question_deleting", "Deleting...")
+                                : t("brand.question_delete", "Delete")}
+                            </button>
                           </div>
                           <p className="text-sm">{q.question}</p>
                         </div>

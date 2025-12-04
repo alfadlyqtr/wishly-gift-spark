@@ -204,7 +204,6 @@ const Messages = () => {
           const handleDelete = (e: React.MouseEvent) => {
             e.stopPropagation();
             e.preventDefault();
-            if (!window.confirm(t('messages.delete_confirm', 'Delete this conversation?'))) return;
             deleteMutation.mutate(thread.id);
           };
 

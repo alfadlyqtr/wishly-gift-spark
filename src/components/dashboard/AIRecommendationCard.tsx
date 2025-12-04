@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles, Store, Plus } from "lucide-react";
+import { Sparkles, Store, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +29,7 @@ export const AIRecommendationCard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<BrandProduct | null>(null);
   const [productForWishAdd, setProductForWishAdd] = useState<BrandProduct | null>(null);
+  const stripRef = useRef<HTMLDivElement | null>(null);
   const wishlistsQuery = useWishlists();
   const wishlistOptions = (wishlistsQuery.data || []).map((w) => ({ id: w.id, name: w.title }));
 
@@ -57,56 +58,96 @@ export const AIRecommendationCard = () => {
 
   return (
     <>
-      <Card className="bg-gradient-to-br from-brand-warm-start/10 to-brand-warm-end/10 border-brand-warm-start/20">
-        <CardHeader className="pb-3">
+      <Card
+        className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_20px_45px_rgba(15,23,42,0.45)]"
+      >
+        <div className="rounded-[24px] bg-background/88 backdrop-blur-md">
+        <CardHeader className="pb-3 px-5 pt-4">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Sparkles className="h-5 w-5 text-brand-warm-start" />
-            {t("dashboard.gift_ideas_title", "Gift ideas")}
-            <span className="text-sm font-normal text-muted-foreground">({t("dashboard.gift_ideas_subtitle", "Personalized picks")})</span>
+            <Sparkles className="h-5 w-5 text-[hsl(var(--brand-warm-end))]" />
+            {t("dashboard.gift_ideas_title", "Wishlist items")}
+            <span className="text-sm font-normal text-muted-foreground">
+              ({t("dashboard.gift_ideas_subtitle", "Recommended for you")})
+            </span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-5 pb-4">
           {loading && (
             <p className="text-xs text-muted-foreground pb-2">{t('dashboard.loading_products', 'Loading gift ideas...')}</p>
           )}
-          <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex gap-4">
-              {products.length > 0 ? (
-                products.map((product) => (
-                  <div
-                    key={product.id}
-                    className="w-32 shrink-0 space-y-2 rounded-lg bg-card border p-3 hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => setSelectedProduct(product)}
-                  >
-                    <div className="aspect-square rounded-md bg-muted flex items-center justify-center overflow-hidden">
-                      {product.image_url ? (
-                        <img
-                          src={product.image_url}
-                          alt={product.name}
-                          className="h-full w-full object-cover"
-                          onError={(e: any) => {
-                            e.currentTarget.style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <Store className="h-8 w-8 text-muted-foreground" />
-                      )}
+          <div className="relative">
+            {products.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full bg-background/90 shadow-md border border-white/70 text-slate-700 hover:bg-white"
+                  onClick={() => {
+                    const el = stripRef.current;
+                    if (!el) return;
+                    const amount = el.clientWidth * 0.7;
+                    el.scrollBy({ left: -amount, behavior: 'smooth' });
+                  }}
+                  aria-label={t('dashboard.slider_prev', 'Previous items')}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full bg-background/90 shadow-md border border-white/70 text-slate-700 hover:bg-white"
+                  onClick={() => {
+                    const el = stripRef.current;
+                    if (!el) return;
+                    const amount = el.clientWidth * 0.7;
+                    el.scrollBy({ left: amount, behavior: 'smooth' });
+                  }}
+                  aria-label={t('dashboard.slider_next', 'Next items')}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </>
+            )}
+            <div
+              ref={stripRef}
+              className="w-full overflow-x-auto wishlist-strip scroll-smooth"
+            >
+              <div className="flex gap-4 pr-2">
+                {products.length > 0 ? (
+                  products.map((product) => (
+                    <div
+                      key={product.id}
+                      className="w-32 shrink-0 space-y-2 rounded-lg bg-card border p-3 hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => setSelectedProduct(product)}
+                    >
+                      <div className="aspect-square rounded-md bg-muted flex items-center justify-center overflow-hidden">
+                        {product.image_url ? (
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="h-full w-full object-cover"
+                            onError={(e: any) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <Store className="h-8 w-8 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium line-clamp-2">{product.name}</p>
+                        {product.brands?.brand_name && (
+                          <p className="text-xs text-muted-foreground truncate">{product.brands.brand_name}</p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium line-clamp-2">{product.name}</p>
-                      {product.brands?.brand_name && (
-                        <p className="text-xs text-muted-foreground truncate">{product.brands.brand_name}</p>
-                      )}
-                    </div>
-                  </div>
-                ))
-              ) : !loading ? (
-                <p className="text-xs text-muted-foreground">{t('dashboard.no_products', 'No products available yet.')}</p>
-              ) : null}
+                  ))
+                ) : !loading ? (
+                  <p className="text-xs text-muted-foreground">{t('dashboard.no_products', 'No products available yet.')}</p>
+                ) : null}
+              </div>
             </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+          </div>
         </CardContent>
+        </div>
       </Card>
 
       {/* Product Detail Modal - Premium Card */}

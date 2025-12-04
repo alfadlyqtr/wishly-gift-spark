@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { SocialWishCard } from "@/components/dashboard/SocialWishCard";
 import { AIRecommendationCard } from "@/components/dashboard/AIRecommendationCard";
+import UpcomingEventsStack from "@/components/dashboard/UpcomingEventsStack";
 import { LayoutDashboard } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,7 +61,7 @@ const Dashboard = () => {
     })();
   }, [t]);
   return (
-    <div className="container max-w-2xl mx-auto px-4 py-6 space-y-6">
+    <div className="container max-w-2xl mx-auto px-4 py-8 space-y-10">
       {/* Branded header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -74,8 +75,39 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-      <AIRecommendationCard />
-      <SocialWishCard />
+
+      <section className="mt-4 mb-4 md:mb-6">
+        <div className="rounded-3xl border border-border/40 bg-background/80 backdrop-blur-sm px-4 py-6 sm:px-6 sm:py-7 shadow-sm overflow-hidden">
+          <h2 className="text-sm font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
+            {t('dashboard.section_upcoming_events', 'Upcoming events')}
+          </h2>
+          <div className="mt-4">
+            <UpcomingEventsStack />
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 md:mt-8">
+        <div className="rounded-3xl border border-border/40 bg-background/80 backdrop-blur-sm px-4 py-3 sm:px-5 sm:py-4 shadow-sm overflow-hidden">
+          <h2 className="text-sm font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
+            {t('dashboard.section_wishlist_items', 'Wishlist items')}
+          </h2>
+          <div className="mt-3">
+            <AIRecommendationCard />
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 md:mt-10 lg:mt-16 mb-20 md:mb-24">
+        <div className="rounded-3xl border border-border/40 bg-background/80 backdrop-blur-sm px-4 py-3 sm:px-5 sm:py-4 shadow-sm overflow-hidden">
+          <h2 className="text-sm font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
+            {t('dashboard.section_friend_activity', 'Friend activity')}
+          </h2>
+          <div className="mt-6">
+            <SocialWishCard />
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

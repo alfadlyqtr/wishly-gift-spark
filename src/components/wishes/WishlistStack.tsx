@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
-export type WishlistCard = { id: string; title: string };
+export type WishlistCard = { id: string; title: string; subtitle?: string };
 
 type CardRotateProps = {
   children: React.ReactNode;
@@ -223,7 +223,7 @@ export default function WishlistStack({
     >
       {stack.map((card, index) => {
         const randomRotate = randomRotation ? Math.random() * 10 - 5 : 0;
-        const scale = 1 + index * 0.08 - stack.length * 0.08;
+        const scale = 1 + index * 0.06 - stack.length * 0.06;
 
         return (
           <CardRotate
@@ -248,9 +248,10 @@ export default function WishlistStack({
                 if (sendToBackOnClick) sendToBack(card.id);
               }}
               animate={{
-                rotateZ: (stack.length - index - 1) * 8 + randomRotate,
+                // Stronger fan so multiple cards are clearly visible behind the top one
+                rotateZ: (stack.length - index - 1) * 14 + randomRotate,
                 scale,
-                y: index * 8,
+                y: index * 12,
                 transformOrigin: '90% 90%',
               }}
               initial={false}
@@ -276,6 +277,11 @@ export default function WishlistStack({
                     ? t('wishlist.my_birthday_wishlist', 'My Birthday Wishlist') 
                     : card.title}
                 </div>
+                {card.subtitle && (
+                  <div className="wl-card-subtitle">
+                    {card.subtitle}
+                  </div>
+                )}
                 {viewerMode && (
                   <button
                     type="button"

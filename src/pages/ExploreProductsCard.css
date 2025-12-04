@@ -198,6 +198,24 @@
   background: #f9fafb;
 }
 
+/* Wishlist items horizontal strip scrollbar - hide the bar, keep swipe */
+.wishlist-strip {
+  scrollbar-width: none; /* Firefox */
+  scrollbar-color: transparent transparent;
+}
+
+.wishlist-strip::-webkit-scrollbar {
+  height: 0px; /* Chrome, Safari */
+}
+
+.wishlist-strip::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.wishlist-strip::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
 /* Hover Effects */
 .explore-product-card:hover {
   transform: translateY(-3px);
