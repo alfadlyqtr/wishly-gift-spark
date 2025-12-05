@@ -1101,7 +1101,7 @@ const WishlistDetail = () => {
                   
                   console.log('Uploading to path:', filePath);
                   const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('wishlist-images')
+                    .from('wishlist_images')
                     .upload(filePath, data.imageFile, {
                       cacheControl: '3600',
                       upsert: false
@@ -1114,7 +1114,7 @@ const WishlistDetail = () => {
                   } else {
                     console.log('Upload successful:', uploadData);
                     const { data: urlData } = supabase.storage
-                      .from('wishlist-images')
+                      .from('wishlist_images')
                       .getPublicUrl(filePath);
                     finalImageUrl = urlData.publicUrl;
                     console.log('New image URL:', finalImageUrl);

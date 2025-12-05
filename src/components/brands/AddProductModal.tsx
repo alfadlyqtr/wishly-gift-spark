@@ -47,8 +47,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://oefwopmeejfhzwojczqq.supabase.co";
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lZndvcG1lZWpmaHp3b2pjenFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyNDAyMDIsImV4cCI6MjA3NzgxNjIwMn0._r6kM1tzRcpBIuGW0m-lZWFecbZT4d1rHJVO3EzVueQ";
 
   const edgeFunctionUrl = useMemo(() => {
     if (!supabaseUrl) return "";

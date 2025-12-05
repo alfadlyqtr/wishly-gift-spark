@@ -20,6 +20,9 @@ export const MainLayout = () => {
   const isActive = (path: string) => location.pathname === path;
   const isGifterShared = new URLSearchParams(location.search).get('mode')?.toLowerCase() === 'gifter';
 
+  // Extract wishlist ID from path if we are on a wishlist detail page
+  const currentWishlistId = location.pathname.match(/^\/wishlist\/([^/]+)/)?.[1];
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     let mounted = true;
@@ -295,6 +298,7 @@ export const MainLayout = () => {
         open={addOpen}
         onOpenChange={setAddOpen}
         wishlists={(wishlistsData ?? []).map(w => ({ id: w.id, name: w.title || w.id }))}
+        initialWishlistId={currentWishlistId}
         onSubmit={async ({ wishlistId, title, brand, description, desire, imageFile }) => {
           try {
             // Get current user
@@ -320,7 +324,8 @@ export const MainLayout = () => {
             // Save to wishlist_items (existing table)
             const payload: any = {
               title,
-              description: description || (brand ? `Brand: ${brand}` : null),
+              description: description || null,
+              brand: brand || null,
               image_url: publicImageUrl,
               item_url: null,
               price: null,

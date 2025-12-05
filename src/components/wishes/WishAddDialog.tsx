@@ -325,7 +325,7 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
       
       // Use VITE_SUPABASE_PUBLISHABLE_KEY or fallback to hardcoded values from client.ts
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://oefwopmeejfhzwojczqq.supabase.co";
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lZndvcG1lZWpmaHp3b2pjenFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyNDAyMDIsImV4cCI6MjA3NzgxNjIwMn0._r6kM1tzRcpBIuGW0m-lZWFecbZT4d1rHJVO3EzVueQ";
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lZndvcG1lZWpmaHp3b2pjenFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyNDAyMDIsImV4cCI6MjA3NzgxNjIwMn0._r6kM1tzRcpBIuGW0m-lZWFecbZT4d1rHJVO3EzVueQ";
       const edgeFunctionUrl = `${supabaseUrl}/functions/v1/ai-gateway`;
 
       // Using direct fetch like in AddProductModal to ensure compatibility
@@ -463,7 +463,8 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
       const base64 = await readFileAsBase64(imageFile);
       const { data: session } = await supabase.auth.getSession();
       const token = session.session?.access_token;
-      const baseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const baseUrl = (import.meta.env.VITE_SUPABASE_URL as string) || "https://oefwopmeejfhzwojczqq.supabase.co";
+      const anonKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string) || (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lZndvcG1lZWpmaHp3b2pjenFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyNDAyMDIsImV4cCI6MjA3NzgxNjIwMn0._r6kM1tzRcpBIuGW0m-lZWFecbZT4d1rHJVO3EzVueQ";
       const locale = (typeof window !== 'undefined' && (i18n?.language || navigator.language))?.startsWith('ar') ? 'ar' : 'en';
       const tone = ["neutral","chill","interested","excited","obsessed"][Math.min(4, Math.max(0, desire))];
 
@@ -472,7 +473,7 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY as string}` }),
+          Authorization: `Bearer ${token || anonKey}`,
         },
         body: JSON.stringify({ image_base64: base64, locale, tone, style: stylePreset }),
       });

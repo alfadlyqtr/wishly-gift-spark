@@ -310,6 +310,23 @@ const BrandDashboard = () => {
         throw questionsError;
       }
 
+      // Step 3: Fetch user profiles for these questions
+      const userIds = Array.from(new Set((questions || []).map((q: any) => q.user_id).filter(Boolean)));
+      
+      if (userIds.length > 0) {
+        const { data: profiles } = await (supabase as any)
+          .from("user_profiles")
+          .select("id, username, full_name, avatar_url")
+          .in("id", userIds);
+          
+        const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+        
+        return (questions || []).map((q: any) => ({
+          ...q,
+          user_profiles: profileMap.get(q.user_id) || null
+        }));
+      }
+
       console.log("Questions found:", questions?.length || 0);
       return questions || [];
     },
@@ -1086,7 +1103,22 @@ const BrandDashboard = () => {
 
                       {/* Question */}
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] flex items-center justify-center text-white font-semibold text-xs overflow-hidden">
+                        <button
+                          type="button"
+                          className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] flex items-center justify-center text-white font-semibold text-xs overflow-hidden cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-[hsl(var(--brand-cool-start))] transition-all"
+                          onClick={() => {
+                            if (!q.user_profiles) return;
+                            const engagement = userEngagement.find((u: any) => u.id === q.user_profiles.id);
+                            setSelectedUser(engagement || {
+                              id: q.user_profiles.id,
+                              name: q.user_profiles.full_name || q.user_profiles.username || "User",
+                              username: q.user_profiles.username,
+                              avatar_url: q.user_profiles.avatar_url,
+                              likedProducts: [],
+                              viewedProducts: [],
+                            });
+                          }}
+                        >
                           {q.user_profiles?.avatar_url ? (
                             <img
                               src={q.user_profiles.avatar_url}
@@ -1096,7 +1128,7 @@ const BrandDashboard = () => {
                           ) : (
                             (q.user_profiles?.full_name || q.user_profiles?.username || "U").charAt(0).toUpperCase()
                           )}
-                        </div>
+                        </button>
                         <div className="flex-1">
                           <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground mb-1">
                             <div className="flex items-center gap-2">
