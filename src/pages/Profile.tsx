@@ -117,16 +117,16 @@ const Profile = () => {
         .eq("id", user.id);
 
       if (error) {
-        toast.error("Error updating date of birth");
+        toast.error(t("profile.error_updating_dob", "Error updating date of birth"));
         console.error(error);
       } else {
-        toast.success("Date of birth updated");
+        toast.success(t("profile.dob_updated", "Date of birth updated"));
         await queryClient.invalidateQueries({ queryKey: ["profile"] });
         setIsEditing(false);
       }
     } catch (error) {
       console.error("Error:", error);
-      toast.error("Error updating profile");
+      toast.error(t("profile.error_updating", "Error updating profile"));
     }
   };
 
@@ -165,7 +165,7 @@ const Profile = () => {
         .eq("id", user.id);
       if (updateError) throw updateError;
 
-      toast.success("Profile photo updated");
+      toast.success(t("profile.avatar_updated", "Profile photo updated"));
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
     } catch (err: any) {
       console.error(err);
@@ -179,9 +179,9 @@ const Profile = () => {
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      toast.error("Error signing out");
+      toast.error(t("profile.error_signing_out", "Error signing out"));
     } else {
-      toast.success("Signed out successfully");
+      toast.success(t("profile.signed_out", "Signed out successfully"));
       navigate("/login");
     }
   };

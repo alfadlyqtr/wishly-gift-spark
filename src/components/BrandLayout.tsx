@@ -42,6 +42,10 @@ export const BrandLayout = () => {
     navigate("/brand/messages");
   };
 
+  const handleNotifications = () => {
+    navigate("/brand/notifications");
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-white to-slate-100">
       {/* Top header bar */}
@@ -59,7 +63,12 @@ export const BrandLayout = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="text-slate-600">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-slate-600"
+              onClick={handleNotifications}
+            >
               <Bell className="h-5 w-5" />
             </Button>
             <Button

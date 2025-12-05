@@ -24,6 +24,7 @@ import Settings from "./pages/Settings";
 import Messages from "./pages/Messages";
 import Chat from "./pages/Chat";
 import Notifications from "./pages/Notifications";
+import BrandNotifications from "./pages/BrandNotifications";
 import BrandDashboard from "./pages/BrandDashboard";
 import DebugDashboard from "./pages/DebugDashboard";
 import BrandProfile from "./pages/BrandProfile";
@@ -104,6 +105,7 @@ const App = () => (
             <Route path="/brand/explore" element={<Explore />} />
             <Route path="/brand/messages" element={<Messages />} />
             <Route path="/brand/chat/:id" element={<Chat />} />
+            <Route path="/brand/notifications" element={<BrandNotifications />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

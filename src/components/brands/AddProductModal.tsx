@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 /**
  * AddProductModal
@@ -25,6 +26,7 @@ export type AddProductModalProps = React.PropsWithChildren<{}>;
 export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) => {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   // Tab state and inputs
   const [activeTab, setActiveTab] = useState<"link" | "photo">("link");
@@ -106,7 +108,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
       }
       setPhotoFile(file);
       setImageUrl(publicUrlData.publicUrl);
-      toast.success("Image uploaded");
+      toast.success(t("brand.product.image_uploaded", "Image uploaded"));
     } catch (err: any) {
       const message = err?.message || "Failed to upload image";
       setUploadError(message);
@@ -118,11 +120,11 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
 
   const handleScrape = async (tone?: "tidy" | "confident" | "pro" | "sales" | "aggressive") => {
     if (!url) {
-      toast.error("Please paste a URL first.");
+      toast.error(t("brand.product.paste_url_first", "Please paste a URL first."));
       return;
     }
     if (!edgeFunctionUrl || !supabaseAnonKey) {
-      toast.error("AI gateway is not configured.");
+      toast.error(t("brand.product.ai_not_configured", "AI gateway is not configured."));
       return;
     }
 
@@ -218,7 +220,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
         }
       }
       
-      toast.success("Product details fetched");
+      toast.success(t("brand.product.details_fetched", "Product details fetched"));
     } catch (e: any) {
       toast.error(e?.message || "Failed to fetch product details");
     } finally {
@@ -229,11 +231,11 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
   const handleExtractFromPhoto = async () => {
     try {
       if (!photoFile) {
-        toast.error("Please upload a photo first");
+        toast.error(t("brand.product.upload_photo_first", "Please upload a photo first"));
         return;
       }
       if (!extractFromImageUrl || !supabaseUrl) {
-        toast.error("Image AI extractor is not configured.");
+        toast.error(t("brand.product.extractor_not_configured", "Image AI extractor is not configured."));
         return;
       }
 
@@ -283,10 +285,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
       }
 
       if (updated) {
-        toast.success("Extracted details from image");
+        toast.success(t("brand.product.extracted_from_image", "Extracted details from image"));
         setActiveTab("link");
       } else {
-        toast.info("Image analyzed but no structured details were found.");
+        toast.info(t("brand.product.no_details_found", "Image analyzed but no structured details were found."));
       }
     } catch (e: any) {
       const msg = e?.message || (typeof e === "string" ? e : "") || "Failed to extract from image";
@@ -298,7 +300,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
 
   const handleSave = async () => {
     if (!title) {
-      toast.error("Product name is required");
+      toast.error(t("brand.product.name_required", "Product name is required"));
       return;
     }
 
@@ -308,7 +310,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
       // Get brand ID
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Not authenticated");
+        toast.error(t("common.not_authenticated", "Not authenticated"));
         return;
       }
 
@@ -319,7 +321,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
         .maybeSingle();
 
       if (!brandData) {
-        toast.error("Brand not found");
+        toast.error(t("brand.product.brand_not_found", "Brand not found"));
         return;
       }
 
@@ -343,7 +345,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
       await queryClient.invalidateQueries({ queryKey: ["brand-products"] });
       await queryClient.invalidateQueries({ queryKey: ["brand-dashboard"] });
       
-      toast.success("Product added successfully");
+      toast.success(t("brand.product.added_successfully", "Product added successfully"));
       // Reset fields on success
       setUrl("");
       setManualText("");

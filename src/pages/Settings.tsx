@@ -68,14 +68,14 @@ const Settings = () => {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPassword || newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
+      toast.error(t("settings.password_min_length", "Password must be at least 6 characters"));
       return;
     }
     try {
       setChangingPassword(true);
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      toast.success("Password updated");
+      toast.success(t("settings.password_updated", "Password updated"));
       setNewPassword("");
     } catch (err: any) {
       toast.error(err?.message || "Failed to change password");
@@ -89,7 +89,7 @@ const Settings = () => {
       setSavingCountry(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Not authenticated");
+        toast.error(t("common.not_authenticated", "Not authenticated"));
         return;
       }
       const normalized = country.trim();
@@ -118,7 +118,7 @@ const Settings = () => {
       setSavingWishlistPrefs(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Not authenticated");
+        toast.error(t("common.not_authenticated", "Not authenticated"));
         return;
       }
       const payload: any = {
@@ -242,7 +242,7 @@ const Settings = () => {
       setVisibility(next);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Not authenticated");
+        toast.error(t("common.not_authenticated", "Not authenticated"));
         return;
       }
       const { error } = await (supabase as any)
@@ -263,7 +263,7 @@ const Settings = () => {
       setFollowMode(next);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Not authenticated");
+        toast.error(t("common.not_authenticated", "Not authenticated"));
         return;
       }
       const { error } = await (supabase as any)
@@ -283,14 +283,14 @@ const Settings = () => {
   const handleChangeEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmail || !newEmail.includes("@")) {
-      toast.error("Enter a valid email");
+      toast.error(t("settings.enter_valid_email", "Enter a valid email"));
       return;
     }
     try {
       setChangingEmail(true);
       const { error } = await supabase.auth.updateUser({ email: newEmail });
       if (error) throw error;
-      toast.success("Email update requested. Check your inbox to confirm.");
+      toast.success(t("settings.email_update_requested", "Email update requested. Check your inbox to confirm."));
       setNewEmail("");
     } catch (err: any) {
       toast.error(err?.message || "Failed to change email");
@@ -303,7 +303,7 @@ const Settings = () => {
     try {
       const { error } = await supabase.auth.signOut({ scope: "others" as any });
       if (error) throw error;
-      toast.success("Other sessions revoked");
+      toast.success(t("settings.sessions_revoked", "Other sessions revoked"));
     } catch (err: any) {
       toast.error(err?.message || "Failed to revoke sessions");
     }
@@ -316,7 +316,7 @@ const Settings = () => {
       const { data: session } = await supabase.auth.getSession();
       const accessToken = session.session?.access_token;
       if (!accessToken) {
-        toast.error("Not authenticated");
+        toast.error(t("common.not_authenticated", "Not authenticated"));
         return;
       }
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`;
@@ -326,7 +326,7 @@ const Settings = () => {
         body: JSON.stringify({ reason: "user_requested" }),
       });
       if (!res.ok) throw new Error(await res.text());
-      toast.success("Account deletion requested. You'll be signed out.");
+      toast.success(t("settings.account_deletion_requested", "Account deletion requested. You'll be signed out."));
       await supabase.auth.signOut({ scope: "global" as any });
       navigate("/");
     } catch (err: any) {
@@ -341,7 +341,7 @@ const Settings = () => {
       setSavingPrefs(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Not authenticated");
+        toast.error(t("common.not_authenticated", "Not authenticated"));
         return;
       }
       const { error } = await supabase
@@ -349,7 +349,7 @@ const Settings = () => {
         .update({ receive_notifications: notifications } as any)
         .eq("id", user.id);
       if (error) throw error;
-      toast.success("Preferences saved");
+      toast.success(t("settings.preferences_saved", "Preferences saved"));
     } catch (err: any) {
       toast.error(err?.message || "Failed to save preferences");
     } finally {

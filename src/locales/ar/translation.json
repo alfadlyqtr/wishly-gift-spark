@@ -76,7 +76,14 @@
     "zodiac": "البرج",
     "followers": "المتابِعون",
     "following": "تتابِع",
-    "sign_out": "تسجيل الخروج"
+    "sign_out": "تسجيل الخروج",
+    "error_updating_dob": "خطأ في تحديث تاريخ الميلاد",
+    "dob_updated": "تم تحديث تاريخ الميلاد",
+    "error_updating": "خطأ في تحديث الملف الشخصي",
+    "error_signing_out": "خطأ في تسجيل الخروج",
+    "signed_out": "تم تسجيل الخروج بنجاح",
+    "avatar_updated": "تم تحديث صورة الملف الشخصي",
+    "avatar_error": "فشل رفع الصورة"
   },
   "followers": {
     "back": "رجوع",
@@ -132,7 +139,15 @@
     "allow_likes": "السماح بالإعجابات على قوائم أمنياتي",
     "allow_comments": "السماح بالتعليقات على قوائم أمنياتي",
     "show_countdown": "إظهار عدٍّ تنازلي على صفحة المشاركة",
-    "wishlist_prefs_saved": "تم حفظ تفضيلات قوائم الأمنيات"
+    "wishlist_prefs_saved": "تم حفظ تفضيلات قوائم الأمنيات",
+    "password_min_length": "يجب أن تكون كلمة المرور ٦ أحرف على الأقل",
+    "password_updated": "تم تحديث كلمة المرور",
+    "enter_valid_email": "أدخل بريدًا إلكترونيًا صالحًا",
+    "email_update_requested": "تم طلب تحديث البريد. تحقق من صندوق الوارد للتأكيد.",
+    "sessions_revoked": "تم إلغاء الجلسات الأخرى",
+    "account_deletion_requested": "تم طلب حذف الحساب. سيتم تسجيل خروجك.",
+    "preferences_saved": "تم حفظ التفضيلات",
+    "country_saved": "تم تحديث الدولة"
   }
   ,
   "common": {
@@ -149,7 +164,8 @@
     "not_set": "غير محدد",
     "back": "رجوع",
     "delete": "حذف",
-    "error_generic": "حدث خطأ ما"
+    "error_generic": "حدث خطأ ما",
+    "not_authenticated": "غير مصادق"
   }
   ,
   "wishlist": {
@@ -544,7 +560,51 @@
     "dashboard_top_products_subtitle": "تحكم سريع في أفضل منتجاتك - اضغط على الصف لإدارته.",
     "dashboard_manage_products": "إدارة كل المنتجات",
     "dashboard_edit_product": "تعديل المنتج",
-    "dashboard_view_product": "عرض المنتج"
+    "dashboard_view_product": "عرض المنتج",
+    "question_answered": "تم نشر الإجابة!",
+    "question_answer_error": "فشل نشر الإجابة",
+    "question_deleted": "تم حذف السؤال",
+    "question_delete_error": "فشل حذف السؤال",
+    "product": {
+      "image_uploaded": "تم رفع الصورة",
+      "paste_url_first": "الرجاء لصق رابط أولاً.",
+      "ai_not_configured": "بوابة الذكاء الاصطناعي غير مُعدّة.",
+      "details_fetched": "تم جلب تفاصيل المنتج",
+      "upload_photo_first": "الرجاء رفع صورة أولاً",
+      "extractor_not_configured": "مستخرج الصور بالذكاء الاصطناعي غير مُعدّ.",
+      "extracted_from_image": "تم استخراج التفاصيل من الصورة",
+      "no_details_found": "تم تحليل الصورة ولكن لم يتم العثور على تفاصيل منظمة.",
+      "name_required": "اسم المنتج مطلوب",
+      "brand_not_found": "العلامة التجارية غير موجودة",
+      "added_successfully": "تمت إضافة المنتج بنجاح"
+    },
+    "notifications_page": {
+      "title": "إشعارات العلامة التجارية",
+      "subtitle": "جميع التفاعلات والأنشطة المتعلقة بعلامتك التجارية ستظهر هنا.",
+      "back_to_dashboard": "لوحة التحكم",
+      "pulse_label": "نبض العلامة",
+      "empty_title": "لا جديد حالياً",
+      "live_label": "نشاط العلامة المباشر",
+      "live_hint": "ستظهر هنا أحداث قوائم الأمنيات والمنتجات الجديدة.",
+      "empty_body": "عندما تتم إضافة منتجاتك إلى قوائم الأمنيات أو مشاهدتها أو الإعجاب بها، سنعرض لك أهم الإشارات هنا.",
+      "empty_body_secondary": "راقب هذه القائمة لاكتشاف المستخدمين المميزين والمنتجات الصاعدة واللحظات عالية الاهتمام.",
+      "cta_add_products": "أضف أو أبرز منتجات",
+      "cta_view_insights": "انتقل إلى لوحة تحليلات العلامة",
+      "mini_metric_1_label": "نشاط الأمنيات",
+      "mini_metric_1_hint": "إجمالي الإضافات لقوائم الأمنيات عبر جميع منتجاتك.",
+      "mini_metric_2_label": "مشاهدات المنتجات",
+      "mini_metric_2_hint": "إجمالي المشاهدات على منتجات علامتك التجارية.",
+      "mini_metric_3_label": "المعجبون والمتابعون",
+      "mini_metric_3_hint": "الأشخاص الذين شاهدوا أو أعجبوا بمنتجاتك.",
+      "loading": "جاري التحميل…"
+    }
+  },
+  "notfound": {
+    "message": "عذراً! الصفحة غير موجودة",
+    "return_home": "العودة للرئيسية"
+  },
+  "footer": {
+    "copyright": "© 2025 Wishly. جميع الحقوق محفوظة."
   },
   "zodiac": {
   "aries": "الحمل",
