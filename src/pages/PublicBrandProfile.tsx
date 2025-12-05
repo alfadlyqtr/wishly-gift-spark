@@ -1,11 +1,74 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Store, Instagram, Twitter, Facebook, Linkedin, Globe, ArrowLeft, UserPlus, UserCheck } from "lucide-react";
+import { Store, Instagram, Twitter, Facebook, Linkedin, Globe, ArrowLeft, UserPlus, UserCheck, Mail, Phone, MapPin, Youtube, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import BackButton from "@/components/BackButton";
 import "@/styles/brand-profile-card.css";
+
+// Custom TikTok Icon since it's not in Lucide v1
+const TikTokIcon = ({ className }: { className?: string }) => (
+  <svg 
+    className={className} 
+    viewBox="0 0 24 24" 
+    fill="currentColor"
+    stroke="none"
+  >
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+  </svg>
+);
+
+/**
+ * Convert a social media handle/username to a full URL.
+ * Handles cases where user enters:
+ * - Full URL (https://instagram.com/user)
+ * - Partial URL (instagram.com/user)
+ * - Username with @ (@username)
+ * - Plain username (username)
+ */
+const getSocialUrl = (platform: string, value: string | undefined): string => {
+  if (!value) return "";
+  const url = value.trim();
+  
+  // If it's already a URL, return it
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+
+  // If it looks like a domain (e.g. instagram.com/foo), prepend https://
+  if (url.includes(".") && !url.startsWith("@")) {
+    return `https://${url}`;
+  }
+
+  // Clean up value (remove @ if present)
+  const cleanValue = url.replace(/^@/, "");
+
+  // Map platforms to their base URLs
+  const baseUrls: Record<string, string> = {
+    instagram: "https://instagram.com/",
+    twitter: "https://twitter.com/",
+    facebook: "https://facebook.com/",
+    linkedin: "https://linkedin.com/company/",
+    tiktok: "https://tiktok.com/@",
+    youtube: "https://youtube.com/@",
+    whatsapp: "https://wa.me/",
+    website: "https://"
+  };
+
+  const baseUrl = baseUrls[platform];
+  if (baseUrl) {
+    // Special handling for WhatsApp: remove non-digit characters (except + if needed, but wa.me prefers clean numbers)
+    if (platform === 'whatsapp') {
+      const number = cleanValue.replace(/[^0-9]/g, '');
+      return `${baseUrl}${number}`;
+    }
+    if (platform === 'website') return `https://${cleanValue}`;
+    return `${baseUrl}${cleanValue}`;
+  }
+
+  return `https://${cleanValue}`;
+};
 
 interface BrandProfile {
   id: string;
@@ -17,6 +80,9 @@ interface BrandProfile {
   twitter?: string;
   facebook?: string;
   linkedin?: string;
+  tiktok?: string;
+  youtube?: string;
+  whatsapp?: string;
   brand_website?: string;
   is_public: boolean;
 }
@@ -125,11 +191,14 @@ const PublicBrandProfile = () => {
   if (!brand) return null;
 
   const socialLinks = [
-    { icon: Instagram, url: brand.instagram, id: "instagram", color: "#d62976" },
-    { icon: Twitter, url: brand.twitter, id: "twitter", color: "#00acee" },
-    { icon: Facebook, url: brand.facebook, id: "facebook", color: "#3b5998" },
-    { icon: Linkedin, url: brand.linkedin, id: "linkedin", color: "#0077b5" },
-  ].filter(link => link.url);
+    { icon: Instagram, url: getSocialUrl("instagram", brand.instagram), id: "instagram", color: "#d62976", original: brand.instagram },
+    { icon: Twitter, url: getSocialUrl("twitter", brand.twitter), id: "twitter", color: "#00acee", original: brand.twitter },
+    { icon: Facebook, url: getSocialUrl("facebook", brand.facebook), id: "facebook", color: "#3b5998", original: brand.facebook },
+    { icon: Linkedin, url: getSocialUrl("linkedin", brand.linkedin), id: "linkedin", color: "#0077b5", original: brand.linkedin },
+    { icon: TikTokIcon, url: getSocialUrl("tiktok", brand.tiktok), id: "tiktok", color: "#000000", original: brand.tiktok },
+    { icon: Youtube, url: getSocialUrl("youtube", brand.youtube), id: "youtube", color: "#FF0000", original: brand.youtube },
+    { icon: MessageCircle, url: getSocialUrl("whatsapp", brand.whatsapp), id: "whatsapp", color: "#25D366", original: brand.whatsapp },
+  ].filter(link => link.original);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 py-8 px-4">
@@ -175,7 +244,7 @@ const PublicBrandProfile = () => {
               })}
               {brand.brand_website && (
                 <a
-                  href={brand.brand_website}
+                  href={getSocialUrl("website", brand.brand_website)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="brand-social-link"

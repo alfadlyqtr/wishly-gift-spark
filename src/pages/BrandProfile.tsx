@@ -686,7 +686,6 @@ const BrandProfile = () => {
               id="instagram"
               value={instagram}
               onChange={(e) => setInstagram(e.target.value)}
-              placeholder="@yourbrand"
               className="border-slate-200 focus:border-primary"
             />
           </div>
@@ -700,7 +699,6 @@ const BrandProfile = () => {
               id="twitter"
               value={twitter}
               onChange={(e) => setTwitter(e.target.value)}
-              placeholder="@yourbrand"
               className="border-slate-200 focus:border-primary"
             />
           </div>
@@ -714,7 +712,6 @@ const BrandProfile = () => {
               id="facebook"
               value={facebook}
               onChange={(e) => setFacebook(e.target.value)}
-              placeholder="facebook.com/yourbrand"
               className="border-slate-200 focus:border-primary"
             />
           </div>
@@ -728,7 +725,6 @@ const BrandProfile = () => {
               id="linkedin"
               value={linkedin}
               onChange={(e) => setLinkedin(e.target.value)}
-              placeholder="linkedin.com/company/yourbrand"
               className="border-slate-200 focus:border-primary"
             />
           </div>
@@ -744,7 +740,6 @@ const BrandProfile = () => {
               id="tiktok"
               value={tiktok}
               onChange={(e) => setTiktok(e.target.value)}
-              placeholder="@yourbrand"
               className="border-slate-200 focus:border-primary"
             />
           </div>
@@ -758,7 +753,6 @@ const BrandProfile = () => {
               id="youtube"
               value={youtube}
               onChange={(e) => setYoutube(e.target.value)}
-              placeholder="youtube.com/@yourbrand"
               className="border-slate-200 focus:border-primary"
             />
           </div>
@@ -772,7 +766,6 @@ const BrandProfile = () => {
               id="whatsapp"
               value={whatsapp}
               onChange={(e) => setWhatsapp(e.target.value)}
-              placeholder="+1234567890"
               className="border-slate-200 focus:border-primary"
             />
           </div>
