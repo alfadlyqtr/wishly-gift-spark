@@ -89,7 +89,7 @@ const Signup = () => {
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">{t('auth.username')}</Label>
+              <Label htmlFor="username">{t('auth.username')}<span className="text-red-500 ml-0.5">*</span></Label>
               <Input
                 id="username"
                 type="text"
@@ -101,37 +101,40 @@ const Signup = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="fullName">{t('auth.full_name')}</Label>
+              <Label htmlFor="fullName">{t('auth.full_name')}<span className="text-red-500 ml-0.5">*</span></Label>
               <Input
                 id="fullName"
                 type="text"
                 placeholder={t('auth.full_name_placeholder', 'John Doe')}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dob">{t('auth.dob')}</Label>
+              <Label htmlFor="dob">{t('auth.dob')}<span className="text-red-500 ml-0.5">*</span></Label>
               <Input
                 id="dob"
                 type="date"
                 value={dob}
                 onChange={(e) => setDob(e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="country">{t('auth.country', 'Country/Region')}</Label>
+              <Label htmlFor="country">{t('auth.country', 'Country/Region')}<span className="text-red-500 ml-0.5">*</span></Label>
               <Input
                 id="country"
                 type="text"
                 placeholder={t('auth.country_placeholder', 'Qatar')}
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">{t('auth.email')}</Label>
+              <Label htmlFor="email">{t('auth.email')}<span className="text-red-500 ml-0.5">*</span></Label>
               <Input
                 id="email"
                 type="email"
@@ -142,7 +145,7 @@ const Signup = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">{t('auth.password')}</Label>
+              <Label htmlFor="password">{t('auth.password')}<span className="text-red-500 ml-0.5">*</span></Label>
               <Input
                 id="password"
                 type="password"

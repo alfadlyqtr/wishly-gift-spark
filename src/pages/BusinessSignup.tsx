@@ -103,17 +103,18 @@ const BusinessSignup = () => {
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="fullName">{t("auth.business_manager_name", "Manager name")}</Label>
+              <Label htmlFor="fullName">{t("auth.business_manager_name", "Manager name")}<span className="text-red-500 ml-0.5">*</span></Label>
               <Input
                 id="fullName"
                 type="text"
                 placeholder={t("auth.business_manager_name_placeholder", "Manager name")}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="brandName">{t("auth.brand_name", "Brand name")}</Label>
+              <Label htmlFor="brandName">{t("auth.brand_name", "Brand name")}<span className="text-red-500 ml-0.5">*</span></Label>
               <Input
                 id="brandName"
                 type="text"
@@ -131,11 +132,10 @@ const BusinessSignup = () => {
                 placeholder={t("auth.brand_website_placeholder", "https://yourstore.com")}
                 value={website}
                 onChange={(e) => setWebsite(e.target.value)}
-                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="country">{t("auth.country", "Country/Region")}</Label>
+              <Label htmlFor="country">{t("auth.country", "Country/Region")}<span className="text-red-500 ml-0.5">*</span></Label>
               <Input
                 id="country"
                 type="text"
@@ -146,17 +146,18 @@ const BusinessSignup = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="category">{t("auth.brand_category", "Brand category")}</Label>
+              <Label htmlFor="category">{t("auth.brand_category", "Brand category")}<span className="text-red-500 ml-0.5">*</span></Label>
               <Input
                 id="category"
                 type="text"
                 placeholder={t("auth.brand_category_placeholder", "Electronics, Gifts, Fashion...")}
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">{t("auth.email")}</Label>
+              <Label htmlFor="email">{t("auth.email")}<span className="text-red-500 ml-0.5">*</span></Label>
               <Input
                 id="email"
                 type="email"
@@ -167,7 +168,7 @@ const BusinessSignup = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">{t("auth.password")}</Label>
+              <Label htmlFor="password">{t("auth.password")}<span className="text-red-500 ml-0.5">*</span></Label>
               <Input
                 id="password"
                 type="password"
@@ -179,7 +180,7 @@ const BusinessSignup = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">{t("auth.confirm_password", "Confirm password")}</Label>
+              <Label htmlFor="confirmPassword">{t("auth.confirm_password", "Confirm password")}<span className="text-red-500 ml-0.5">*</span></Label>
               <Input
                 id="confirmPassword"
                 type="password"

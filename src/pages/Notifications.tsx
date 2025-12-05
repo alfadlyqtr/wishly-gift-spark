@@ -7,15 +7,18 @@ import BackButton from "@/components/BackButton";
 import { Bell, Heart, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { acceptFollowRequest, declineFollowRequest } from "@/lib/follow";
+import { acceptFollowRequest, declineFollowRequest, requestFollow, cancelFollow } from "@/lib/follow";
 import { useTranslation } from "react-i18next";
 import { formatDistanceToNow } from "date-fns";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 type ActivityFilter = "all" | "follows" | "likes" | "comments";
 
 const Notifications = () => {
   const [uid, setUid] = useState<string | null>(null);
   const [filter, setFilter] = useState<ActivityFilter>("all");
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
@@ -29,6 +32,7 @@ const Notifications = () => {
   const { data = [], isLoading } = useQuery({
     queryKey: ["activities", uid],
     enabled: !!supabase && !!uid,
+    staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("activities")
@@ -45,6 +49,7 @@ const Notifications = () => {
   const { data: pendingFollowData = [], isLoading: pendingLoading } = useQuery({
     queryKey: ["notifications", "pending_follows", uid],
     enabled: !!supabase && !!uid,
+    staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await supabase
         .from("followers")
@@ -61,6 +66,7 @@ const Notifications = () => {
   const { data: socialActivity = [], isLoading: socialLoading } = useQuery({
     queryKey: ["notifications", "social", uid],
     enabled: !!supabase && !!uid,
+    staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       // Get user's wishlists
       const { data: wishlists } = await supabase
@@ -90,6 +96,23 @@ const Notifications = () => {
         .order("created_at", { ascending: false })
         .limit(50);
 
+      // Fetch profiles for likes and comments
+      const userIds = new Set<string>();
+      (likes || []).forEach((l: any) => l.user_id && userIds.add(l.user_id));
+      (comments || []).forEach((c: any) => c.user_id && userIds.add(c.user_id));
+
+      const profileMap = new Map();
+      if (userIds.size > 0) {
+        const { data: profiles } = await supabase
+          .from("user_profiles")
+          .select("id, username, full_name, avatar_url")
+          .in("id", Array.from(userIds));
+        
+        if (profiles) {
+          profiles.forEach((p: any) => profileMap.set(p.id, p));
+        }
+      }
+
       // Combine and sort
       const likeActivities = (likes || []).map((l: any) => ({
         type: "like",
@@ -98,6 +121,7 @@ const Notifications = () => {
         wishlist_id: l.wishlist_id,
         created_at: l.created_at,
         wishlist_title: wishlists.find((w: any) => w.id === l.wishlist_id)?.title || "Wishlist",
+        user_profiles: profileMap.get(l.user_id) || null
       }));
 
       const commentActivities = (comments || []).map((c: any) => ({
@@ -108,6 +132,7 @@ const Notifications = () => {
         content: c.content,
         created_at: c.created_at,
         wishlist_title: wishlists.find((w: any) => w.id === c.wishlist_id)?.title || "Wishlist",
+        user_profiles: profileMap.get(c.user_id) || null
       }));
 
       return [...likeActivities, ...commentActivities].sort(
@@ -115,6 +140,37 @@ const Notifications = () => {
       );
     },
   });
+
+  const { data: followStatus, isLoading: followStatusLoading } = useQuery({
+    queryKey: ["notifications", "follow_status", uid, selectedUser?.id],
+    enabled: !!supabase && !!uid && !!selectedUser?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("followers")
+        .select("status")
+        .eq("user_id", uid)
+        .eq("following_id", selectedUser.id)
+        .maybeSingle();
+      return data?.status || null;
+    },
+  });
+
+  const handleFollowToggle = async () => {
+    if (!selectedUser?.id || !uid) return;
+    try {
+      if (followStatus === "accepted" || followStatus === "pending") {
+        await cancelFollow(selectedUser.id);
+        toast.success(t("followers.unfollowed", "Unfollowed"));
+      } else {
+        await requestFollow(selectedUser.id);
+        toast.success(t("followers.follow_sent", "Request sent"));
+      }
+      queryClient.invalidateQueries({ queryKey: ["notifications", "follow_status"] });
+    } catch (err) {
+      console.error(err);
+      toast.error(t("common.error_generic", "Something went wrong"));
+    }
+  };
 
   const approve = useMutation({
     mutationFn: (fromUserId: string) => acceptFollowRequest(fromUserId),
@@ -208,9 +264,9 @@ const Notifications = () => {
             (pendingFollowData as any[]).map((r: any) => (
               <div key={`${r.user_id}-${r.created_at}`} className="flex items-center justify-between rounded-xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 mb-2">
                 <div className="flex items-center gap-4 min-w-0">
-                  <span className="relative flex shrink-0 overflow-hidden rounded-full h-16 w-16 ring-2 ring-white/80">
+                  <button type="button" onClick={() => setSelectedUser(r.user_profiles)} className="relative flex shrink-0 overflow-hidden rounded-full h-16 w-16 ring-2 ring-white/80 cursor-pointer hover:opacity-90 transition-opacity">
                     <img className="h-full w-full object-cover" src={r.user_profiles?.avatar_url || "/avatar.svg"} alt={r.user_profiles?.full_name || r.user_profiles?.username || "user"} />
-                  </span>
+                  </button>
                   <div className="leading-tight min-w-0">
                     <div className="font-semibold truncate max-w-[160px]">{r.user_profiles?.full_name || r.user_profiles?.username || r.user_id}</div>
                     <div className="text-xs text-muted-foreground truncate max-w-[220px]">{t('notifications.requested_to_follow_you', 'Requested to follow you')}</div>
@@ -267,7 +323,9 @@ const Notifications = () => {
             return true;
           });
 
-          if (filteredActivities.length === 0 && (pendingFollowData as any[]).length === 0) {
+          const visibleActivities = filteredActivities.filter((a: any) => !dismissedIds.has(a.id));
+
+          if (visibleActivities.length === 0 && (pendingFollowData as any[]).length === 0) {
             return (
               <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 text-sm text-muted-foreground">
                 {t('notifications.all_caught_up', "You're all caught up.")}
@@ -275,33 +333,82 @@ const Notifications = () => {
             );
           }
 
-          return filteredActivities.map((a: any) => {
+          return (
+            <div className="space-y-2">
+              {visibleActivities.length > 0 && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDismissedIds((prev) => {
+                        const next = new Set(prev);
+                        visibleActivities.forEach((item: any) => {
+                          if (item?.id) next.add(item.id);
+                        });
+                        return next;
+                      });
+                    }}
+                    className="inline-flex items-center gap-1 rounded-full bg-slate-100 hover:bg-slate-200 text-[11px] font-medium text-slate-600 px-3 py-1 border border-slate-200"
+                  >
+                    {t('notifications.clear_all', 'Clear all')}
+                  </button>
+                </div>
+              )}
+
+              {visibleActivities.map((a: any) => {
             // Render social activity (likes/comments)
             if (a.type === "like" || a.type === "comment") {
               const timeAgo = formatDistanceToNow(new Date(a.created_at), { addSuffix: true });
 
               return (
                 <div key={a.id} className="flex items-start gap-3 rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-3">
+                  <button type="button" onClick={() => setSelectedUser(a.user_profiles)} className="relative flex shrink-0 overflow-hidden rounded-full h-9 w-9 ring-2 ring-white/80 cursor-pointer hover:opacity-90 transition-opacity">
+                    <img
+                      className="h-full w-full object-cover"
+                      src={a.user_profiles?.avatar_url || "/avatar.svg"}
+                      alt={a.user_profiles?.full_name || a.user_profiles?.username || "User"}
+                    />
+                  </button>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      {a.type === "like" ? (
-                        <Heart className="h-4 w-4 text-[#be123c] fill-[#be123c]" />
-                      ) : (
-                        <MessageCircle className="h-4 w-4 text-blue-600" />
-                      )}
-                      <span className="text-sm text-muted-foreground">
+                    <div className="text-sm">
+                      <span className="font-semibold text-foreground">
+                        {a.user_profiles?.full_name || a.user_profiles?.username || "Someone"}
+                      </span>
+                      <span className="text-muted-foreground ml-1">
                         {a.type === "like"
-                          ? t("notifications.someone_liked_wishlist", "Someone liked your wishlist")
-                          : t("notifications.someone_commented_wishlist", "Someone commented on your wishlist")}
+                          ? t("notifications.liked_your_wishlist", "liked your wishlist")
+                          : t("notifications.commented_on_your_wishlist", "commented on your wishlist")}
                       </span>
                     </div>
-                    <div className="text-xs text-muted-foreground truncate mt-0.5">
+                    <div className="text-xs text-muted-foreground font-medium mt-0.5 truncate">
                       {a.wishlist_title}
                     </div>
                     {a.type === "comment" && a.content && (
                       <div className="text-sm text-foreground mt-1 line-clamp-2">"{a.content}"</div>
                     )}
-                    <div className="text-xs text-muted-foreground mt-1">{timeAgo}</div>
+                    <div className="flex items-center justify-between mt-1">
+                      <div className="flex items-center gap-2">
+                        {a.type === "like" ? (
+                          <Heart className="h-3 w-3 text-[#be123c] fill-[#be123c]" />
+                        ) : (
+                          <MessageCircle className="h-3 w-3 text-blue-600" />
+                        )}
+                        <span className="text-xs text-muted-foreground">{timeAgo}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDismissedIds((prev) => {
+                            const next = new Set(prev);
+                            next.add(a.id);
+                            return next;
+                          });
+                        }}
+                        className="inline-flex items-center rounded-full bg-slate-100 hover:bg-slate-200 text-[11px] font-medium text-slate-600 px-2 py-0.5 border border-slate-200"
+                      >
+                        {t('notifications.clear_one', 'Clear')}
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -312,13 +419,13 @@ const Notifications = () => {
             <div key={a.id} className="flex items-center justify-between rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.06)] p-3">
               <div className="flex items-center gap-3 min-w-0">
                 {a.user_profiles ? (
-                  <span className="relative flex shrink-0 overflow-hidden rounded-full h-9 w-9 ring-2 ring-white/80">
+                  <button type="button" onClick={() => setSelectedUser(a.user_profiles)} className="relative flex shrink-0 overflow-hidden rounded-full h-9 w-9 ring-2 ring-white/80 cursor-pointer hover:opacity-90 transition-opacity">
                     <img
                       className="h-full w-full object-cover"
                       src={a.user_profiles.avatar_url || "/avatar.svg"}
                       alt={a.user_profiles.full_name || a.user_profiles.username || "user"}
                     />
-                  </span>
+                  </button>
                 ) : null}
                 <div className="min-w-0">
                   <div className="font-medium truncate">
@@ -362,22 +469,83 @@ const Notifications = () => {
                       {`${a.user_profiles.username ? `@${a.user_profiles.username}` : ''}${a.user_profiles.email ? (a.user_profiles.username ? ' · ' : '') + a.user_profiles.email : ''}`}
                     </div>
                   )}
-                  <div className="text-xs text-muted-foreground">
-                    {(() => {
-                      const d = new Date(a.created_at);
-                      if (i18n.language === 'ar') {
-                        return d.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
-                      }
-                      return d.toLocaleString();
-                    })()}
+                  <div className="flex items-center justify-between mt-1">
+                    <div className="text-xs text-muted-foreground">
+                      {(() => {
+                        const d = new Date(a.created_at);
+                        if (i18n.language === 'ar') {
+                          return d.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
+                        }
+                        return d.toLocaleString();
+                      })()}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDismissedIds((prev) => {
+                          const next = new Set(prev);
+                          next.add(a.id);
+                          return next;
+                        });
+                      }}
+                      className="inline-flex items-center rounded-full bg-slate-100 hover:bg-slate-200 text-[11px] font-medium text-slate-600 px-2 py-0.5 border border-slate-200"
+                    >
+                      {t('notifications.clear_one', 'Clear')}
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
             );
-          });
+          })}
+            </div>
+          );
         })()}
       </div>
+
+      {selectedUser && (
+        <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
+          <DialogContent className="max-w-xs sm:max-w-sm border-0 bg-transparent shadow-none p-0">
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/90 backdrop-blur ring-1 ring-white/70 shadow-[0_18px_40px_rgba(0,0,0,0.1)] p-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="relative flex shrink-0 overflow-hidden rounded-full h-12 w-12 ring-2 ring-white/80">
+                  <img
+                    src={selectedUser.avatar_url || "/avatar.svg"}
+                    alt={selectedUser.full_name || selectedUser.username || "User"}
+                    className="h-full w-full object-cover"
+                  />
+                </span>
+                <div className="min-w-0">
+                  <div className="font-semibold truncate text-base">{selectedUser.full_name || selectedUser.username || "User"}</div>
+                  {selectedUser.username && (
+                    <div className="text-sm text-muted-foreground">@{selectedUser.username}</div>
+                  )}
+                </div>
+              </div>
+              {selectedUser.id !== uid && (
+                <button
+                  type="button"
+                  onClick={handleFollowToggle}
+                  disabled={followStatusLoading}
+                  className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                    followStatus === "accepted" || followStatus === "pending"
+                      ? "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      : "bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-white hover:opacity-90 shadow-sm"
+                  }`}
+                >
+                  {followStatusLoading
+                    ? t('common.loading', 'Loading...')
+                    : followStatus === "accepted"
+                      ? t("followers.unfollow", "Unfollow")
+                      : followStatus === "pending"
+                        ? t("followers.cancel_request", "Cancel request")
+                        : t("explore.follow", "Follow")}
+                </button>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

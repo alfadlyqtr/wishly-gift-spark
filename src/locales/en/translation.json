@@ -39,7 +39,7 @@
     "forgot_password_button": "Send Reset Link",
     "forgot_password_success": "Password reset email sent. Please check your inbox.",
     "back_to_login": "Back to login",
-    "country": "Country/Region",
+    "country": "Country",
     "login_success": "Welcome back!",
     "signup_success": "Account created! Please check your email to confirm.",
     "email_placeholder": "you@example.com",
@@ -329,6 +329,8 @@
     "activity_follow_accepted": "You accepted a follow request",
     "activity_new_follower": "You have a new follower",
     "activity_wish_claimed": "New claim request",
+    "liked_your_wishlist": "liked your wishlist",
+    "commented_on_your_wishlist": "commented on your wishlist",
     "ok": "OK 👍",
     "no_thanks": "No thanks"
   }
