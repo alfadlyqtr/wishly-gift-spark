@@ -435,6 +435,14 @@
     "no_thanks": "لا، شكراً"
   }
   ,
+  "footer": {
+    "copyright": "© 2025 Wishly. جميع الحقوق محفوظة.",
+    "contact": "تواصل معنا",
+    "privacy_terms": "الخصوصية والشروط",
+    "made_by": "تم التطوير بواسطة",
+    "made_by_name": "TMW"
+  }
+  ,
   "dashboard_countdown": {
     "countdown_today": "اليوم",
     "countdown_full": "متبقي {{days}} يوم {{hours}} ساعة {{minutes}} دقيقة"
@@ -647,22 +655,19 @@
     "message": "عذراً! الصفحة غير موجودة",
     "return_home": "العودة للرئيسية"
   },
-  "footer": {
-    "copyright": "© 2025 Wishly. جميع الحقوق محفوظة."
-  },
   "zodiac": {
-  "aries": "الحمل",
-  "taurus": "الثور",
-  "gemini": "الجوزاء",
-  "cancer": "السرطان",
-  "leo": "الأسد",
-  "virgo": "العذراء",
-  "libra": "الميزان",
-  "scorpio": "العقرب",
-  "sagittarius": "القوس",
-  "capricorn": "الجدي",
-  "aquarius": "الدلو",
-  "pisces": "الحوت",
-  "unknown": "غير معروف"
-}
+    "aries": "الحمل",
+    "taurus": "الثور",
+    "gemini": "الجوزاء",
+    "cancer": "السرطان",
+    "leo": "الأسد",
+    "virgo": "العذراء",
+    "libra": "الميزان",
+    "scorpio": "العقرب",
+    "sagittarius": "القوس",
+    "capricorn": "الجدي",
+    "aquarius": "الدلو",
+    "pisces": "الحوت",
+    "unknown": "غير معروف"
+  }
 }

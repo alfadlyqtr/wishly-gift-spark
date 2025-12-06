@@ -69,9 +69,9 @@ const HomePage = () => {
       <header className="relative z-10 container mx-auto px-4 py-6 flex justify-between items-center backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <img
-            src="/logo-wakti.jpg"
-            alt="Wakti"
-            className="h-16 sm:h-20 drop-shadow-lg"
+            src="/wishly logo trans.png"
+            alt="Wishly"
+            className="h-14 sm:h-16 w-14 sm:w-16 rounded-full object-cover drop-shadow-lg"
           />
         </div>
         <LanguageToggle />
@@ -359,10 +359,31 @@ const HomePage = () => {
         </motion.div>
       </section>
 
-      {/* Footer (keep) */}
-      <footer className="border-t py-8 mt-20">
-        <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>{t('footer.copyright', '© 2025 Wishly. All rights reserved.')}</p>
+      {/* Footer (keep, extended) */}
+      <footer className="border-t py-6 mt-20 text-sm">
+        <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-3 text-muted-foreground">
+          <p className="text-center md:text-left">
+            {t('footer.copyright', '© 2025 Wishly. All rights reserved.')}
+          </p>
+          <div className="flex flex-wrap items-center justify-center md:justify-end gap-4">
+            <a href="#contact" className="hover:text-primary transition-colors">
+              {t('footer.contact', 'Contact us')}
+            </a>
+            <a href="#privacy" className="hover:text-primary transition-colors">
+              {t('footer.privacy_terms', 'Privacy & Terms')}
+            </a>
+            <span className="inline-flex items-center gap-1">
+              <span>{t('footer.made_by', 'Made by')}</span>
+              <a
+                href="https://tmw.qa/"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="font-semibold text-primary hover:underline"
+              >
+                {t('footer.made_by_name', 'TMW')}
+              </a>
+            </span>
+          </div>
         </div>
       </footer>
     </div>

@@ -450,7 +450,11 @@
     "return_home": "Return to Home"
   },
   "footer": {
-    "copyright": "© 2025 Wishly. All rights reserved."
+    "copyright": "© 2025 Wishly. All rights reserved.",
+    "contact": "Contact us",
+    "privacy_terms": "Privacy & Terms",
+    "made_by": "Made by",
+    "made_by_name": "TMW"
   },
   "zodiac": {
     "aries": "Aries",
