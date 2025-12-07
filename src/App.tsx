@@ -6,7 +6,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { MainLayout } from "./components/MainLayout";
 import { BrandLayout } from "./components/BrandLayout";
+import AdminLayout from "./components/AdminLayout";
+import AdminGate from "./components/AdminGate";
 import HomePage from "./pages/HomePage";
+import PrivacyTerms from "./pages/PrivacyTerms";
+import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import SignupChooser from "./pages/SignupChooser";
@@ -36,6 +40,9 @@ import BrandFollowing from "./pages/BrandFollowing";
 import PublicBrandProfile from "./pages/PublicBrandProfile";
 import BrandsFollowing from "./pages/BrandsFollowing";
 import NotFound from "./pages/NotFound";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminUsers from "./pages/AdminUsers";
+import AdminContactInbox from "./pages/AdminContactInbox";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +61,8 @@ const App = () => (
           {/* Public routes */}
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy" element={<PrivacyTerms />} />
           <Route path="/signup" element={<SignupChooser />} />
           <Route path="/signup/user" element={<Signup />} />
           <Route path="/signup/business" element={<BusinessSignup />} />
@@ -64,6 +73,16 @@ const App = () => (
           <Route path="/w/:id" element={<ShortWishRedirect />} />
           {/* Public brand profile */}
           <Route path="/brand/:id" element={<PublicBrandProfile />} />
+
+          {/* Superadmin entrypoint */}
+          <Route
+            path="/mqtr"
+            element={<AdminGate />}
+          >
+            <Route index element={<AdminDashboard />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="contact" element={<AdminContactInbox />} />
+          </Route>
 
           {/* Authenticated app shell - personal users */}
           <Route

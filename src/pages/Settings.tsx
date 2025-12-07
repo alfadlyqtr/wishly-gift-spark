@@ -8,7 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Shield, Trash2, Smartphone, Globe2, Bell } from "lucide-react";
+import { ArrowLeft, Shield, Trash2, Smartphone, Globe2, Bell, Mail, Send, Loader2, CheckCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BackButton from "@/components/BackButton";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -34,6 +36,54 @@ const Settings = () => {
   const [followMode, setFollowMode] = useState<"open" | "approval">("open");
   const [followSupported, setFollowSupported] = useState<boolean>(true);
   const [loadingFollow, setLoadingFollow] = useState<boolean>(false);
+
+  // Contact form state
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactTopic, setContactTopic] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactSubmitting, setContactSubmitting] = useState(false);
+  const [contactSubmitted, setContactSubmitted] = useState(false);
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactName || !contactEmail || !contactTopic || !contactMessage) {
+      toast.error(t('contact.fill_required', 'Please fill in all required fields'));
+      return;
+    }
+    
+    setContactSubmitting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error } = await (supabase as any)
+        .from('contact_messages')
+        .insert({
+          user_id: user?.id || null,
+          name: contactName,
+          email: contactEmail,
+          topic: contactTopic,
+          message: contactMessage,
+          status: 'new',
+        });
+      
+      if (error) throw error;
+      
+      setContactSubmitted(true);
+      toast.success(t('contact.sent_success', 'Your message has been sent successfully!'));
+      setContactName('');
+      setContactEmail('');
+      setContactTopic('');
+      setContactMessage('');
+      // Reset submitted state after 3 seconds
+      setTimeout(() => setContactSubmitted(false), 3000);
+    } catch (err: any) {
+      console.error('Error submitting contact form:', err);
+      toast.error(t('contact.send_failed', 'Failed to send message. Please try again.'));
+    } finally {
+      setContactSubmitting(false);
+    }
+  };
 
   // Wishlist preferences
   const [allowSharing, setAllowSharing] = useState<boolean>(true);
@@ -637,6 +687,93 @@ const Settings = () => {
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Contact Us */}
+      <Card className="rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 border-none shadow-[0_18px_40px_rgba(0,0,0,0.06)]">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Mail className="h-4 w-4" /> {t('settings.contact_us', 'Contact Us')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {t('settings.contact_desc', 'Have a question, feedback, or need help? Send us a message and we\'ll get back to you.')}
+          </p>
+          <form onSubmit={handleContactSubmit} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-name" className="text-xs">
+                {t('contact.name', 'Name')} <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="contact-name"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                placeholder={t('contact.name_placeholder', 'Your name')}
+                className="rounded-xl"
+                disabled={contactSubmitting}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-email" className="text-xs">
+                {t('contact.email', 'Email')} <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="contact-email"
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder={t('contact.email_placeholder', 'Your email')}
+                className="rounded-xl"
+                disabled={contactSubmitting}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-topic" className="text-xs">
+                {t('contact.topic', 'Topic')} <span className="text-red-500">*</span>
+              </Label>
+              <Select value={contactTopic} onValueChange={setContactTopic} disabled={contactSubmitting}>
+                <SelectTrigger id="contact-topic" className="rounded-xl">
+                  <SelectValue placeholder={t('contact.topic_placeholder', 'Select a topic')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="abuse">{t('contact.topic_abuse', 'Report abuse or violation')}</SelectItem>
+                  <SelectItem value="feedback">{t('contact.topic_feedback', 'General feedback')}</SelectItem>
+                  <SelectItem value="question">{t('contact.topic_question', 'Question')}</SelectItem>
+                  <SelectItem value="tech_issue">{t('contact.topic_tech', 'Technical issue')}</SelectItem>
+                  <SelectItem value="feature_request">{t('contact.topic_feature', 'Feature request')}</SelectItem>
+                  <SelectItem value="other">{t('contact.topic_other', 'Other')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-message" className="text-xs">
+                {t('contact.message', 'Message')} <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="contact-message"
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
+                placeholder={t('contact.message_placeholder', 'Write your message here...')}
+                className="rounded-xl resize-none"
+                rows={4}
+                disabled={contactSubmitting}
+                required
+              />
+            </div>
+            <Button type="submit" variant="gradient" disabled={contactSubmitting} className="w-full sm:w-auto">
+              {contactSubmitting ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('contact.sending', 'Sending...')}</>
+              ) : contactSubmitted ? (
+                <><CheckCircle className="w-4 h-4 mr-2" /> {t('contact.sent', 'Sent!')}</>
+              ) : (
+                <><Send className="w-4 h-4 mr-2" /> {t('contact.send', 'Send Message')}</>
+              )}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>

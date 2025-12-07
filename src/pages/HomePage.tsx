@@ -366,10 +366,10 @@ const HomePage = () => {
             {t('footer.copyright', '© 2025 Wishly. All rights reserved.')}
           </p>
           <div className="flex flex-wrap items-center justify-center md:justify-end gap-4">
-            <a href="#contact" className="hover:text-primary transition-colors">
+            <a href="/contact" className="hover:text-primary transition-colors">
               {t('footer.contact', 'Contact us')}
             </a>
-            <a href="#privacy" className="hover:text-primary transition-colors">
+            <a href="/privacy" className="hover:text-primary transition-colors">
               {t('footer.privacy_terms', 'Privacy & Terms')}
             </a>
             <span className="inline-flex items-center gap-1">

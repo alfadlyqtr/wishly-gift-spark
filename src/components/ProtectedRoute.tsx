@@ -5,7 +5,7 @@ import { Session } from "@supabase/supabase-js";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  mode?: "personal" | "business";
+  mode?: "personal" | "business" | "admin";
 }
 
 export const ProtectedRoute = ({ children, mode }: ProtectedRouteProps) => {
@@ -41,6 +41,7 @@ export const ProtectedRoute = ({ children, mode }: ProtectedRouteProps) => {
   }
 
   const accountType = (session.user?.user_metadata as any)?.account_type as string | undefined;
+  const email = session.user?.email;
 
   if (mode === "business" && accountType !== "business") {
     return <Navigate to="/dashboard" replace />;
@@ -48,6 +49,12 @@ export const ProtectedRoute = ({ children, mode }: ProtectedRouteProps) => {
 
   if (mode === "personal" && accountType === "business") {
     return <Navigate to="/brand/dashboard" replace />;
+  }
+
+  if (mode === "admin") {
+    if (email !== "admin@tmw.qa") {
+      return <Navigate to="/login" replace />;
+    }
   }
 
   return <>{children}</>;

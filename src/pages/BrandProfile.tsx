@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Camera, Globe, Instagram, Twitter, Facebook, Linkedin, Mail, Phone, MapPin, Save, Building2, ExternalLink, Bell, MessageSquare, Users, Shield, TrendingUp, Settings as SettingsIcon, Youtube, UserPlus, UserCheck, MessageCircle, Plus, X, LogOut } from "lucide-react";
+import { Camera, Globe, Instagram, Twitter, Facebook, Linkedin, Mail, Phone, MapPin, Save, Building2, ExternalLink, Bell, MessageSquare, Users, Shield, TrendingUp, Settings as SettingsIcon, Youtube, UserPlus, UserCheck, MessageCircle, Plus, X, LogOut, Send, Loader2, CheckCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -124,6 +125,53 @@ const BrandProfile = () => {
   const [allowQuestions, setAllowQuestions] = useState(true);
   const [allowLikes, setAllowLikes] = useState(true);
   const [showStoreLink, setShowStoreLink] = useState(true);
+
+  // Contact form state
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactTopic, setContactTopic] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactSubmitting, setContactSubmitting] = useState(false);
+  const [contactSubmitted, setContactSubmitted] = useState(false);
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactName || !contactEmail || !contactTopic || !contactMessage) {
+      toast.error(t('contact.fill_required', 'Please fill in all required fields'));
+      return;
+    }
+    
+    setContactSubmitting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error } = await (supabase as any)
+        .from('contact_messages')
+        .insert({
+          user_id: user?.id || null,
+          name: contactName,
+          email: contactEmail,
+          topic: contactTopic,
+          message: contactMessage,
+          status: 'new',
+        });
+      
+      if (error) throw error;
+      
+      setContactSubmitted(true);
+      toast.success(t('contact.sent_success', 'Your message has been sent successfully!'));
+      setContactName('');
+      setContactEmail('');
+      setContactTopic('');
+      setContactMessage('');
+      setTimeout(() => setContactSubmitted(false), 3000);
+    } catch (err: any) {
+      console.error('Error submitting contact form:', err);
+      toast.error(t('contact.send_failed', 'Failed to send message. Please try again.'));
+    } finally {
+      setContactSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     fetchBrandData();
@@ -1001,6 +1049,94 @@ const BrandProfile = () => {
             </div>
             <LanguageToggle />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Contact Us */}
+      <Card className="shadow-lg border border-white/40 bg-gradient-to-br from-white/95 via-white/90 to-white/80">
+        <CardHeader className="bg-gradient-to-r from-brand-cool-start/10 via-brand-cool-end/5 to-brand-warm-start/10 pb-4">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Mail className="h-5 w-5 text-primary" />
+            {t('settings.contact_us', 'Contact Us')}
+          </CardTitle>
+          <CardDescription>
+            {t('settings.contact_desc', 'Have a question, feedback, or need help? Send us a message.')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-4">
+          <form onSubmit={handleContactSubmit} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-name" className="text-xs">
+                {t('contact.name', 'Name')} <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="contact-name"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                placeholder={t('contact.name_placeholder', 'Your name')}
+                className="border-slate-200 focus:border-primary"
+                disabled={contactSubmitting}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-email" className="text-xs">
+                {t('contact.email', 'Email')} <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="contact-email"
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder={t('contact.email_placeholder', 'Your email')}
+                className="border-slate-200 focus:border-primary"
+                disabled={contactSubmitting}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-topic" className="text-xs">
+                {t('contact.topic', 'Topic')} <span className="text-red-500">*</span>
+              </Label>
+              <Select value={contactTopic} onValueChange={setContactTopic} disabled={contactSubmitting}>
+                <SelectTrigger id="contact-topic" className="border-slate-200">
+                  <SelectValue placeholder={t('contact.topic_placeholder', 'Select a topic')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="abuse">{t('contact.topic_abuse', 'Report abuse or violation')}</SelectItem>
+                  <SelectItem value="feedback">{t('contact.topic_feedback', 'General feedback')}</SelectItem>
+                  <SelectItem value="question">{t('contact.topic_question', 'Question')}</SelectItem>
+                  <SelectItem value="tech_issue">{t('contact.topic_tech', 'Technical issue')}</SelectItem>
+                  <SelectItem value="feature_request">{t('contact.topic_feature', 'Feature request')}</SelectItem>
+                  <SelectItem value="other">{t('contact.topic_other', 'Other')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-message" className="text-xs">
+                {t('contact.message', 'Message')} <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="contact-message"
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
+                placeholder={t('contact.message_placeholder', 'Write your message here...')}
+                className="border-slate-200 focus:border-primary resize-none"
+                rows={4}
+                disabled={contactSubmitting}
+                required
+              />
+            </div>
+            <Button type="submit" disabled={contactSubmitting} className="w-full sm:w-auto bg-gradient-to-r from-brand-cool-start to-brand-cool-end text-white">
+              {contactSubmitting ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('contact.sending', 'Sending...')}</>
+              ) : contactSubmitted ? (
+                <><CheckCircle className="w-4 h-4 mr-2" /> {t('contact.sent', 'Sent!')}</>
+              ) : (
+                <><Send className="w-4 h-4 mr-2" /> {t('contact.send', 'Send Message')}</>
+              )}
+            </Button>
+          </form>
         </CardContent>
       </Card>
 
