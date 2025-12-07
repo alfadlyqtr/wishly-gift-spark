@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Shield, Trash2, Smartphone, Globe2, Bell, Mail, Send, Loader2, CheckCircle } from "lucide-react";
+import { ArrowLeft, Shield, Trash2, Smartphone, Globe2, Bell, Mail, Send, Loader2, CheckCircle, ChevronDown } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BackButton from "@/components/BackButton";
@@ -44,10 +44,11 @@ const Settings = () => {
   const [contactMessage, setContactMessage] = useState('');
   const [contactSubmitting, setContactSubmitting] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!contactName || !contactEmail || !contactTopic || !contactMessage) {
+    if (!contactTopic || !contactMessage) {
       toast.error(t('contact.fill_required', 'Please fill in all required fields'));
       return;
     }
@@ -55,13 +56,48 @@ const Settings = () => {
     setContactSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
+      const finalName = contactName || (user?.user_metadata as any)?.full_name || user?.email || 'Wishly user';
+      const finalEmail = (contactEmail || user?.email || '').toLowerCase();
+
+      if (!finalEmail) {
+        toast.error(t('contact.email_missing', 'We could not determine your email. Please contact support.'));
+        return;
+      }
+
+      // Rate limit: max 1 message per 24h per email
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const lockKey = `wishly_contact_last_sent_${finalEmail}`;
+      const lastSentRaw = typeof window !== 'undefined' ? window.localStorage.getItem(lockKey) : null;
+      if (lastSentRaw) {
+        const lastSent = parseInt(lastSentRaw, 10);
+        if (!Number.isNaN(lastSent) && Date.now() - lastSent < 24 * 60 * 60 * 1000) {
+          toast.error(t('contact.rate_limited', 'You already sent us a message today. Please wait before sending another.'));
+          setContactSubmitting(false);
+          return;
+        }
+      }
+
+      const { count: recentCount, error: recentError } = await (supabase as any)
+        .from('contact_messages')
+        .select('id', { count: 'exact', head: true })
+        .ilike('email', finalEmail)
+        .gte('created_at', twentyFourHoursAgo);
+
+      if (recentError) {
+        console.error('Error checking contact rate limit (settings):', recentError);
+      } else if ((recentCount ?? 0) > 0) {
+        toast.error(t('contact.rate_limited', 'You already sent us a message today. Please wait before sending another.'));
+        setContactSubmitting(false);
+        return;
+      }
+
       const { error } = await (supabase as any)
         .from('contact_messages')
         .insert({
           user_id: user?.id || null,
-          name: contactName,
-          email: contactEmail,
+          name: finalName,
+          email: finalEmail,
           topic: contactTopic,
           message: contactMessage,
           status: 'new',
@@ -71,8 +107,9 @@ const Settings = () => {
       
       setContactSubmitted(true);
       toast.success(t('contact.sent_success', 'Your message has been sent successfully!'));
-      setContactName('');
-      setContactEmail('');
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(lockKey, Date.now().toString());
+      }
       setContactTopic('');
       setContactMessage('');
       // Reset submitted state after 3 seconds
@@ -84,6 +121,29 @@ const Settings = () => {
       setContactSubmitting(false);
     }
   };
+
+  // Prefill contact name/email from auth + profile
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        setContactEmail((prev) => prev || user.email || '');
+
+        const { data: profile } = await (supabase as any)
+          .from('user_profiles')
+          .select('full_name, username')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        const derivedName = (profile as any)?.full_name || (profile as any)?.username || user.email || '';
+        setContactName((prev) => prev || derivedName);
+      } catch (e) {
+        console.warn('Failed to prefill contact name/email from profile', e);
+      }
+    })();
+  }, []);
 
   // Wishlist preferences
   const [allowSharing, setAllowSharing] = useState<boolean>(true);
@@ -692,45 +752,41 @@ const Settings = () => {
 
       {/* Contact Us */}
       <Card className="rounded-2xl bg-white/80 backdrop-blur ring-1 ring-white/70 border-none shadow-[0_18px_40px_rgba(0,0,0,0.06)]">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Mail className="h-4 w-4" /> {t('settings.contact_us', 'Contact Us')}
-          </CardTitle>
+        <CardHeader className="pb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-base">
+            <Mail className="h-4 w-4" />
+            <CardTitle className="text-base">
+              {t('settings.contact_us', 'Contact Us')}
+            </CardTitle>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setContactOpen((open) => !open)}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          >
+            {contactOpen ? t('common.hide', 'Hide') : t('common.show', 'Show')}
+            <ChevronDown
+              className={`h-3 w-3 transition-transform ${contactOpen ? 'rotate-180' : ''}`}
+            />
+          </Button>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            {t('settings.contact_desc', 'Have a question, feedback, or need help? Send us a message and we\'ll get back to you.')}
-          </p>
-          <form onSubmit={handleContactSubmit} className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="contact-name" className="text-xs">
-                {t('contact.name', 'Name')} <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="contact-name"
-                value={contactName}
-                onChange={(e) => setContactName(e.target.value)}
-                placeholder={t('contact.name_placeholder', 'Your name')}
-                className="rounded-xl"
-                disabled={contactSubmitting}
-                required
-              />
+        {contactOpen && (
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {t('settings.contact_desc', 'Have a question, feedback, or need help? Send us a message and we\'ll get back to you.')}
+            </p>
+            <div className="rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground flex flex-wrap gap-1">
+              <span>{t('contact.sending_as', 'Sending as')}:</span>
+              <span className="font-medium text-foreground">
+                {contactName || t('contact.unknown_user', 'Your account')}
+              </span>
+              {contactEmail && (
+                <span className="text-muted-foreground">&lt;{contactEmail}&gt;</span>
+              )}
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="contact-email" className="text-xs">
-                {t('contact.email', 'Email')} <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="contact-email"
-                type="email"
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                placeholder={t('contact.email_placeholder', 'Your email')}
-                className="rounded-xl"
-                disabled={contactSubmitting}
-                required
-              />
-            </div>
+            <form onSubmit={handleContactSubmit} className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="contact-topic" className="text-xs">
                 {t('contact.topic', 'Topic')} <span className="text-red-500">*</span>
@@ -774,7 +830,8 @@ const Settings = () => {
               )}
             </Button>
           </form>
-        </CardContent>
+          </CardContent>
+        )}
       </Card>
     </div>
   );

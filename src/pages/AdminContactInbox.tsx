@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Clock, CheckCircle2, Loader2, AlertCircle, User, MessageSquare } from "lucide-react";
+import { Mail, Clock, CheckCircle2, Loader2, AlertCircle, User, MessageSquare, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type ContactMessage = {
@@ -46,10 +46,20 @@ const topicLabels: Record<string, string> = {
   other: "Other",
 };
 
+const getInitials = (nameOrEmail: string) => {
+  if (!nameOrEmail) return "?";
+  const parts = nameOrEmail.trim().split(/\s+/);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+};
+
 const AdminContactInbox = () => {
   const queryClient = useQueryClient();
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | "new" | "in_progress" | "done">("all");
+  const [deleteArmedId, setDeleteArmedId] = useState<string | null>(null);
 
   // Fetch contact messages
   const { data: messages, isLoading } = useQuery({
@@ -69,7 +79,7 @@ const AdminContactInbox = () => {
 
   // Update message status
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status }: { id: string; status: ContactMessage["status"] }) => {
       const { data: { user } } = await supabase.auth.getUser();
       const { error } = await (supabase as any)
         .from("contact_messages")
@@ -77,14 +87,51 @@ const AdminContactInbox = () => {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      // Refresh lists and counts
       queryClient.invalidateQueries({ queryKey: ["admin-contact-messages"] });
       queryClient.invalidateQueries({ queryKey: ["admin-new-messages-count"] });
       queryClient.invalidateQueries({ queryKey: ["admin-total-messages-count"] });
+
+      // Also update the currently selected message in local state
+      setSelectedMessage((current) => {
+        if (!current || current.id !== variables.id) return current;
+        return { ...current, status: variables.status };
+      });
+
       toast.success("Status updated");
     },
     onError: (err: any) => {
       toast.error("Failed to update status: " + err.message);
+    },
+  });
+
+  // Delete message
+  const deleteMessage = useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      const { error } = await (supabase as any)
+        .from("contact_messages")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_data, variables) => {
+      // Optimistically remove from cache so list updates immediately
+      queryClient.setQueryData<ContactMessage[] | undefined>(["admin-contact-messages"], (old) => {
+        if (!old) return old;
+        return old.filter((m) => m.id !== variables.id);
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["admin-contact-messages"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-new-messages-count"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-total-messages-count"] });
+
+      setSelectedMessage(null);
+      setDeleteArmedId(null);
+      toast.success("Message deleted");
+    },
+    onError: (err: any) => {
+      toast.error("Failed to delete message: " + err.message);
     },
   });
 
@@ -167,16 +214,26 @@ const AdminContactInbox = () => {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-slate-200 truncate">{msg.name}</span>
-                          <Badge variant="outline" className={`text-[10px] ${config.color}`}>
-                            <StatusIcon className="w-3 h-3 mr-1" />
-                            {config.label}
-                          </Badge>
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-semibold text-slate-200 border border-slate-700">
+                          {getInitials(msg.name || msg.email)}
                         </div>
-                        <p className="text-xs text-slate-400 truncate">{msg.email}</p>
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">{msg.message}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-slate-200 truncate">{msg.name}</span>
+                            {msg.user_id && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                                Wishly user
+                              </span>
+                            )}
+                            <Badge variant="outline" className={`text-[10px] ${config.color}`}>
+                              <StatusIcon className="w-3 h-3 mr-1" />
+                              {config.label}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-slate-400 truncate">{msg.email}</p>
+                          <p className="text-xs text-slate-500 mt-1 line-clamp-2">{msg.message}</p>
+                        </div>
                       </div>
                       <div className="text-right shrink-0">
                         <Badge variant="outline" className="text-[10px] bg-slate-800 border-slate-700 text-slate-400">
@@ -203,11 +260,18 @@ const AdminContactInbox = () => {
           {selectedMessage ? (
             <div className="p-4 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-300">
-                  <User className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-100 text-sm font-semibold">
+                  {getInitials(selectedMessage.name || selectedMessage.email)}
                 </div>
                 <div>
-                  <p className="font-medium text-slate-200">{selectedMessage.name}</p>
+                  <p className="font-medium text-slate-200 flex items-center gap-2">
+                    {selectedMessage.name}
+                    {selectedMessage.user_id && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                        Wishly user
+                      </span>
+                    )}
+                  </p>
                   <p className="text-sm text-slate-400">{selectedMessage.email}</p>
                 </div>
               </div>
@@ -233,35 +297,60 @@ const AdminContactInbox = () => {
               </div>
 
               {/* Status Actions */}
-              <div className="pt-4 border-t border-slate-800">
-                <p className="text-xs text-slate-400 mb-2">Update status:</p>
-                <div className="flex gap-2">
+              <div className="pt-4 border-t border-slate-800 flex flex-col gap-3">
+                <div>
+                  <p className="text-xs text-slate-400 mb-2">Update status:</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant={selectedMessage.status === "new" ? "default" : "outline"}
+                      onClick={() => updateStatus.mutate({ id: selectedMessage.id, status: "new" })}
+                      disabled={updateStatus.isPending}
+                      className={selectedMessage.status === "new" ? "" : "bg-slate-800 border-slate-700 text-slate-300"}
+                    >
+                      New
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={selectedMessage.status === "in_progress" ? "default" : "outline"}
+                      onClick={() => updateStatus.mutate({ id: selectedMessage.id, status: "in_progress" })}
+                      disabled={updateStatus.isPending}
+                      className={selectedMessage.status === "in_progress" ? "" : "bg-slate-800 border-slate-700 text-slate-300"}
+                    >
+                      In Progress
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={selectedMessage.status === "done" ? "default" : "outline"}
+                      onClick={() => updateStatus.mutate({ id: selectedMessage.id, status: "done" })}
+                      disabled={updateStatus.isPending}
+                      className={selectedMessage.status === "done" ? "" : "bg-slate-800 border-slate-700 text-slate-300"}
+                    >
+                      Done
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-500">Danger zone</span>
                   <Button
                     size="sm"
-                    variant={selectedMessage.status === "new" ? "default" : "outline"}
-                    onClick={() => updateStatus.mutate({ id: selectedMessage.id, status: "new" })}
-                    disabled={updateStatus.isPending}
-                    className={selectedMessage.status === "new" ? "" : "bg-slate-800 border-slate-700 text-slate-300"}
+                    variant="destructive"
+                    onClick={() => {
+                      if (!selectedMessage) return;
+                      // Two-step confirm: first click arms, second click executes
+                      if (deleteArmedId !== selectedMessage.id) {
+                        setDeleteArmedId(selectedMessage.id);
+                        toast.warning("Click delete again to confirm.");
+                        return;
+                      }
+                      deleteMessage.mutate({ id: selectedMessage.id });
+                    }}
+                    disabled={deleteMessage.isPending}
+                    className="bg-red-600 hover:bg-red-700 text-white border-none"
                   >
-                    New
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={selectedMessage.status === "in_progress" ? "default" : "outline"}
-                    onClick={() => updateStatus.mutate({ id: selectedMessage.id, status: "in_progress" })}
-                    disabled={updateStatus.isPending}
-                    className={selectedMessage.status === "in_progress" ? "" : "bg-slate-800 border-slate-700 text-slate-300"}
-                  >
-                    In Progress
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={selectedMessage.status === "done" ? "default" : "outline"}
-                    onClick={() => updateStatus.mutate({ id: selectedMessage.id, status: "done" })}
-                    disabled={updateStatus.isPending}
-                    className={selectedMessage.status === "done" ? "" : "bg-slate-800 border-slate-700 text-slate-300"}
-                  >
-                    Done
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    {deleteArmedId === selectedMessage.id ? "Confirm delete" : "Delete"}
                   </Button>
                 </div>
               </div>

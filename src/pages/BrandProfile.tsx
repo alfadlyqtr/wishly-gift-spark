@@ -136,7 +136,7 @@ const BrandProfile = () => {
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!contactName || !contactEmail || !contactTopic || !contactMessage) {
+    if (!contactTopic || !contactMessage) {
       toast.error(t('contact.fill_required', 'Please fill in all required fields'));
       return;
     }
@@ -144,13 +144,48 @@ const BrandProfile = () => {
     setContactSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
+      const finalEmail = (contactEmail || user?.email || '').toLowerCase();
+      const finalName = contactName || brandName || (user?.email || 'Wishly brand');
+
+      if (!finalEmail) {
+        toast.error(t('contact.email_missing', 'We could not determine your email. Please contact support.'));
+        return;
+      }
+
+      // Rate limit: max 1 message per 24h per email
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const lockKey = `wishly_contact_last_sent_${finalEmail}`;
+      const lastSentRaw = typeof window !== 'undefined' ? window.localStorage.getItem(lockKey) : null;
+      if (lastSentRaw) {
+        const lastSent = parseInt(lastSentRaw, 10);
+        if (!Number.isNaN(lastSent) && Date.now() - lastSent < 24 * 60 * 60 * 1000) {
+          toast.error(t('contact.rate_limited', 'You already sent us a message today. Please wait before sending another.'));
+          setContactSubmitting(false);
+          return;
+        }
+      }
+
+      const { count: recentCount, error: recentError } = await (supabase as any)
+        .from('contact_messages')
+        .select('id', { count: 'exact', head: true })
+        .ilike('email', finalEmail)
+        .gte('created_at', twentyFourHoursAgo);
+
+      if (recentError) {
+        console.error('Error checking contact rate limit (brand):', recentError);
+      } else if ((recentCount ?? 0) > 0) {
+        toast.error(t('contact.rate_limited', 'You already sent us a message today. Please wait before sending another.'));
+        setContactSubmitting(false);
+        return;
+      }
+
       const { error } = await (supabase as any)
         .from('contact_messages')
         .insert({
           user_id: user?.id || null,
-          name: contactName,
-          email: contactEmail,
+          name: finalName,
+          email: finalEmail,
           topic: contactTopic,
           message: contactMessage,
           status: 'new',
@@ -160,8 +195,9 @@ const BrandProfile = () => {
       
       setContactSubmitted(true);
       toast.success(t('contact.sent_success', 'Your message has been sent successfully!'));
-      setContactName('');
-      setContactEmail('');
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(lockKey, Date.now().toString());
+      }
       setContactTopic('');
       setContactMessage('');
       setTimeout(() => setContactSubmitted(false), 3000);
@@ -172,6 +208,16 @@ const BrandProfile = () => {
       setContactSubmitting(false);
     }
   };
+
+  // Prefill brand contact name/email once brand data is loaded
+  useEffect(() => {
+    if (brandName && !contactName) {
+      setContactName(brandName);
+    }
+    if (email && !contactEmail) {
+      setContactEmail(email);
+    }
+  }, [brandName, email, contactName, contactEmail]);
 
   useEffect(() => {
     fetchBrandData();

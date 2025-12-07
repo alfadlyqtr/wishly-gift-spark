@@ -31,13 +31,51 @@ const Contact = () => {
     try {
       // Get current user if logged in
       const { data: { user } } = await supabase.auth.getUser();
+
+      // Rate limit: max 1 message per 24h per email
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const normalizedEmail = email.toLowerCase();
+
+      // Client-side fallback lock: one message per 24h per email in this browser
+      const lockKey = `wishly_contact_last_sent_${normalizedEmail}`;
+      const lastSentRaw = typeof window !== 'undefined' ? window.localStorage.getItem(lockKey) : null;
+      if (lastSentRaw) {
+        const lastSent = parseInt(lastSentRaw, 10);
+        if (!Number.isNaN(lastSent) && Date.now() - lastSent < 24 * 60 * 60 * 1000) {
+          toast.error(
+            isAr
+              ? 'لقد أرسلت رسالة بالفعل اليوم. يمكنك إرسال رسالة جديدة لاحقاً.'
+              : 'You already sent us a message today. Please wait before sending another.'
+          );
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      const { count: recentCount, error: recentError } = await (supabase as any)
+        .from('contact_messages')
+        .select('id', { count: 'exact', head: true })
+        .ilike('email', normalizedEmail)
+        .gte('created_at', twentyFourHoursAgo);
+
+      if (recentError) {
+        console.error('Error checking contact rate limit:', recentError);
+      } else if ((recentCount ?? 0) > 0) {
+        toast.error(
+          isAr
+            ? 'لقد أرسلت رسالة بالفعل اليوم. يمكنك إرسال رسالة جديدة لاحقاً.'
+            : 'You already sent us a message recently. Please wait before sending another.'
+        );
+        setSubmitting(false);
+        return;
+      }
       
       const { error } = await (supabase as any)
         .from('contact_messages')
         .insert({
           user_id: user?.id || null,
           name,
-          email,
+          email: normalizedEmail,
           topic,
           message,
           status: 'new',
@@ -47,6 +85,9 @@ const Contact = () => {
       
       setSubmitted(true);
       toast.success(isAr ? 'تم إرسال رسالتك بنجاح!' : 'Your message has been sent successfully!');
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(lockKey, Date.now().toString());
+      }
       // Reset form
       setName('');
       setEmail('');
