@@ -44,6 +44,7 @@ const Settings = () => {
   const [contactMessage, setContactMessage] = useState('');
   const [contactSubmitting, setContactSubmitting] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [contactCooldownMs, setContactCooldownMs] = useState<number | null>(null);
   const [contactOpen, setContactOpen] = useState(false);
 
   const handleContactSubmit = async (e: React.FormEvent) => {
@@ -65,29 +66,29 @@ const Settings = () => {
         return;
       }
 
-      // Rate limit: max 1 message per 24h per email
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const lockKey = `wishly_contact_last_sent_${finalEmail}`;
-      const lastSentRaw = typeof window !== 'undefined' ? window.localStorage.getItem(lockKey) : null;
-      if (lastSentRaw) {
-        const lastSent = parseInt(lastSentRaw, 10);
-        if (!Number.isNaN(lastSent) && Date.now() - lastSent < 24 * 60 * 60 * 1000) {
-          toast.error(t('contact.rate_limited', 'You already sent us a message today. Please wait before sending another.'));
-          setContactSubmitting(false);
-          return;
+
+      // DB-backed rate limit: max 1 message per 24h per email, reset when
+      // all messages for that email are deleted or 24h has passed.
+      let canSend = true;
+      try {
+        const { data: canSendData, error: canSendError } = await (supabase as any)
+          .rpc('can_send_contact', { p_email: finalEmail });
+        if (canSendError) {
+          console.warn('Error calling can_send_contact (settings):', canSendError);
+        } else if (typeof canSendData === 'boolean') {
+          canSend = canSendData;
         }
+      } catch (rpcErr) {
+        console.warn('RPC can_send_contact failed (settings):', rpcErr);
       }
 
-      const { count: recentCount, error: recentError } = await (supabase as any)
-        .from('contact_messages')
-        .select('id', { count: 'exact', head: true })
-        .ilike('email', finalEmail)
-        .gte('created_at', twentyFourHoursAgo);
-
-      if (recentError) {
-        console.error('Error checking contact rate limit (settings):', recentError);
-      } else if ((recentCount ?? 0) > 0) {
+      if (!canSend) {
         toast.error(t('contact.rate_limited', 'You already sent us a message today. Please wait before sending another.'));
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(lockKey, Date.now().toString());
+        }
+        setContactCooldownMs(24 * 60 * 60 * 1000);
         setContactSubmitting(false);
         return;
       }
@@ -110,6 +111,7 @@ const Settings = () => {
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(lockKey, Date.now().toString());
       }
+      setContactCooldownMs(24 * 60 * 60 * 1000);
       setContactTopic('');
       setContactMessage('');
       // Reset submitted state after 3 seconds
@@ -144,6 +146,68 @@ const Settings = () => {
       }
     })();
   }, []);
+
+  // Keep a live countdown for the contact cooldown based on localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const updateCooldown = () => {
+      const emailKey = (contactEmail || '').toLowerCase() || ("anonymous" as string);
+      const lockKey = `wishly_contact_last_sent_${emailKey}`;
+      const raw = window.localStorage.getItem(lockKey);
+      if (!raw) {
+        setContactCooldownMs(null);
+        return;
+      }
+      const last = parseInt(raw, 10);
+      if (Number.isNaN(last)) {
+        setContactCooldownMs(null);
+        return;
+      }
+      const remaining = last + 24 * 60 * 60 * 1000 - Date.now();
+      setContactCooldownMs(remaining > 0 ? remaining : null);
+    };
+
+    updateCooldown();
+    const id = window.setInterval(updateCooldown, 1000);
+    return () => window.clearInterval(id);
+  }, [contactEmail]);
+
+  // Sync the local cooldown/timer with the DB-based rule so that when the admin
+  // deletes all messages (or 24h passes in the DB), the timer clears and the
+  // form becomes available again.
+  useEffect(() => {
+    const syncWithDatabase = async () => {
+      try {
+        const emailKey = (contactEmail || '').toLowerCase();
+        if (!emailKey) return;
+
+        const { data: canSendData, error } = await (supabase as any)
+          .rpc('can_send_contact', { p_email: emailKey });
+        if (error) {
+          console.warn('Error syncing contact cooldown with DB (settings):', error);
+          return;
+        }
+
+        if (typeof window === 'undefined') return;
+
+        const lockKey = `wishly_contact_last_sent_${emailKey}`;
+        if (canSendData === true) {
+          window.localStorage.removeItem(lockKey);
+          setContactCooldownMs(null);
+        } else if (canSendData === false) {
+          const existing = window.localStorage.getItem(lockKey);
+          if (!existing) {
+            window.localStorage.setItem(lockKey, Date.now().toString());
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to sync contact cooldown with DB (settings):', e);
+      }
+    };
+
+    syncWithDatabase();
+  }, [contactEmail]);
 
   // Wishlist preferences
   const [allowSharing, setAllowSharing] = useState<boolean>(true);
@@ -786,12 +850,25 @@ const Settings = () => {
                 <span className="text-muted-foreground">&lt;{contactEmail}&gt;</span>
               )}
             </div>
-            <form onSubmit={handleContactSubmit} className="space-y-3">
+
+            {contactCooldownMs && contactCooldownMs > 0 && (
+              <div className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                {t('contact.cooldown_message', 'You recently sent us a message. You can send another in')}{' '}
+                <span className="font-semibold">
+                  {new Date(contactCooldownMs).toISOString().substring(11, 19)}
+                </span>
+              </div>
+            )}
+
+            <form
+              onSubmit={handleContactSubmit}
+              className={`space-y-3 transition-opacity ${contactCooldownMs && contactCooldownMs > 0 ? 'opacity-60 pointer-events-none' : ''}`}
+            >
             <div className="space-y-1.5">
               <Label htmlFor="contact-topic" className="text-xs">
                 {t('contact.topic', 'Topic')} <span className="text-red-500">*</span>
               </Label>
-              <Select value={contactTopic} onValueChange={setContactTopic} disabled={contactSubmitting}>
+              <Select value={contactTopic} onValueChange={setContactTopic} disabled={contactSubmitting || !!(contactCooldownMs && contactCooldownMs > 0)}>
                 <SelectTrigger id="contact-topic" className="rounded-xl">
                   <SelectValue placeholder={t('contact.topic_placeholder', 'Select a topic')} />
                 </SelectTrigger>
@@ -816,11 +893,16 @@ const Settings = () => {
                 placeholder={t('contact.message_placeholder', 'Write your message here...')}
                 className="rounded-xl resize-none"
                 rows={4}
-                disabled={contactSubmitting}
+                disabled={contactSubmitting || !!(contactCooldownMs && contactCooldownMs > 0)}
                 required
               />
             </div>
-            <Button type="submit" variant="gradient" disabled={contactSubmitting} className="w-full sm:w-auto">
+            <Button
+              type="submit"
+              variant="gradient"
+              disabled={contactSubmitting || !!(contactCooldownMs && contactCooldownMs > 0)}
+              className="w-full sm:w-auto"
+            >
               {contactSubmitting ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('contact.sending', 'Sending...')}</>
               ) : contactSubmitted ? (
