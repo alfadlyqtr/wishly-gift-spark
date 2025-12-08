@@ -427,11 +427,11 @@ const BrandDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-background to-[hsl(var(--brand-warm-start))] p-4 md:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-background to-[hsl(var(--brand-warm-start))] p-3 sm:p-4 md:p-6">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <h1
-          className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)] mb-1"
+          className="text-3xl sm:text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)] mb-1"
           style={{ WebkitTextStroke: "0.6px rgba(15, 23, 42, 0.85)" }}
         >
           {t("brand.dashboard_title", "Brand Dashboard")}
@@ -479,21 +479,21 @@ const BrandDashboard = () => {
         </div>
 
         {/* OVERVIEW TAB */}
-        <TabsContent value="overview" className="space-y-6">
+        <TabsContent value="overview" className="space-y-4 sm:space-y-6">
           {/* Hero Stats Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Total Views Card */}
             <Card
               className="bg-white/70 backdrop-blur border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
               onClick={() => setOverviewDetail("views")}
             >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/20 to-[hsl(var(--brand-cool-end))]/20">
-                    <Eye className="h-6 w-6 text-[hsl(var(--brand-cool-start))]" />
+              <CardContent className="p-3 sm:p-4 md:p-6">
+                <div className="flex items-center justify-between mb-2 sm:mb-4">
+                  <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/20 to-[hsl(var(--brand-cool-end))]/20">
+                    <Eye className="h-4 w-4 sm:h-6 sm:w-6 text-[hsl(var(--brand-cool-start))]" />
                   </div>
                 </div>
-                <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-cool-end))] mb-1">
+                <div className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-cool-end))] mb-1">
                   {stats.totalViews.toLocaleString()}
                 </div>
                 <div className="text-sm text-muted-foreground">{t("brand.dashboard_card_views", "Product Views")}</div>
@@ -506,13 +506,13 @@ const BrandDashboard = () => {
               className="bg-white/70 backdrop-blur border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
               onClick={() => setOverviewDetail("wishlist")}
             >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
-                    <CirclePlus className="h-6 w-6 text-emerald-500" />
+              <CardContent className="p-3 sm:p-4 md:p-6">
+                <div className="flex items-center justify-between mb-2 sm:mb-4">
+                  <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
+                    <CirclePlus className="h-4 w-4 sm:h-6 sm:w-6 text-emerald-500" />
                   </div>
                 </div>
-                <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-rose-500 mb-1">
+                <div className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-rose-500 mb-1">
                   {stats.wishlistAdds.toLocaleString()}
                 </div>
                 <div className="text-sm text-muted-foreground">{t("brand.dashboard_card_wishlist_adds", "Wishlist Adds")}</div>
@@ -525,13 +525,13 @@ const BrandDashboard = () => {
               className="bg-white/70 backdrop-blur border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
               onClick={() => setOverviewDetail("likes")}
             >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-rose-500/20 to-pink-500/20">
-                    <Heart className="h-6 w-6 text-rose-500" />
+              <CardContent className="p-3 sm:p-4 md:p-6">
+                <div className="flex items-center justify-between mb-2 sm:mb-4">
+                  <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-br from-rose-500/20 to-pink-500/20">
+                    <Heart className="h-4 w-4 sm:h-6 sm:w-6 text-rose-500" />
                   </div>
                 </div>
-                <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-rose-500 to-pink-500 mb-1">
+                <div className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-rose-500 to-pink-500 mb-1">
                   {stats.totalLikes.toLocaleString()}
                 </div>
                 <div className="text-sm text-muted-foreground">{t("brand.dashboard_card_likes", "Likes")}</div>
@@ -595,13 +595,13 @@ const BrandDashboard = () => {
               className="bg-white/70 backdrop-blur border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
               onClick={() => setOverviewDetail("active")}
             >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
-                    <Package className="h-6 w-6 text-emerald-500" />
+              <CardContent className="p-3 sm:p-4 md:p-6">
+                <div className="flex items-center justify-between mb-2 sm:mb-4">
+                  <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
+                    <Package className="h-4 w-4 sm:h-6 sm:w-6 text-emerald-500" />
                   </div>
                 </div>
-                <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-teal-500 mb-1">
+                <div className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-teal-500 mb-1">
                   {stats.activeProducts}
                 </div>
                 <div className="text-sm text-muted-foreground">{t("brand.dashboard_card_active_products", "Active Products")}</div>
@@ -613,13 +613,13 @@ const BrandDashboard = () => {
               className="bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/10 to-[hsl(var(--brand-warm-end))]/10 backdrop-blur border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
               onClick={() => setOverviewDetail("users")}
             >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-[hsl(var(--brand-warm-start))]/20 to-[hsl(var(--brand-warm-end))]/20">
-                    <Users className="h-6 w-6 text-[hsl(var(--brand-warm-start))]" />
+              <CardContent className="p-3 sm:p-4 md:p-6">
+                <div className="flex items-center justify-between mb-2 sm:mb-4">
+                  <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-br from-[hsl(var(--brand-warm-start))]/20 to-[hsl(var(--brand-warm-end))]/20">
+                    <Users className="h-4 w-4 sm:h-6 sm:w-6 text-[hsl(var(--brand-warm-start))]" />
                   </div>
                 </div>
-                <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-warm-start))] to-[hsl(var(--brand-warm-end))] mb-1">
+                <div className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-warm-start))] to-[hsl(var(--brand-warm-end))] mb-1">
                   {stats.uniqueUsers.toLocaleString()}
                 </div>
                 <div className="text-sm text-muted-foreground">{t("brand.dashboard_card_unique_users", "Unique Users")}</div>
@@ -640,7 +640,7 @@ const BrandDashboard = () => {
               <div className="relative overflow-hidden rounded-2xl bg-white/90 border border-white/70 shadow-[0_18px_45px_rgba(148,163,184,0.35)] px-4 py-4 sm:px-6 sm:py-5">
                 <div className="absolute inset-px rounded-[18px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))]/6 via-[hsl(var(--brand-cool-end))]/8 to-[hsl(var(--brand-warm-end))]/6" aria-hidden="true" />
                 <div className="relative space-y-4 text-slate-900">
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
                     <div className="flex items-center gap-2">
                       <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-cool-end))] text-white shadow-[0_10px_25px_rgba(148,163,184,0.55)]">
                         <BarChart3 className="h-4 w-4" />
@@ -659,43 +659,43 @@ const BrandDashboard = () => {
                         <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         {t("brand.dashboard_live_label", "Live")}
                       </span>
-                      <span className="text-slate-500 font-bold">
+                      <span className="hidden sm:inline text-slate-500 font-bold">
                         {t("brand.dashboard_last_window", "Brand activity snapshot")}
                       </span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3 text-xs">
-                    <div className="rounded-xl bg-white/80 border border-slate-200 px-3 py-2 flex flex-col gap-1">
-                      <div className="flex items-center gap-1.5 text-[hsl(var(--brand-cool-start))]">
-                        <Eye className="h-3.5 w-3.5" />
-                        <span className="text-[10px] uppercase tracking-wide text-slate-500">
-                          {t("brand.dashboard_card_views", "Product Views")}
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3 text-xs">
+                    <div className="rounded-xl bg-white/80 border border-slate-200 px-2 sm:px-3 py-2 flex flex-col gap-1">
+                      <div className="flex items-center gap-1 sm:gap-1.5 text-[hsl(var(--brand-cool-start))]">
+                        <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        <span className="text-[9px] sm:text-[10px] uppercase tracking-wide text-slate-500 truncate">
+                          {t("brand.dashboard_card_views", "Views")}
                         </span>
                       </div>
-                      <span className="text-xl font-semibold leading-tight text-slate-900">
+                      <span className="text-base sm:text-xl font-semibold leading-tight text-slate-900">
                         {stats.totalViews.toLocaleString()}
                       </span>
                     </div>
-                    <div className="rounded-xl bg-white/80 border border-slate-200 px-3 py-2 flex flex-col gap-1">
-                      <div className="flex items-center gap-1.5 text-emerald-600">
-                        <CirclePlus className="h-3.5 w-3.5" />
-                        <span className="text-[10px] uppercase tracking-wide text-slate-500">
-                          {t("brand.dashboard_card_wishlist_adds", "Wishlist Adds")}
+                    <div className="rounded-xl bg-white/80 border border-slate-200 px-2 sm:px-3 py-2 flex flex-col gap-1">
+                      <div className="flex items-center gap-1 sm:gap-1.5 text-emerald-600">
+                        <CirclePlus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        <span className="text-[9px] sm:text-[10px] uppercase tracking-wide text-slate-500 truncate">
+                          {t("brand.dashboard_card_wishlist_adds", "Adds")}
                         </span>
                       </div>
-                      <span className="text-xl font-semibold leading-tight text-slate-900">
+                      <span className="text-base sm:text-xl font-semibold leading-tight text-slate-900">
                         {stats.wishlistAdds.toLocaleString()}
                       </span>
                     </div>
-                    <div className="rounded-xl bg-white/80 border border-slate-200 px-3 py-2 flex flex-col gap-1">
-                      <div className="flex items-center gap-1.5 text-rose-600">
-                        <Heart className="h-3.5 w-3.5" />
-                        <span className="text-[10px] uppercase tracking-wide text-slate-500">
+                    <div className="rounded-xl bg-white/80 border border-slate-200 px-2 sm:px-3 py-2 flex flex-col gap-1">
+                      <div className="flex items-center gap-1 sm:gap-1.5 text-rose-600">
+                        <Heart className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        <span className="text-[9px] sm:text-[10px] uppercase tracking-wide text-slate-500 truncate">
                           {t("brand.dashboard_card_likes", "Likes")}
                         </span>
                       </div>
-                      <span className="text-xl font-semibold leading-tight text-slate-900">
+                      <span className="text-base sm:text-xl font-semibold leading-tight text-slate-900">
                         {stats.totalLikes.toLocaleString()}
                       </span>
                     </div>
@@ -705,7 +705,7 @@ const BrandDashboard = () => {
                     <div className="flex items-center justify-between text-[11px] text-slate-600">
                       <span>{t("brand.dashboard_performance_mini_chart_label", "Engagement mix")}</span>
                     </div>
-                    <div className="flex items-end gap-4 h-14">
+                    <div className="flex items-end gap-2 sm:gap-4 h-14">
                       {[{
                         key: "views",
                         label: t("brand.dashboard_card_views", "Views"),
