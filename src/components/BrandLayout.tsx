@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import wishlyLogo from "@/assets/wishly-logo.png";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { usePresence } from "@/hooks/usePresence";
 
 export const BrandLayout = () => {
   const location = useLocation();
@@ -13,6 +14,10 @@ export const BrandLayout = () => {
   const { t } = useTranslation();
   const [brandName, setBrandName] = useState<string>("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | undefined>(undefined);
+  
+  // Track user presence for real-time online status
+  usePresence(userId);
 
   const isActive = (path: string) => location.pathname === path;
   const isActivePrefix = (prefix: string) => location.pathname.startsWith(prefix);
@@ -21,6 +26,9 @@ export const BrandLayout = () => {
     const fetchBrandInfo = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      
+      // Set userId for presence tracking
+      setUserId(user.id);
 
       // Get brand info from brands table (cast to any since types may not be generated yet)
       const { data: brand } = await (supabase as any)

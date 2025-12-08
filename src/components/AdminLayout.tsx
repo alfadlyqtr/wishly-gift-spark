@@ -1,9 +1,11 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Mail, Users, Activity, LogOut, Menu, X } from "lucide-react";
+import { Mail, Users, Activity, LogOut, Menu, X, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 
 export const AdminLayout = () => {
   const { t } = useTranslation();
@@ -11,9 +13,25 @@ export const AdminLayout = () => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Fetch pending support messages count
+  const { data: pendingCount = 0 } = useQuery({
+    queryKey: ["admin-support-messages-pending"],
+    queryFn: async () => {
+      const { count, error } = await (supabase as any)
+        .from("support_messages")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending");
+      
+      if (error) throw error;
+      return count || 0;
+    },
+    refetchInterval: 30000, // Check every 30 seconds
+  });
+
   const navItems = [
     { to: "/mqtr", label: "Overview", icon: Activity },
     { to: "/mqtr/users", label: "Users", icon: Users },
+    { to: "/mqtr/support-messages", label: "Support Messages", icon: MessageCircle, badge: pendingCount },
     { to: "/mqtr/contact", label: "Contact inbox", icon: Mail },
   ];
 
@@ -47,7 +65,12 @@ export const AdminLayout = () => {
                 }`}
               >
                 <Icon className={`w-4 h-4 ${active ? "text-primary" : "text-slate-500"}`} />
-                <span>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
+                {item.badge && item.badge > 0 && (
+                  <Badge className="bg-amber-900/50 text-amber-400 border-amber-900/50 text-xs h-5 min-w-[20px]">
+                    {item.badge}
+                  </Badge>
+                )}
               </Link>
             );
           })}
@@ -117,7 +140,12 @@ export const AdminLayout = () => {
                 }`}
               >
                 <Icon className={`w-4 h-4 ${active ? "text-primary" : "text-slate-500"}`} />
-                <span>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
+                {item.badge && item.badge > 0 && (
+                  <Badge className="bg-amber-900/50 text-amber-400 border-amber-900/50 text-xs h-5 min-w-[20px]">
+                    {item.badge}
+                  </Badge>
+                )}
               </Link>
             );
           })}

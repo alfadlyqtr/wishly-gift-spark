@@ -125,6 +125,25 @@ const BrandProfile = () => {
   const [allowQuestions, setAllowQuestions] = useState(true);
   const [allowLikes, setAllowLikes] = useState(true);
   const [showStoreLink, setShowStoreLink] = useState(true);
+  
+  // Admin master control - use React Query for real-time sync
+  const { data: adminMasterControl = false, refetch: refetchMasterControl } = useQuery({
+    queryKey: ["admin-master-control"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+      
+      const { data: profileData } = await (supabase as any)
+        .from("user_profiles")
+        .select("admin_master_control")
+        .eq("id", user.id)
+        .maybeSingle();
+      
+      return profileData?.admin_master_control === true;
+    },
+    refetchInterval: 2000, // Poll every 2 seconds for real-time updates
+    staleTime: 0,
+  });
 
   // Contact form state
   const [contactName, setContactName] = useState('');
@@ -223,11 +242,92 @@ const BrandProfile = () => {
     fetchBrandData();
   }, []);
 
+  // Real-time subscription for admin_master_control changes
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let userId: string | null = null;
+    
+    const setupRealtimeSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      userId = user.id;
+      
+      console.log('[BrandProfile] Setting up realtime subscription for user:', userId);
+      
+      // Subscribe to changes on this user's profile
+      channel = supabase
+        .channel(`admin-control-${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'user_profiles',
+            filter: `id=eq.${userId}`
+          },
+          (payload) => {
+            console.log('[BrandProfile] Received realtime update:', payload);
+            const newData = payload.new as any;
+            if (newData.admin_master_control !== undefined) {
+              console.log('[BrandProfile] admin_master_control changed to:', newData.admin_master_control);
+              refetchMasterControl(); // Trigger React Query refetch
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log('[BrandProfile] Subscription status:', status);
+        });
+    };
+    
+    setupRealtimeSubscription();
+    
+    return () => {
+      if (channel) {
+        console.log('[BrandProfile] Cleaning up realtime subscription');
+        supabase.removeChannel(channel);
+      }
+    };
+  }, []);
+
+  // Real-time sync for brand settings - ALWAYS poll to see admin changes
+  // When master control is ON, user sees changes but can't edit (disabled)
+  // When master control is OFF, user sees changes but CAN edit (override)
+  useEffect(() => {
+    // ALWAYS poll to sync admin changes in real-time
+    const interval = setInterval(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data } = await (supabase as any)
+        .from("brands")
+        .select("allow_product_requests, allow_questions, allow_likes, show_store_link, is_public, allow_messages, auto_approve_followers, notify_new_follower, notify_product_mention, notify_review, show_analytics_publicly")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (data) {
+        setAllowProductRequests(data.allow_product_requests !== false);
+        setAllowQuestions(data.allow_questions !== false);
+        setAllowLikes(data.allow_likes !== false);
+        setShowStoreLink(data.show_store_link !== false);
+        setIsPublic(data.is_public !== false);
+        setAllowMessages(data.allow_messages !== false);
+        setAutoApproveFollowers(data.auto_approve_followers === true);
+        setNotifyNewFollower(data.notify_new_follower !== false);
+        setNotifyProductMention(data.notify_product_mention !== false);
+        setNotifyReview(data.notify_review !== false);
+        setShowAnalyticsPublicly(data.show_analytics_publicly === true);
+      }
+    }, 2000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchBrandData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      // admin_master_control is now handled by React Query with polling
 
       const { data, error } = await (supabase as any)
         .from("brands")
@@ -502,7 +602,7 @@ const BrandProfile = () => {
 
           <Separator />
 
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center justify-between ${adminMasterControl ? 'opacity-50' : ''}`}>
             <div className="space-y-1">
               <Label htmlFor="allowProductRequests" className="text-base font-medium">
                 {t("brand.allow_product_requests", "Allow Product Requests")}
@@ -510,17 +610,21 @@ const BrandProfile = () => {
               <p className="text-sm text-muted-foreground">
                 {t("brand.allow_product_requests_hint", "Users can request products not in your catalog")}
               </p>
+              {adminMasterControl && (
+                <p className="text-xs text-amber-600">{t("brand.disabled_by_admin", "Disabled by administrator")}</p>
+              )}
             </div>
             <Switch
               id="allowProductRequests"
               checked={allowProductRequests}
               onCheckedChange={setAllowProductRequests}
+              disabled={adminMasterControl}
             />
           </div>
 
           <Separator />
 
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center justify-between ${adminMasterControl ? 'opacity-50' : ''}`}>
             <div className="space-y-1">
               <Label htmlFor="allowQuestions" className="text-base font-medium">
                 {t("brand.allow_questions", "Allow Questions")}
@@ -528,17 +632,21 @@ const BrandProfile = () => {
               <p className="text-sm text-muted-foreground">
                 {t("brand.allow_questions_hint", "Users can ask questions on your product cards")}
               </p>
+              {adminMasterControl && (
+                <p className="text-xs text-amber-600">{t("brand.disabled_by_admin", "Disabled by administrator")}</p>
+              )}
             </div>
             <Switch
               id="allowQuestions"
               checked={allowQuestions}
               onCheckedChange={setAllowQuestions}
+              disabled={adminMasterControl}
             />
           </div>
 
           <Separator />
 
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center justify-between ${adminMasterControl ? 'opacity-50' : ''}`}>
             <div className="space-y-1">
               <Label htmlFor="allowLikes" className="text-base font-medium">
                 {t("brand.allow_likes", "Allow Likes")}
@@ -546,17 +654,21 @@ const BrandProfile = () => {
               <p className="text-sm text-muted-foreground">
                 {t("brand.allow_likes_hint", "Users can like your products")}
               </p>
+              {adminMasterControl && (
+                <p className="text-xs text-amber-600">{t("brand.disabled_by_admin", "Disabled by administrator")}</p>
+              )}
             </div>
             <Switch
               id="allowLikes"
               checked={allowLikes}
               onCheckedChange={setAllowLikes}
+              disabled={adminMasterControl}
             />
           </div>
 
           <Separator />
 
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center justify-between ${adminMasterControl ? 'opacity-50' : ''}`}>
             <div className="space-y-1">
               <Label htmlFor="showStoreLink" className="text-base font-medium">
                 {t("brand.show_store_link", "Show Store Link")}
@@ -564,11 +676,15 @@ const BrandProfile = () => {
               <p className="text-sm text-muted-foreground">
                 {t("brand.show_store_link_hint", "Show store icon on product cards")}
               </p>
+              {adminMasterControl && (
+                <p className="text-xs text-amber-600">{t("brand.disabled_by_admin", "Disabled by administrator")}</p>
+              )}
             </div>
             <Switch
               id="showStoreLink"
               checked={showStoreLink}
               onCheckedChange={setShowStoreLink}
+              disabled={adminMasterControl}
             />
           </div>
         </CardContent>

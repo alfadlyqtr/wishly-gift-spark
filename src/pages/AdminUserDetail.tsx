@@ -2,6 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,7 +12,7 @@ import {
   ArrowLeft, Building2, User, Shield, Calendar, Mail, Phone, Globe, 
   Package, Users, Eye, CirclePlus, Clock, Copy, Check, ExternalLink,
   Instagram, Activity, Heart, LayoutGrid, List, X, AlertTriangle, Trash2,
-  Ban, Power, Settings, Edit, Wifi, WifiOff
+  Ban, Power, Settings, Edit, Wifi, WifiOff, Bell
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useState } from "react";
@@ -100,11 +101,16 @@ const AdminUserDetail = () => {
   const [activeTab, setActiveTab] = useState("account");
   const [productViewMode, setProductViewMode] = useState<"grid" | "list">("grid");
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [realtimeSyncEnabled, setRealtimeSyncEnabled] = useState(false);
   
-  // God Mode dialogs
+  // Admin Controls dialogs
   const [deleteAccountDialog, setDeleteAccountDialog] = useState(false);
   const [deleteProductDialog, setDeleteProductDialog] = useState<string | null>(null);
   const [confirmText, setConfirmText] = useState("");
+  const [suspendDialog, setSuspendDialog] = useState(false);
+  const [suspendMessage, setSuspendMessage] = useState("");
+  const [suspendDuration, setSuspendDuration] = useState(24); // preset hours
+  const [suspendCustomHours, setSuspendCustomHours] = useState("");
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -132,10 +138,13 @@ const AdminUserDetail = () => {
     });
   };
 
-  // Fetch complete user data
+  // Fetch complete user data - with real-time polling when sync is enabled
   const { data: userData, isLoading } = useQuery({
     queryKey: ["admin-user-detail", userId],
     enabled: !!userId,
+    refetchOnWindowFocus: false, // Prevent refetch from overwriting optimistic updates
+    staleTime: realtimeSyncEnabled ? 0 : 30000, // No stale time when syncing
+    refetchInterval: realtimeSyncEnabled ? 2000 : false, // Poll every 2s when sync enabled
     queryFn: async () => {
       if (!userId) return null;
 
@@ -291,9 +300,9 @@ const AdminUserDetail = () => {
     },
   });
 
-  // === GOD MODE MUTATIONS ===
+  // === ADMIN CONTROLS MUTATIONS ===
   
-  // Update user profile setting
+  // Update user profile setting with optimistic update
   const updateProfileSetting = useMutation({
     mutationFn: async ({ field, value }: { field: string; value: any }) => {
       const { error } = await (supabase as any)
@@ -301,15 +310,34 @@ const AdminUserDetail = () => {
         .update({ [field]: value })
         .eq("id", userId);
       if (error) throw error;
+      return { field, value };
+    },
+    onMutate: async ({ field, value }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["admin-user-detail", userId] });
+      // Snapshot previous value
+      const previousData = queryClient.getQueryData(["admin-user-detail", userId]);
+      // Optimistically update
+      queryClient.setQueryData(["admin-user-detail", userId], (old: any) => {
+        if (!old) return old;
+        return { ...old, profile: { ...old.profile, [field]: value } };
+      });
+      return { previousData };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-user-detail", userId] });
       toast.success("Setting updated");
     },
-    onError: (err: any) => toast.error(err?.message || "Failed to update"),
+    onError: (err: any, variables, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(["admin-user-detail", userId], context.previousData);
+      }
+      toast.error(err?.message || "Failed to update");
+    },
+    // Removed onSettled invalidation - optimistic update is sufficient
   });
 
-  // Update brand setting
+  // Update brand setting with optimistic update
   const updateBrandSetting = useMutation({
     mutationFn: async ({ field, value, brandId }: { field: string; value: any; brandId: string }) => {
       const { error } = await (supabase as any)
@@ -317,12 +345,99 @@ const AdminUserDetail = () => {
         .update({ [field]: value })
         .eq("id", brandId);
       if (error) throw error;
+      return { field, value };
+    },
+    onMutate: async ({ field, value }) => {
+      await queryClient.cancelQueries({ queryKey: ["admin-user-detail", userId] });
+      const previousData = queryClient.getQueryData(["admin-user-detail", userId]);
+      queryClient.setQueryData(["admin-user-detail", userId], (old: any) => {
+        if (!old) return old;
+        return { ...old, brand: { ...old.brand, [field]: value } };
+      });
+      return { previousData };
+    },
+    onSuccess: () => {
+      toast.success("Brand setting updated");
+    },
+    onError: (err: any, variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["admin-user-detail", userId], context.previousData);
+      }
+      toast.error(err?.message || "Failed to update");
+    },
+    // Removed onSettled invalidation - optimistic update is sufficient
+    // and invalidation was causing the toggle to reset
+  });
+
+  const selectedSuspendHours = suspendCustomHours.trim()
+    ? Math.max(0, parseFloat(suspendCustomHours))
+    : suspendDuration;
+
+  // Suspend user account
+  const suspendAccount = useMutation({
+    mutationFn: async ({ message, durationHours }: { message: string; durationHours: number }) => {
+      const suspendedUntil = new Date(Date.now() + durationHours * 60 * 60 * 1000).toISOString();
+      const { error } = await (supabase as any)
+        .from("user_profiles")
+        .update({ 
+          is_suspended: true, 
+          suspension_message: message,
+          suspended_until: suspendedUntil 
+        })
+        .eq("id", userId);
+      if (error) throw error;
+    },
+    onMutate: async ({ message, durationHours }) => {
+      await queryClient.cancelQueries({ queryKey: ["admin-user-detail", userId] });
+      const previousData = queryClient.getQueryData(["admin-user-detail", userId]);
+      const suspendedUntil = new Date(Date.now() + durationHours * 60 * 60 * 1000).toISOString();
+      queryClient.setQueryData(["admin-user-detail", userId], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          profile: {
+            ...old.profile,
+            is_suspended: true,
+            suspension_message: message,
+            suspended_until: suspendedUntil,
+          },
+        };
+      });
+      return { previousData };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-user-detail", userId] });
-      toast.success("Brand setting updated");
+      toast.success("Account suspended");
+      setSuspendDialog(false);
+      setSuspendMessage("");
+      setSuspendCustomHours("");
     },
-    onError: (err: any) => toast.error(err?.message || "Failed to update"),
+    onError: (err: any, _vars, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["admin-user-detail", userId], context.previousData);
+      }
+      toast.error(err?.message || "Failed to suspend account");
+    },
+  });
+
+  // Unsuspend user account
+  const unsuspendAccount = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any)
+        .from("user_profiles")
+        .update({ 
+          is_suspended: false, 
+          suspension_message: null,
+          suspended_until: null 
+        })
+        .eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-user-detail", userId] });
+      toast.success("Account unsuspended");
+    },
+    onError: (err: any) => toast.error(err?.message || "Failed to unsuspend account"),
   });
 
   // Delete product
@@ -374,14 +489,18 @@ const AdminUserDetail = () => {
     onError: (err: any) => toast.error(err?.message || "Failed to delete account"),
   });
 
-  // Check if user is "online" (active in last 5 minutes)
-  const isOnline = userData?.auth?.last_sign_in_at 
-    ? (Date.now() - new Date(userData.auth.last_sign_in_at).getTime()) < 5 * 60 * 1000
+  // Check if user is "online" (active in last 2 minutes based on last_active_at)
+  const lastActiveAt = userData?.profile?.last_active_at;
+  const lastSignInAt = userData?.auth?.last_sign_in_at;
+  const lastActivity = lastActiveAt || lastSignInAt;
+  
+  const isOnline = lastActiveAt 
+    ? (Date.now() - new Date(lastActiveAt).getTime()) < 2 * 60 * 1000  // 2 minutes for real-time
     : false;
 
   // Check if recently active (within 24 hours)
-  const isRecentlyActive = userData?.auth?.last_sign_in_at
-    ? (Date.now() - new Date(userData.auth.last_sign_in_at).getTime()) < 24 * 60 * 60 * 1000
+  const isRecentlyActive = lastActivity
+    ? (Date.now() - new Date(lastActivity).getTime()) < 24 * 60 * 60 * 1000
     : false;
 
   if (isLoading) {
@@ -539,7 +658,7 @@ const AdminUserDetail = () => {
             <TabsTrigger value="products" className="data-[state=active]:bg-slate-700">Products</TabsTrigger>
           )}
           <TabsTrigger value="godmode" className="data-[state=active]:bg-red-900/50 text-red-400">
-            <AlertTriangle className="w-3 h-3 mr-1" /> God Mode
+            <AlertTriangle className="w-3 h-3 mr-1" /> Admin Controls
           </TabsTrigger>
         </TabsList>
 
@@ -1148,15 +1267,83 @@ const AdminUserDetail = () => {
           </TabsContent>
         )}
 
-        {/* GOD MODE TAB */}
+        {/* Admin Controls Tab */}
         <TabsContent value="godmode" className="space-y-4">
           {/* Warning Banner */}
           <Card className="p-4 bg-red-950/30 border-red-900/50">
             <div className="flex items-center gap-3">
               <AlertTriangle className="w-6 h-6 text-red-500" />
               <div>
-                <h3 className="font-bold text-red-400">⚠️ DANGER ZONE - God Mode</h3>
+                <h3 className="font-bold text-red-400">⚠️ DANGER ZONE - Admin Controls</h3>
                 <p className="text-sm text-red-300/70">Actions here are powerful and some are irreversible. Use with extreme caution.</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Master Control Toggle */}
+          <Card className={`p-4 border-2 ${profile?.admin_master_control ? 'bg-amber-900/20 border-amber-600/50' : 'bg-slate-800/50 border-slate-700'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${profile?.admin_master_control ? 'bg-amber-500/20' : 'bg-slate-700'}`}>
+                  <Shield className={`w-5 h-5 ${profile?.admin_master_control ? 'text-amber-400' : 'text-slate-400'}`} />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-slate-200 flex items-center gap-2">
+                    Master Control
+                    {profile?.admin_master_control && (
+                      <Badge className="bg-amber-500/20 text-amber-400 text-xs">ACTIVE</Badge>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {profile?.admin_master_control 
+                      ? "User cannot change settings below - your settings are enforced" 
+                      : "User has full control over their settings"}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {/* Fetch from User button - manual refresh */}
+                {isBusiness && brand && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs border-slate-600 hover:bg-slate-700"
+                    onClick={async () => {
+                      // Force immediate refetch, bypassing staleTime
+                      await queryClient.refetchQueries({ queryKey: ["admin-user-detail", userId] });
+                      toast.success("Fetched latest from user");
+                    }}
+                  >
+                    <Activity className="w-3 h-3 mr-1" />
+                    Fetch from User
+                  </Button>
+                )}
+                {/* Real-time Sync Toggle - turns green when active */}
+                {isBusiness && brand && (
+                  <Button
+                    variant={realtimeSyncEnabled ? "default" : "outline"}
+                    size="sm"
+                    className={`text-xs ${realtimeSyncEnabled 
+                      ? "bg-green-600 hover:bg-green-700 text-white border-green-600" 
+                      : "border-slate-600 hover:bg-slate-700"}`}
+                    onClick={() => {
+                      setRealtimeSyncEnabled(!realtimeSyncEnabled);
+                      if (!realtimeSyncEnabled) {
+                        toast.success("Real-time sync enabled - watching brand changes");
+                      } else {
+                        toast.info("Real-time sync disabled");
+                      }
+                    }}
+                  >
+                    <Wifi className={`w-3 h-3 mr-1 ${realtimeSyncEnabled ? "animate-pulse" : ""}`} />
+                    {realtimeSyncEnabled ? "Live Sync ON" : "Live Sync"}
+                  </Button>
+                )}
+                <Switch
+                  checked={profile?.admin_master_control === true}
+                  onCheckedChange={(checked) => updateProfileSetting.mutate({ field: "admin_master_control", value: checked })}
+                  className={profile?.admin_master_control ? "data-[state=checked]:bg-amber-500" : ""}
+                />
               </div>
             </div>
           </Card>
@@ -1165,6 +1352,9 @@ const AdminUserDetail = () => {
           <Card className="p-4 bg-slate-800/50 border-slate-700">
             <h3 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
               <Settings className="w-4 h-4" /> User Profile Settings
+              {profile?.admin_master_control && (
+                <Badge className="bg-amber-500/20 text-amber-400 text-xs ml-2">Admin Enforced</Badge>
+              )}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* is_searchable */}
@@ -1263,6 +1453,9 @@ const AdminUserDetail = () => {
             <Card className="p-4 bg-slate-800/50 border-slate-700">
               <h3 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
                 <Building2 className="w-4 h-4" /> Brand Settings
+                {profile?.admin_master_control && (
+                  <Badge className="bg-amber-500/20 text-amber-400 text-xs ml-2">Admin Enforced</Badge>
+                )}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* is_public */}
@@ -1309,6 +1502,108 @@ const AdminUserDetail = () => {
                     onCheckedChange={(checked) => updateBrandSetting.mutate({ field: "auto_approve_followers", value: checked, brandId: brand.id })}
                   />
                 </div>
+                {/* allow_product_requests */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-900/50">
+                  <div>
+                    <div className="text-sm font-medium text-slate-200">Allow Product Requests</div>
+                    <div className="text-xs text-slate-500">Users can request products not in catalog</div>
+                  </div>
+                  <Switch
+                    checked={brand?.allow_product_requests !== false}
+                    onCheckedChange={(checked) => updateBrandSetting.mutate({ field: "allow_product_requests", value: checked, brandId: brand.id })}
+                  />
+                </div>
+                {/* allow_questions */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-900/50">
+                  <div>
+                    <div className="text-sm font-medium text-slate-200">Allow Questions</div>
+                    <div className="text-xs text-slate-500">Users can ask questions on product cards</div>
+                  </div>
+                  <Switch
+                    checked={brand?.allow_questions !== false}
+                    onCheckedChange={(checked) => updateBrandSetting.mutate({ field: "allow_questions", value: checked, brandId: brand.id })}
+                  />
+                </div>
+                {/* allow_likes */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-900/50">
+                  <div>
+                    <div className="text-sm font-medium text-slate-200">Allow Likes</div>
+                    <div className="text-xs text-slate-500">Users can like products</div>
+                  </div>
+                  <Switch
+                    checked={brand?.allow_likes !== false}
+                    onCheckedChange={(checked) => updateBrandSetting.mutate({ field: "allow_likes", value: checked, brandId: brand.id })}
+                  />
+                </div>
+                {/* show_store_link */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-900/50">
+                  <div>
+                    <div className="text-sm font-medium text-slate-200">Show Store Link</div>
+                    <div className="text-xs text-slate-500">Show store icon on product cards</div>
+                  </div>
+                  <Switch
+                    checked={brand?.show_store_link !== false}
+                    onCheckedChange={(checked) => updateBrandSetting.mutate({ field: "show_store_link", value: checked, brandId: brand.id })}
+                  />
+                </div>
+                {/* show_analytics_publicly */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-900/50">
+                  <div>
+                    <div className="text-sm font-medium text-slate-200">Public Analytics</div>
+                    <div className="text-xs text-slate-500">Display stats on public profile</div>
+                  </div>
+                  <Switch
+                    checked={brand?.show_analytics_publicly === true}
+                    onCheckedChange={(checked) => updateBrandSetting.mutate({ field: "show_analytics_publicly", value: checked, brandId: brand.id })}
+                  />
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Brand Notifications (if business) */}
+          {isBusiness && brand && (
+            <Card className="p-4 bg-slate-800/50 border-slate-700">
+              <h3 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
+                <Bell className="w-4 h-4" /> Brand Notifications
+                {profile?.admin_master_control && (
+                  <Badge className="bg-amber-500/20 text-amber-400 text-xs ml-2">Admin Enforced</Badge>
+                )}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* notify_new_follower */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-900/50">
+                  <div>
+                    <div className="text-sm font-medium text-slate-200">New Followers</div>
+                    <div className="text-xs text-slate-500">Get notified when someone follows</div>
+                  </div>
+                  <Switch
+                    checked={brand?.notify_new_follower !== false}
+                    onCheckedChange={(checked) => updateBrandSetting.mutate({ field: "notify_new_follower", value: checked, brandId: brand.id })}
+                  />
+                </div>
+                {/* notify_product_mention */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-900/50">
+                  <div>
+                    <div className="text-sm font-medium text-slate-200">Product Mentions</div>
+                    <div className="text-xs text-slate-500">When users add products to wishlists</div>
+                  </div>
+                  <Switch
+                    checked={brand?.notify_product_mention !== false}
+                    onCheckedChange={(checked) => updateBrandSetting.mutate({ field: "notify_product_mention", value: checked, brandId: brand.id })}
+                  />
+                </div>
+                {/* notify_review */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-900/50">
+                  <div>
+                    <div className="text-sm font-medium text-slate-200">Reviews & Feedback</div>
+                    <div className="text-xs text-slate-500">Get notified about new reviews</div>
+                  </div>
+                  <Switch
+                    checked={brand?.notify_review !== false}
+                    onCheckedChange={(checked) => updateBrandSetting.mutate({ field: "notify_review", value: checked, brandId: brand.id })}
+                  />
+                </div>
               </div>
             </Card>
           )}
@@ -1348,6 +1643,52 @@ const AdminUserDetail = () => {
               </div>
             </Card>
           )}
+
+          {/* Account Status */}
+          <Card className="p-4 bg-slate-800/50 border-slate-700">
+            <h3 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
+              <Ban className="w-4 h-4" /> Account Status
+            </h3>
+            {profile?.is_suspended ? (
+              <div className="space-y-3">
+                <div className="p-4 rounded-lg bg-red-950/30 border border-red-900/50">
+                  <div className="flex items-center gap-2 text-red-400 font-semibold mb-2">
+                    <Ban className="w-4 h-4" /> Account Suspended
+                  </div>
+                  <p className="text-sm text-slate-400 mb-2">
+                    <strong>Message:</strong> {profile?.suspension_message || "No message"}
+                  </p>
+                  <p className="text-sm text-slate-400">
+                    <strong>Until:</strong> {profile?.suspended_until ? formatDateTime(profile.suspended_until) : "Indefinite"}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full border-green-900/50 text-green-400 hover:bg-green-950/50"
+                  onClick={() => unsuspendAccount.mutate()}
+                  disabled={unsuspendAccount.isPending}
+                >
+                  <Power className="w-4 h-4 mr-2" /> {unsuspendAccount.isPending ? "Unsuspending..." : "Unsuspend Account"}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="p-4 rounded-lg bg-green-950/20 border border-green-900/30">
+                  <div className="flex items-center gap-2 text-green-400 font-semibold">
+                    <Power className="w-4 h-4" /> Account Active
+                  </div>
+                  <p className="text-sm text-slate-500 mt-1">This account is in good standing.</p>
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full border-amber-900/50 text-amber-400 hover:bg-amber-950/50"
+                  onClick={() => setSuspendDialog(true)}
+                >
+                  <Ban className="w-4 h-4 mr-2" /> Suspend Account
+                </Button>
+              </div>
+            )}
+          </Card>
 
           {/* NUCLEAR OPTIONS */}
           <Card className="p-4 bg-red-950/20 border-red-900/50">
@@ -1432,6 +1773,95 @@ const AdminUserDetail = () => {
               onClick={() => deleteProductDialog && deleteProduct.mutate(deleteProductDialog)}
             >
               {deleteProduct.isPending ? "Deleting..." : "Delete Product"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Suspend Account Dialog */}
+      <Dialog open={suspendDialog} onOpenChange={setSuspendDialog}>
+        <DialogContent className="bg-slate-900 border-amber-900/50">
+          <DialogHeader>
+            <DialogTitle className="text-amber-400 flex items-center gap-2">
+              <Ban className="w-5 h-5" /> Suspend Account
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Suspended users will see a blur overlay with your message when they log in. They cannot use the app until the suspension expires or is lifted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm text-slate-400 mb-2 block">Suspension Message</label>
+              <textarea
+                value={suspendMessage}
+                onChange={(e) => setSuspendMessage(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 min-h-[80px]"
+                placeholder="Your account has been suspended due to..."
+              />
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm text-slate-400 mb-2 block">Quick Duration</label>
+                <div className="flex flex-wrap gap-2">
+                  {[1, 6, 12, 24, 48, 72, 168].map((hours) => (
+                    <Button
+                      key={hours}
+                      variant={suspendDuration === hours && !suspendCustomHours ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setSuspendDuration(hours);
+                        setSuspendCustomHours("");
+                      }}
+                      className={suspendDuration === hours && !suspendCustomHours ? "" : "border-slate-700"}
+                    >
+                      {hours < 24 ? `${hours}h` : `${hours / 24}d`}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-slate-400 mb-2 block">Custom Duration (hours)</label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={suspendCustomHours}
+                    onChange={(e) => setSuspendCustomHours(e.target.value)}
+                    placeholder="e.g. 2.5"
+                    className="bg-slate-800 border-slate-700"
+                  />
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      if (suspendCustomHours.trim() === "" && suspendDuration) return;
+                      if (suspendCustomHours.trim() === "") {
+                        setSuspendCustomHours(String(suspendDuration));
+                      }
+                    }}
+                  >
+                    Apply
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  {selectedSuspendHours > 0
+                    ? `Suspension will expire: ${new Date(Date.now() + selectedSuspendHours * 60 * 60 * 1000).toLocaleString()}`
+                    : "Enter a custom duration greater than 0 hours."}
+                </p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setSuspendDialog(false); setSuspendMessage(""); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!suspendMessage.trim() || suspendAccount.isPending || !(selectedSuspendHours > 0)}
+              onClick={() => suspendAccount.mutate({ message: suspendMessage, durationHours: selectedSuspendHours })}
+            >
+              {suspendAccount.isPending ? "Suspending..." : "Suspend Account"}
             </Button>
           </DialogFooter>
         </DialogContent>

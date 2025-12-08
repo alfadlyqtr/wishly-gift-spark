@@ -8,14 +8,19 @@ import WishAddDialog from "@/components/wishes/WishAddDialog";
 import { useWishlists } from "@/hooks/use-wishlists";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { usePresence } from "@/hooks/usePresence";
 
 export const MainLayout = () => {
   const location = useLocation();
   const [addOpen, setAddOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | undefined>(undefined);
   const { data: wishlistsData } = useWishlists();
   const { t } = useTranslation();
+  
+  // Track user presence for real-time online status
+  usePresence(userId);
 
   const isActive = (path: string) => location.pathname === path;
   const isGifterShared = new URLSearchParams(location.search).get('mode')?.toLowerCase() === 'gifter';
@@ -87,6 +92,9 @@ export const MainLayout = () => {
       const { data: { user } } = await supabase.auth.getUser();
       const uid = user?.id;
       if (!uid || !mounted) return;
+      
+      // Set userId for presence tracking
+      setUserId(uid);
 
       await fetchPendingCount(uid);
       await fetchAvatar(uid);

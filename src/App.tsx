@@ -43,6 +43,7 @@ import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminUsers from "./pages/AdminUsers";
 import AdminUserDetail from "./pages/AdminUserDetail";
+import AdminSupportMessages from "./pages/AdminSupportMessages";
 import AdminContactInbox from "./pages/AdminContactInbox";
 
 const queryClient = new QueryClient();
@@ -83,6 +84,7 @@ const App = () => (
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="users/:userId" element={<AdminUserDetail />} />
+            <Route path="support-messages" element={<AdminSupportMessages />} />
             <Route path="contact" element={<AdminContactInbox />} />
           </Route>
 
