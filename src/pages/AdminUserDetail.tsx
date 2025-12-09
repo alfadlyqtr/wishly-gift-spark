@@ -201,6 +201,11 @@ const AdminUserDetail = () => {
       const following = (followingData as any[]) ?? [];
       const activities = (activitiesData as any[]) ?? [];
 
+      // Debug: Log brand data to see what's being fetched
+      console.log('[AdminUserDetail] Brand data fetched:', brand);
+      console.log('[AdminUserDetail] Brand allow_likes:', brand?.allow_likes);
+      console.log('[AdminUserDetail] Brand allow_messages:', brand?.allow_messages);
+
       // Fetch follower profiles
       const followerIds = followers.map((f: any) => f.user_id).filter(Boolean);
       let followerProfiles: any[] = [];
@@ -1269,6 +1274,32 @@ const AdminUserDetail = () => {
 
         {/* Admin Controls Tab */}
         <TabsContent value="godmode" className="space-y-4">
+          {/* Account Type Indicator */}
+          <Card className={`p-4 ${isBusiness ? 'bg-purple-950/30 border-purple-700/50' : 'bg-blue-950/30 border-blue-700/50'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {isBusiness ? (
+                  <Building2 className="w-6 h-6 text-purple-400" />
+                ) : (
+                  <User className="w-6 h-6 text-blue-400" />
+                )}
+                <div>
+                  <h3 className={`font-bold ${isBusiness ? 'text-purple-400' : 'text-blue-400'}`}>
+                    {isBusiness ? '🏢 Business Account' : '👤 Personal Account'}
+                  </h3>
+                  <p className="text-sm text-slate-400">
+                    {isBusiness 
+                      ? `Settings are in the BRANDS table • Brand: ${brand?.brand_name || 'Unknown'}`
+                      : 'Settings are in the USER_PROFILES table'}
+                  </p>
+                </div>
+              </div>
+              <Badge className={isBusiness ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'}>
+                {isBusiness ? 'brands table' : 'user_profiles table'}
+              </Badge>
+            </div>
+          </Card>
+
           {/* Warning Banner */}
           <Card className="p-4 bg-red-950/30 border-red-900/50">
             <div className="flex items-center gap-3">
@@ -1302,43 +1333,39 @@ const AdminUserDetail = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                {/* Fetch from User button - manual refresh */}
-                {isBusiness && brand && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs border-slate-600 hover:bg-slate-700"
-                    onClick={async () => {
-                      // Force immediate refetch, bypassing staleTime
-                      await queryClient.refetchQueries({ queryKey: ["admin-user-detail", userId] });
-                      toast.success("Fetched latest from user");
-                    }}
-                  >
-                    <Activity className="w-3 h-3 mr-1" />
-                    Fetch from User
-                  </Button>
-                )}
-                {/* Real-time Sync Toggle - turns green when active */}
-                {isBusiness && brand && (
-                  <Button
-                    variant={realtimeSyncEnabled ? "default" : "outline"}
-                    size="sm"
-                    className={`text-xs ${realtimeSyncEnabled 
-                      ? "bg-green-600 hover:bg-green-700 text-white border-green-600" 
-                      : "border-slate-600 hover:bg-slate-700"}`}
-                    onClick={() => {
-                      setRealtimeSyncEnabled(!realtimeSyncEnabled);
-                      if (!realtimeSyncEnabled) {
-                        toast.success("Real-time sync enabled - watching brand changes");
-                      } else {
-                        toast.info("Real-time sync disabled");
-                      }
-                    }}
-                  >
-                    <Wifi className={`w-3 h-3 mr-1 ${realtimeSyncEnabled ? "animate-pulse" : ""}`} />
-                    {realtimeSyncEnabled ? "Live Sync ON" : "Live Sync"}
-                  </Button>
-                )}
+                {/* Fetch from User button - works for both account types */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs border-slate-600 hover:bg-slate-700"
+                  onClick={async () => {
+                    // Force immediate refetch, bypassing staleTime
+                    await queryClient.refetchQueries({ queryKey: ["admin-user-detail", userId] });
+                    toast.success(`Fetched latest from ${isBusiness ? 'brand' : 'user'}`);
+                  }}
+                >
+                  <Activity className="w-3 h-3 mr-1" />
+                  Fetch from {isBusiness ? 'Brand' : 'User'}
+                </Button>
+                {/* Real-time Sync Toggle - works for both account types */}
+                <Button
+                  variant={realtimeSyncEnabled ? "default" : "outline"}
+                  size="sm"
+                  className={`text-xs ${realtimeSyncEnabled 
+                    ? "bg-green-600 hover:bg-green-700 text-white border-green-600" 
+                    : "border-slate-600 hover:bg-slate-700"}`}
+                  onClick={() => {
+                    setRealtimeSyncEnabled(!realtimeSyncEnabled);
+                    if (!realtimeSyncEnabled) {
+                      toast.success(`Real-time sync enabled - watching ${isBusiness ? 'brand' : 'user'} changes`);
+                    } else {
+                      toast.info("Real-time sync disabled");
+                    }
+                  }}
+                >
+                  <Wifi className={`w-3 h-3 mr-1 ${realtimeSyncEnabled ? "animate-pulse" : ""}`} />
+                  {realtimeSyncEnabled ? "Live Sync ON" : "Live Sync"}
+                </Button>
                 <Switch
                   checked={profile?.admin_master_control === true}
                   onCheckedChange={(checked) => updateProfileSetting.mutate({ field: "admin_master_control", value: checked })}

@@ -289,11 +289,14 @@ const BrandProfile = () => {
     };
   }, []);
 
-  // Real-time sync for brand settings - ALWAYS poll to see admin changes
-  // When master control is ON, user sees changes but can't edit (disabled)
-  // When master control is OFF, user sees changes but CAN edit (override)
+  // Real-time sync for brand settings - ONLY when Master Control is ON
+  // When master control is ON: poll to sync admin changes, user can't edit (disabled)
+  // When master control is OFF: NO polling, user has full control of their settings
   useEffect(() => {
-    // ALWAYS poll to sync admin changes in real-time
+    // Only poll when Master Control is ON - admin is enforcing settings
+    // When OFF, brand has full control, so we don't overwrite their changes
+    if (!adminMasterControl) return;
+    
     const interval = setInterval(async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -320,7 +323,7 @@ const BrandProfile = () => {
     }, 2000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [adminMasterControl]);
 
   const fetchBrandData = async () => {
     try {
