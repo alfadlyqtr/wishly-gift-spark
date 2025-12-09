@@ -2,7 +2,8 @@ import { motion, useMotionValue, useTransform } from 'motion/react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './WishlistStack.css';
-import { Trash2, Share2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
+import { ShareButton } from '@/components/ui/ShareButton';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useQueryClient } from '@tanstack/react-query';
@@ -260,17 +261,16 @@ export default function WishlistStack({
             >
               <div className="wl-card-surface">
                 {!viewerMode && allowShare && (
-                  <button
-                    type="button"
-                    className="wl-share-btn"
-                    aria-label={t('wishlist.share_aria', 'Share wishlist')}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      shareWishlist(card.id, card.title);
-                    }}
+                  <div 
+                    className="wl-share-btn-container"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <Share2 className="h-4 w-4" />
-                  </button>
+                    <ShareButton
+                      url={`${window.location.origin}/w/${card.id}`}
+                      title={card.title || 'Wishlist'}
+                      size="sm"
+                    />
+                  </div>
                 )}
                 <div className="wl-card-title">
                   {card.title === 'My Birthday Wishlist' 

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Camera, Globe, Instagram, Twitter, Facebook, Linkedin, Mail, Phone, MapPin, Save, Building2, ExternalLink, Bell, MessageSquare, Users, Shield, TrendingUp, Settings as SettingsIcon, Youtube, UserPlus, UserCheck, MessageCircle, Plus, X, LogOut, Send, Loader2, CheckCircle } from "lucide-react";
+import { Camera, Globe, Instagram, Twitter, Facebook, Linkedin, Mail, Phone, MapPin, Save, Building2, ExternalLink, Bell, MessageSquare, Users, Shield, TrendingUp, Settings as SettingsIcon, Youtube, UserPlus, UserCheck, MessageCircle, Plus, X, LogOut, Send, Loader2, CheckCircle, BadgeCheck } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -126,24 +126,8 @@ const BrandProfile = () => {
   const [allowLikes, setAllowLikes] = useState(true);
   const [showStoreLink, setShowStoreLink] = useState(true);
   
-  // Admin master control - use React Query for real-time sync
-  const { data: adminMasterControl = false, refetch: refetchMasterControl } = useQuery({
-    queryKey: ["admin-master-control"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return false;
-      
-      const { data: profileData } = await (supabase as any)
-        .from("user_profiles")
-        .select("admin_master_control")
-        .eq("id", user.id)
-        .maybeSingle();
-      
-      return profileData?.admin_master_control === true;
-    },
-    refetchInterval: 2000, // Poll every 2 seconds for real-time updates
-    staleTime: 0,
-  });
+  // Admin master control - fetched once on load, no polling
+  const [adminMasterControl, setAdminMasterControl] = useState(false);
 
   // Contact form state
   const [contactName, setContactName] = useState('');
@@ -242,95 +226,63 @@ const BrandProfile = () => {
     fetchBrandData();
   }, []);
 
-  // Real-time subscription for admin_master_control changes
+  // Realtime listener: keep adminMasterControl in sync when admin toggles Master Control
   useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    let userId: string | null = null;
-    
-    const setupRealtimeSubscription = async () => {
+    let channel: any;
+
+    const setupRealtime = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      userId = user.id;
-      
-      console.log('[BrandProfile] Setting up realtime subscription for user:', userId);
-      
-      // Subscribe to changes on this user's profile
-      channel = supabase
-        .channel(`admin-control-${userId}`)
+
+      channel = (supabase as any)
+        .channel(`admin-master-control-${user.id}`)
         .on(
           'postgres_changes',
           {
             event: 'UPDATE',
             schema: 'public',
             table: 'user_profiles',
-            filter: `id=eq.${userId}`
+            filter: `id=eq.${user.id}`,
           },
-          (payload) => {
-            console.log('[BrandProfile] Received realtime update:', payload);
-            const newData = payload.new as any;
-            if (newData.admin_master_control !== undefined) {
-              console.log('[BrandProfile] admin_master_control changed to:', newData.admin_master_control);
-              refetchMasterControl(); // Trigger React Query refetch
-            }
+          (payload: any) => {
+            const next = payload?.new?.admin_master_control === true;
+            setAdminMasterControl(next);
+            // Any update on this profile row still updates local adminMasterControl
           }
         )
-        .subscribe((status) => {
-          console.log('[BrandProfile] Subscription status:', status);
-        });
+        .on(
+          'broadcast',
+          { event: 'refresh' },
+          () => {
+            // Admin explicitly requested a remote refresh for this brand
+            fetchBrandData();
+          }
+        )
+        .subscribe();
     };
-    
-    setupRealtimeSubscription();
-    
+
+    setupRealtime();
+
     return () => {
       if (channel) {
-        console.log('[BrandProfile] Cleaning up realtime subscription');
-        supabase.removeChannel(channel);
+        (supabase as any).removeChannel(channel);
       }
     };
   }, []);
-
-  // Real-time sync for brand settings - ONLY when Master Control is ON
-  // When master control is ON: poll to sync admin changes, user can't edit (disabled)
-  // When master control is OFF: NO polling, user has full control of their settings
-  useEffect(() => {
-    // Only poll when Master Control is ON - admin is enforcing settings
-    // When OFF, brand has full control, so we don't overwrite their changes
-    if (!adminMasterControl) return;
-    
-    const interval = setInterval(async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      const { data } = await (supabase as any)
-        .from("brands")
-        .select("allow_product_requests, allow_questions, allow_likes, show_store_link, is_public, allow_messages, auto_approve_followers, notify_new_follower, notify_product_mention, notify_review, show_analytics_publicly")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      
-      if (data) {
-        setAllowProductRequests(data.allow_product_requests !== false);
-        setAllowQuestions(data.allow_questions !== false);
-        setAllowLikes(data.allow_likes !== false);
-        setShowStoreLink(data.show_store_link !== false);
-        setIsPublic(data.is_public !== false);
-        setAllowMessages(data.allow_messages !== false);
-        setAutoApproveFollowers(data.auto_approve_followers === true);
-        setNotifyNewFollower(data.notify_new_follower !== false);
-        setNotifyProductMention(data.notify_product_mention !== false);
-        setNotifyReview(data.notify_review !== false);
-        setShowAnalyticsPublicly(data.show_analytics_publicly === true);
-      }
-    }, 2000);
-    
-    return () => clearInterval(interval);
-  }, [adminMasterControl]);
 
   const fetchBrandData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // admin_master_control is now handled by React Query with polling
+      // Fetch admin_master_control once on load
+      const { data: profileData } = await (supabase as any)
+        .from("user_profiles")
+        .select("admin_master_control")
+        .eq("id", user.id)
+        .maybeSingle();
+      
+      setAdminMasterControl(profileData?.admin_master_control === true);
 
       const { data, error } = await (supabase as any)
         .from("brands")
@@ -480,9 +432,17 @@ const BrandProfile = () => {
     <div className="p-4 md:p-6 space-y-6 max-w-2xl mx-auto">
       {/* Header */}
       <div className="text-center space-y-2">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent">
-          {t("brand.profile_title", "Brand Profile")}
-        </h1>
+        <div className="flex items-center justify-center gap-2">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent">
+            {t("brand.profile_title", "Brand Profile")}
+          </h1>
+          {brand?.is_verified === true && (
+            <span className="verified-chip">
+              <BadgeCheck className="h-3.5 w-3.5" />
+              Verified
+            </span>
+          )}
+        </div>
         <p className="text-sm text-muted-foreground">
           {t("brand.profile_subtitle", "Manage your brand information and appearance")}
         </p>
@@ -537,32 +497,83 @@ const BrandProfile = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6 space-y-6">
-          <div className="space-y-2">
+          <div className={`space-y-2 ${adminMasterControl ? 'opacity-50' : ''}`}>
             <Label className="text-base font-medium">
               {t("brand.products_find_mode", "Users can find your products")}
             </Label>
             <p className="text-sm text-muted-foreground">
               {t("brand.products_find_mode_hint", "Choose whether products are findable for everyone or per product.")}
             </p>
+            {adminMasterControl && (
+              <p className="text-xs text-amber-600">{t("brand.disabled_by_admin", "Disabled by administrator")}</p>
+            )}
             <div className="inline-flex rounded-full border bg-muted px-1 py-0.5 text-xs mt-2">
               <button
                 type="button"
                 className={`px-3 py-1 rounded-full ${productsFindMode === 'all_off' ? 'bg-white shadow-sm' : 'text-muted-foreground'}`}
-                onClick={() => setProductsFindMode('all_off')}
+                onClick={async () => {
+                  if (adminMasterControl) return;
+                  if (!brand?.id) return;
+                  const previous = productsFindMode;
+                  setProductsFindMode('all_off');
+                  try {
+                    const { error } = await (supabase as any)
+                      .from("brands")
+                      .update({ products_find_mode: 'all_off' })
+                      .eq("id", brand.id);
+                    if (error) throw error;
+                    toast.success(t("brand.toggle_update_success", "Setting updated"));
+                  } catch (err: any) {
+                    setProductsFindMode(previous);
+                    toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                  }
+                }}
               >
                 {t('brand.mode_all_off', 'All off')}
               </button>
               <button
                 type="button"
                 className={`px-3 py-1 rounded-full ${productsFindMode === 'all_on' ? 'bg-white shadow-sm' : 'text-muted-foreground'}`}
-                onClick={() => setProductsFindMode('all_on')}
+                onClick={async () => {
+                  if (adminMasterControl) return;
+                  if (!brand?.id) return;
+                  const previous = productsFindMode;
+                  setProductsFindMode('all_on');
+                  try {
+                    const { error } = await (supabase as any)
+                      .from("brands")
+                      .update({ products_find_mode: 'all_on' })
+                      .eq("id", brand.id);
+                    if (error) throw error;
+                    toast.success(t("brand.toggle_update_success", "Setting updated"));
+                  } catch (err: any) {
+                    setProductsFindMode(previous);
+                    toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                  }
+                }}
               >
                 {t('brand.mode_all_on', 'All on')}
               </button>
               <button
                 type="button"
                 className={`px-3 py-1 rounded-full ${productsFindMode === 'per_product' ? 'bg-white shadow-sm' : 'text-muted-foreground'}`}
-                onClick={() => setProductsFindMode('per_product')}
+                onClick={async () => {
+                  if (adminMasterControl) return;
+                  if (!brand?.id) return;
+                  const previous = productsFindMode;
+                  setProductsFindMode('per_product');
+                  try {
+                    const { error } = await (supabase as any)
+                      .from("brands")
+                      .update({ products_find_mode: 'per_product' })
+                      .eq("id", brand.id);
+                    if (error) throw error;
+                    toast.success(t("brand.toggle_update_success", "Setting updated"));
+                  } catch (err: any) {
+                    setProductsFindMode(previous);
+                    toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                  }
+                }}
               >
                 {t('brand.mode_per_product', 'Per product')}
               </button>
@@ -571,32 +582,83 @@ const BrandProfile = () => {
 
           <Separator />
 
-          <div className="space-y-2">
+          <div className={`space-y-2 ${adminMasterControl ? 'opacity-50' : ''}`}>
             <Label className="text-base font-medium">
               {t("brand.products_add_mode", "Users can add products as an item")}
             </Label>
             <p className="text-sm text-muted-foreground">
               {t("brand.products_add_mode_hint", "Control if products can be added to wishlists or items list.")}
             </p>
+            {adminMasterControl && (
+              <p className="text-xs text-amber-600">{t("brand.disabled_by_admin", "Disabled by administrator")}</p>
+            )}
             <div className="inline-flex rounded-full border bg-muted px-1 py-0.5 text-xs mt-2">
               <button
                 type="button"
                 className={`px-3 py-1 rounded-full ${productsAddMode === 'all_off' ? 'bg-white shadow-sm' : 'text-muted-foreground'}`}
-                onClick={() => setProductsAddMode('all_off')}
+                onClick={async () => {
+                  if (adminMasterControl) return;
+                  if (!brand?.id) return;
+                  const previous = productsAddMode;
+                  setProductsAddMode('all_off');
+                  try {
+                    const { error } = await (supabase as any)
+                      .from("brands")
+                      .update({ products_add_mode: 'all_off' })
+                      .eq("id", brand.id);
+                    if (error) throw error;
+                    toast.success(t("brand.toggle_update_success", "Setting updated"));
+                  } catch (err: any) {
+                    setProductsAddMode(previous);
+                    toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                  }
+                }}
               >
                 {t('brand.mode_all_off', 'All off')}
               </button>
               <button
                 type="button"
                 className={`px-3 py-1 rounded-full ${productsAddMode === 'all_on' ? 'bg-white shadow-sm' : 'text-muted-foreground'}`}
-                onClick={() => setProductsAddMode('all_on')}
+                onClick={async () => {
+                  if (adminMasterControl) return;
+                  if (!brand?.id) return;
+                  const previous = productsAddMode;
+                  setProductsAddMode('all_on');
+                  try {
+                    const { error } = await (supabase as any)
+                      .from("brands")
+                      .update({ products_add_mode: 'all_on' })
+                      .eq("id", brand.id);
+                    if (error) throw error;
+                    toast.success(t("brand.toggle_update_success", "Setting updated"));
+                  } catch (err: any) {
+                    setProductsAddMode(previous);
+                    toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                  }
+                }}
               >
                 {t('brand.mode_all_on', 'All on')}
               </button>
               <button
                 type="button"
                 className={`px-3 py-1 rounded-full ${productsAddMode === 'per_product' ? 'bg-white shadow-sm' : 'text-muted-foreground'}`}
-                onClick={() => setProductsAddMode('per_product')}
+                onClick={async () => {
+                  if (adminMasterControl) return;
+                  if (!brand?.id) return;
+                  const previous = productsAddMode;
+                  setProductsAddMode('per_product');
+                  try {
+                    const { error } = await (supabase as any)
+                      .from("brands")
+                      .update({ products_add_mode: 'per_product' })
+                      .eq("id", brand.id);
+                    if (error) throw error;
+                    toast.success(t("brand.toggle_update_success", "Setting updated"));
+                  } catch (err: any) {
+                    setProductsAddMode(previous);
+                    toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                  }
+                }}
               >
                 {t('brand.mode_per_product', 'Per product')}
               </button>
@@ -620,7 +682,23 @@ const BrandProfile = () => {
             <Switch
               id="allowProductRequests"
               checked={allowProductRequests}
-              onCheckedChange={setAllowProductRequests}
+              onCheckedChange={async (checked) => {
+                if (adminMasterControl) return;
+                const previous = allowProductRequests;
+                setAllowProductRequests(checked);
+                try {
+                  if (!brand?.id) return;
+                  const { error } = await (supabase as any)
+                    .from("brands")
+                    .update({ allow_product_requests: checked })
+                    .eq("id", brand.id);
+                  if (error) throw error;
+                  toast.success(t("brand.toggle_update_success", "Setting updated"));
+                } catch (err: any) {
+                  setAllowProductRequests(previous);
+                  toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                }
+              }}
               disabled={adminMasterControl}
             />
           </div>
@@ -642,7 +720,23 @@ const BrandProfile = () => {
             <Switch
               id="allowQuestions"
               checked={allowQuestions}
-              onCheckedChange={setAllowQuestions}
+              onCheckedChange={async (checked) => {
+                if (adminMasterControl) return;
+                const previous = allowQuestions;
+                setAllowQuestions(checked);
+                try {
+                  if (!brand?.id) return;
+                  const { error } = await (supabase as any)
+                    .from("brands")
+                    .update({ allow_questions: checked })
+                    .eq("id", brand.id);
+                  if (error) throw error;
+                  toast.success(t("brand.toggle_update_success", "Setting updated"));
+                } catch (err: any) {
+                  setAllowQuestions(previous);
+                  toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                }
+              }}
               disabled={adminMasterControl}
             />
           </div>
@@ -664,7 +758,23 @@ const BrandProfile = () => {
             <Switch
               id="allowLikes"
               checked={allowLikes}
-              onCheckedChange={setAllowLikes}
+              onCheckedChange={async (checked) => {
+                if (adminMasterControl) return;
+                const previous = allowLikes;
+                setAllowLikes(checked);
+                try {
+                  if (!brand?.id) return;
+                  const { error } = await (supabase as any)
+                    .from("brands")
+                    .update({ allow_likes: checked })
+                    .eq("id", brand.id);
+                  if (error) throw error;
+                  toast.success(t("brand.toggle_update_success", "Setting updated"));
+                } catch (err: any) {
+                  setAllowLikes(previous);
+                  toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                }
+              }}
               disabled={adminMasterControl}
             />
           </div>
@@ -686,7 +796,23 @@ const BrandProfile = () => {
             <Switch
               id="showStoreLink"
               checked={showStoreLink}
-              onCheckedChange={setShowStoreLink}
+              onCheckedChange={async (checked) => {
+                if (adminMasterControl) return;
+                const previous = showStoreLink;
+                setShowStoreLink(checked);
+                try {
+                  if (!brand?.id) return;
+                  const { error } = await (supabase as any)
+                    .from("brands")
+                    .update({ show_store_link: checked })
+                    .eq("id", brand.id);
+                  if (error) throw error;
+                  toast.success(t("brand.toggle_update_success", "Setting updated"));
+                } catch (err: any) {
+                  setShowStoreLink(previous);
+                  toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                }
+              }}
               disabled={adminMasterControl}
             />
           </div>
@@ -1046,7 +1172,7 @@ const BrandProfile = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center justify-between ${adminMasterControl ? 'opacity-50' : ''}`}>
             <div className="space-y-1">
               <Label htmlFor="allowMessages" className="text-base font-medium flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
@@ -1055,17 +1181,37 @@ const BrandProfile = () => {
               <p className="text-sm text-muted-foreground">
                 {t("brand.allow_messages_hint", "Let users send you direct messages")}
               </p>
+              {adminMasterControl && (
+                <p className="text-xs text-amber-600">{t("brand.disabled_by_admin", "Disabled by administrator")}</p>
+              )}
             </div>
             <Switch
               id="allowMessages"
               checked={allowMessages}
-              onCheckedChange={setAllowMessages}
+              onCheckedChange={async (checked) => {
+                if (adminMasterControl) return;
+                const previous = allowMessages;
+                setAllowMessages(checked);
+                try {
+                  if (!brand?.id) return;
+                  const { error } = await (supabase as any)
+                    .from("brands")
+                    .update({ allow_messages: checked })
+                    .eq("id", brand.id);
+                  if (error) throw error;
+                  toast.success(t("brand.toggle_update_success", "Setting updated"));
+                } catch (err: any) {
+                  setAllowMessages(previous);
+                  toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                }
+              }}
+              disabled={adminMasterControl}
             />
           </div>
 
           <Separator />
 
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center justify-between ${adminMasterControl ? 'opacity-50' : ''}`}>
             <div className="space-y-1">
               <Label htmlFor="autoApproveFollowers" className="text-base font-medium flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
@@ -1074,11 +1220,31 @@ const BrandProfile = () => {
               <p className="text-sm text-muted-foreground">
                 {t("brand.auto_approve_followers_hint", "Automatically accept all follow requests")}
               </p>
+              {adminMasterControl && (
+                <p className="text-xs text-amber-600">{t("brand.disabled_by_admin", "Disabled by administrator")}</p>
+              )}
             </div>
             <Switch
               id="autoApproveFollowers"
               checked={autoApproveFollowers}
-              onCheckedChange={setAutoApproveFollowers}
+              onCheckedChange={async (checked) => {
+                if (adminMasterControl) return;
+                const previous = autoApproveFollowers;
+                setAutoApproveFollowers(checked);
+                try {
+                  if (!brand?.id) return;
+                  const { error } = await (supabase as any)
+                    .from("brands")
+                    .update({ auto_approve_followers: checked })
+                    .eq("id", brand.id);
+                  if (error) throw error;
+                  toast.success(t("brand.toggle_update_success", "Setting updated"));
+                } catch (err: any) {
+                  setAutoApproveFollowers(previous);
+                  toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                }
+              }}
+              disabled={adminMasterControl}
             />
           </div>
         </CardContent>
@@ -1096,7 +1262,7 @@ const BrandProfile = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center justify-between ${adminMasterControl ? 'opacity-50' : ''}`}>
             <div className="space-y-1">
               <Label htmlFor="notifyNewFollower" className="text-base font-medium">
                 {t("brand.notify_new_follower", "New Followers")}
@@ -1104,17 +1270,37 @@ const BrandProfile = () => {
               <p className="text-sm text-muted-foreground">
                 {t("brand.notify_new_follower_hint", "Get notified when someone follows your brand")}
               </p>
+              {adminMasterControl && (
+                <p className="text-xs text-amber-600">{t("brand.disabled_by_admin", "Disabled by administrator")}</p>
+              )}
             </div>
             <Switch
               id="notifyNewFollower"
               checked={notifyNewFollower}
-              onCheckedChange={setNotifyNewFollower}
+              onCheckedChange={async (checked) => {
+                if (adminMasterControl) return;
+                const previous = notifyNewFollower;
+                setNotifyNewFollower(checked);
+                try {
+                  if (!brand?.id) return;
+                  const { error } = await (supabase as any)
+                    .from("brands")
+                    .update({ notify_new_follower: checked })
+                    .eq("id", brand.id);
+                  if (error) throw error;
+                  toast.success(t("brand.toggle_update_success", "Setting updated"));
+                } catch (err: any) {
+                  setNotifyNewFollower(previous);
+                  toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                }
+              }}
+              disabled={adminMasterControl}
             />
           </div>
 
           <Separator />
 
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center justify-between ${adminMasterControl ? 'opacity-50' : ''}`}>
             <div className="space-y-1">
               <Label htmlFor="notifyProductMention" className="text-base font-medium">
                 {t("brand.notify_product_mention", "Product Mentions")}
@@ -1122,17 +1308,37 @@ const BrandProfile = () => {
               <p className="text-sm text-muted-foreground">
                 {t("brand.notify_product_mention_hint", "When users add your products to wishlists")}
               </p>
+              {adminMasterControl && (
+                <p className="text-xs text-amber-600">{t("brand.disabled_by_admin", "Disabled by administrator")}</p>
+              )}
             </div>
             <Switch
               id="notifyProductMention"
               checked={notifyProductMention}
-              onCheckedChange={setNotifyProductMention}
+              onCheckedChange={async (checked) => {
+                if (adminMasterControl) return;
+                const previous = notifyProductMention;
+                setNotifyProductMention(checked);
+                try {
+                  if (!brand?.id) return;
+                  const { error } = await (supabase as any)
+                    .from("brands")
+                    .update({ notify_product_mention: checked })
+                    .eq("id", brand.id);
+                  if (error) throw error;
+                  toast.success(t("brand.toggle_update_success", "Setting updated"));
+                } catch (err: any) {
+                  setNotifyProductMention(previous);
+                  toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                }
+              }}
+              disabled={adminMasterControl}
             />
           </div>
 
           <Separator />
 
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center justify-between ${adminMasterControl ? 'opacity-50' : ''}`}>
             <div className="space-y-1">
               <Label htmlFor="notifyReview" className="text-base font-medium">
                 {t("brand.notify_review", "Reviews & Feedback")}
@@ -1140,11 +1346,31 @@ const BrandProfile = () => {
               <p className="text-sm text-muted-foreground">
                 {t("brand.notify_review_hint", "Get notified about new reviews")}
               </p>
+              {adminMasterControl && (
+                <p className="text-xs text-amber-600">{t("brand.disabled_by_admin", "Disabled by administrator")}</p>
+              )}
             </div>
             <Switch
               id="notifyReview"
               checked={notifyReview}
-              onCheckedChange={setNotifyReview}
+              onCheckedChange={async (checked) => {
+                if (adminMasterControl) return;
+                const previous = notifyReview;
+                setNotifyReview(checked);
+                try {
+                  if (!brand?.id) return;
+                  const { error } = await (supabase as any)
+                    .from("brands")
+                    .update({ notify_review: checked })
+                    .eq("id", brand.id);
+                  if (error) throw error;
+                  toast.success(t("brand.toggle_update_success", "Setting updated"));
+                } catch (err: any) {
+                  setNotifyReview(previous);
+                  toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                }
+              }}
+              disabled={adminMasterControl}
             />
           </div>
         </CardContent>
@@ -1159,7 +1385,7 @@ const BrandProfile = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center justify-between ${adminMasterControl ? 'opacity-50' : ''}`}>
             <div className="space-y-1">
               <Label htmlFor="showAnalyticsPublicly" className="text-base font-medium">
                 {t("brand.show_analytics_publicly", "Public Analytics")}
@@ -1167,11 +1393,31 @@ const BrandProfile = () => {
               <p className="text-sm text-muted-foreground">
                 {t("brand.show_analytics_publicly_hint", "Display basic stats on your public profile")}
               </p>
+              {adminMasterControl && (
+                <p className="text-xs text-amber-600">{t("brand.disabled_by_admin", "Disabled by administrator")}</p>
+              )}
             </div>
             <Switch
               id="showAnalyticsPublicly"
               checked={showAnalyticsPublicly}
-              onCheckedChange={setShowAnalyticsPublicly}
+              onCheckedChange={async (checked) => {
+                if (adminMasterControl) return;
+                const previous = showAnalyticsPublicly;
+                setShowAnalyticsPublicly(checked);
+                try {
+                  if (!brand?.id) return;
+                  const { error } = await (supabase as any)
+                    .from("brands")
+                    .update({ show_analytics_publicly: checked })
+                    .eq("id", brand.id);
+                  if (error) throw error;
+                  toast.success(t("brand.toggle_update_success", "Setting updated"));
+                } catch (err: any) {
+                  setShowAnalyticsPublicly(previous);
+                  toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                }
+              }}
+              disabled={adminMasterControl}
             />
           </div>
         </CardContent>
@@ -1185,7 +1431,7 @@ const BrandProfile = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center justify-between ${adminMasterControl ? 'opacity-50' : ''}`}>
             <div className="space-y-1">
               <Label htmlFor="isPublic" className="text-base font-medium">
                 {t("brand.field_public", "Public Profile")}
@@ -1193,11 +1439,31 @@ const BrandProfile = () => {
               <p className="text-sm text-muted-foreground">
                 {t("brand.field_public_hint", "Allow users to discover and view your brand")}
               </p>
+              {adminMasterControl && (
+                <p className="text-xs text-amber-600">{t("brand.disabled_by_admin", "Disabled by administrator")}</p>
+              )}
             </div>
             <Switch
               id="isPublic"
               checked={isPublic}
-              onCheckedChange={setIsPublic}
+              onCheckedChange={async (checked) => {
+                if (adminMasterControl) return;
+                const previous = isPublic;
+                setIsPublic(checked);
+                try {
+                  if (!brand?.id) return;
+                  const { error } = await (supabase as any)
+                    .from("brands")
+                    .update({ is_public: checked })
+                    .eq("id", brand.id);
+                  if (error) throw error;
+                  toast.success(t("brand.toggle_update_success", "Setting updated"));
+                } catch (err: any) {
+                  setIsPublic(previous);
+                  toast.error(err.message || t("brand.toggle_update_error", "Failed to update setting"));
+                }
+              }}
+              disabled={adminMasterControl}
             />
           </div>
 

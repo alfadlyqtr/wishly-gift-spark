@@ -4,8 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Eye, CirclePlus, Heart, Users, BarChart3, Activity, Package, Settings2, ExternalLink, MessageCircle, Send, CheckCircle2, Clock, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Eye, CirclePlus, Heart, Users, BarChart3, Activity, Package, Settings2, ExternalLink, MessageCircle, Send, CheckCircle2, Clock, Trash2, BadgeCheck } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { brandFollowUser, brandUnfollowUser } from "@/lib/follow";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -34,7 +34,7 @@ const BrandDashboard = () => {
 
       const { data: brand } = await (supabase as any)
         .from("brands")
-        .select("id, brand_name")
+        .select("id, brand_name, is_verified")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -233,6 +233,7 @@ const BrandDashboard = () => {
       return {
         brandId: brand.id,
         brandName: (brand as any).brand_name || null,
+        isVerified: (brand as any).is_verified === true,
         productCount: products?.length || 0,
         totalViews,
         wishlistAdds,
@@ -249,6 +250,37 @@ const BrandDashboard = () => {
   });
 
   const brandName = (brandData as any)?.brandName || "";
+  const isVerified = (brandData as any)?.isVerified === true;
+
+  // Real-time listener for admin refresh broadcast
+  useEffect(() => {
+    let channel: any;
+
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      channel = (supabase as any)
+        .channel(`admin-master-control-${user.id}`)
+        .on(
+          'broadcast',
+          { event: 'refresh' },
+          () => {
+            // Admin triggered a refresh - refetch dashboard data
+            queryClient.invalidateQueries({ queryKey: ["brand-dashboard"] });
+          }
+        )
+        .subscribe();
+    };
+
+    setupRealtime();
+
+    return () => {
+      if (channel) {
+        (supabase as any).removeChannel(channel);
+      }
+    };
+  }, [queryClient]);
 
   const stats = {
     totalViews: brandData?.totalViews || 0,
@@ -430,20 +462,34 @@ const BrandDashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-background to-[hsl(var(--brand-warm-start))] p-3 sm:p-4 md:p-6">
       {/* Header */}
       <div className="mb-4 sm:mb-6">
-        <h1
-          className="text-3xl sm:text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)] mb-1"
-          style={{ WebkitTextStroke: "0.6px rgba(15, 23, 42, 0.85)" }}
-        >
-          {t("brand.dashboard_title", "Brand Dashboard")}
-        </h1>
-        <p
-          className="text-[11px] sm:text-sm font-extrabold text-slate-800 drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]"
-          style={{ WebkitTextStroke: "0.4px rgba(15, 23, 42, 0.5)" }}
-        >
-          {brandName
-            ? t("brand.dashboard_welcome", "Welcome {{name}}", { name: brandName })
-            : t("brand.dashboard_subtitle", "Track your product visibility and wishlist performance")}
-        </p>
+        <div className="flex items-center gap-2 mb-1">
+          <h1
+            className="text-3xl sm:text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]"
+            style={{ WebkitTextStroke: "0.6px rgba(15, 23, 42, 0.85)" }}
+          >
+            {t("brand.dashboard_title", "Brand Dashboard")}
+          </h1>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <p
+            className={`text-[11px] sm:text-sm font-extrabold drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)] ${
+              isVerified 
+                ? "text-lg sm:text-xl bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent"
+                : "text-slate-800"
+            }`}
+            style={{ WebkitTextStroke: isVerified ? "0.5px rgba(15, 23, 42, 0.7)" : "0.4px rgba(15, 23, 42, 0.5)" }}
+          >
+            {brandName
+              ? t("brand.dashboard_welcome", "Welcome {{name}}", { name: brandName })
+              : t("brand.dashboard_subtitle", "Track your product visibility and wishlist performance")}
+          </p>
+          {isVerified && (
+            <span className="verified-chip">
+              <BadgeCheck className="h-3.5 w-3.5" />
+              Verified
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Tabs for Mobile-First Design */}

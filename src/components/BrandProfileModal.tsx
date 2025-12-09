@@ -83,6 +83,7 @@ interface BrandProfile {
   tiktok?: string;
   youtube?: string;
   brand_website?: string;
+  is_verified?: boolean;
 }
 
 export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModalProps) => {
@@ -338,21 +339,25 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
             <div className="wave"></div>
             <div className="wave"></div>
             
-            {/* Verified Badge */}
-            <div className="verified-badge">
-              <BadgeCheck />
-              <span>Verified</span>
-            </div>
+            {/* Verified Badge - only show if brand.is_verified is true */}
+            {brand.is_verified === true && (
+              <div className="verified-badge">
+                <BadgeCheck />
+                <span>Verified</span>
+              </div>
+            )}
             
             {/* Logo */}
-            <div className="brand-profile-image">
-              {brand.logo_url ? (
-                <img src={brand.logo_url} alt={brand.brand_name} className="brand-pfp" />
-              ) : (
-                <div className="brand-pfp-placeholder">
-                  <Store className="h-12 w-12 text-gray-600" />
-                </div>
-              )}
+            <div className={brand.is_verified ? "verified-avatar" : ""}>
+              <div className="brand-profile-image">
+                {brand.logo_url ? (
+                  <img src={brand.logo_url} alt={brand.brand_name} className="brand-pfp" />
+                ) : (
+                  <div className="brand-pfp-placeholder">
+                    <Store className="h-12 w-12 text-gray-600" />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Brand Name */}

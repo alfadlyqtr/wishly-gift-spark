@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Heart, Repeat2, MessageCircle, Users } from "lucide-react";
+import { Heart, MessageCircle, Users } from "lucide-react";
+import { ShareButton } from "@/components/ui/ShareButton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
@@ -663,16 +664,12 @@ export const SocialWishCard = () => {
                     </span>
                   </Button>
                 )}
-                {owner?.allow_wishlist_sharing && (
-                  <Button
-                    variant="ghost"
+                {owner?.allow_wishlist_sharing && wishlistId && (
+                  <ShareButton
+                    url={`${window.location.origin}/w/${wishlistId}`}
+                    title={(data as any)?.wishlist?.title || 'Wishlist'}
                     size="sm"
-                    className="flex items-center gap-2 rounded-full px-3"
-                    onClick={handleShare}
-                  >
-                    <Repeat2 className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{t('dashboard.action_share', 'Share')}</span>
-                  </Button>
+                  />
                 )}
                 {allowCommentsPref && (
                   <Button

@@ -32,7 +32,15 @@
   background: linear-gradient(-45deg, hsl(var(--brand-warm-start)) 0%, hsl(var(--brand-cool-end)) 100%);
 }
 
-/* Share button (top-right) */
+/* Share button container (top-right) - for new expanding share button */
+.wl-share-btn-container {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 50;
+}
+
+/* Legacy share button (top-right) - kept for backwards compatibility */
 .wl-share-btn {
   position: absolute;
   top: 10px;

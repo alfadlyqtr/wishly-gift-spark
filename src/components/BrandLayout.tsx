@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Store, Building2, Bell, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Package, Store, Building2, Bell, MessageSquare, BadgeCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import wishlyLogo from "@/assets/wishly-logo.png";
@@ -14,6 +14,7 @@ export const BrandLayout = () => {
   const { t } = useTranslation();
   const [brandName, setBrandName] = useState<string>("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [isVerified, setIsVerified] = useState<boolean>(false);
   const [userId, setUserId] = useState<string | undefined>(undefined);
   
   // Track user presence for real-time online status
@@ -22,28 +23,61 @@ export const BrandLayout = () => {
   const isActive = (path: string) => location.pathname === path;
   const isActivePrefix = (prefix: string) => location.pathname.startsWith(prefix);
 
+  const fetchBrandInfo = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return user;
+    
+    // Set userId for presence tracking
+    setUserId(user.id);
+
+    // Get brand info from brands table
+    const { data: brand } = await (supabase as any)
+      .from("brands")
+      .select("brand_name, logo_url, is_verified")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (brand) {
+      setBrandName(brand.brand_name || "");
+      setLogoUrl(brand.logo_url || null);
+      setIsVerified(brand.is_verified === true);
+    }
+    
+    return user;
+  };
+
   useEffect(() => {
-    const fetchBrandInfo = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+    fetchBrandInfo();
+  }, []);
+
+  // Real-time listener for is_verified changes from admin
+  useEffect(() => {
+    let channel: any;
+
+    const setupRealtime = async () => {
+      const user = await fetchBrandInfo();
       if (!user) return;
-      
-      // Set userId for presence tracking
-      setUserId(user.id);
 
-      // Get brand info from brands table (cast to any since types may not be generated yet)
-      const { data: brand } = await (supabase as any)
-        .from("brands")
-        .select("brand_name, logo_url")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (brand) {
-        setBrandName(brand.brand_name || "");
-        setLogoUrl(brand.logo_url || null);
-      }
+      channel = (supabase as any)
+        .channel(`admin-master-control-${user.id}`)
+        .on(
+          'broadcast',
+          { event: 'refresh' },
+          () => {
+            // Admin triggered a refresh - refetch brand info
+            fetchBrandInfo();
+          }
+        )
+        .subscribe();
     };
 
-    fetchBrandInfo();
+    setupRealtime();
+
+    return () => {
+      if (channel) {
+        (supabase as any).removeChannel(channel);
+      }
+    };
   }, []);
 
   const handleMessages = () => {
@@ -60,10 +94,36 @@ export const BrandLayout = () => {
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <img src={wishlyLogo} alt="Wishly" className="h-9 w-auto" />
+            {/* Combined brand avatar + Wishly logo for verified, or just Wishly logo */}
+            {isVerified && logoUrl ? (
+              <div className="relative flex items-center">
+                {/* Brand avatar with ring */}
+                <div className="verified-avatar-sm">
+                  <img 
+                    src={logoUrl} 
+                    alt={brandName} 
+                    className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-md" 
+                  />
+                </div>
+                {/* Wishly logo overlapping */}
+                <img 
+                  src={wishlyLogo} 
+                  alt="Wishly" 
+                  className="h-6 w-6 rounded-full object-contain bg-white border border-slate-200 shadow-sm -ml-3 z-10" 
+                />
+              </div>
+            ) : (
+              <img src={wishlyLogo} alt="Wishly" className="h-9 w-auto" />
+            )}
             <div className="flex flex-col">
-              <span className="text-sm font-bold text-slate-800">
+              <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                 {brandName || t("brand.header_title", "Brand Portal")}
+                {isVerified && (
+                  <span className="verified-chip">
+                    <BadgeCheck className="h-3 w-3" />
+                    Verified
+                  </span>
+                )}
               </span>
               <span className="text-[10px] text-slate-500">
                 {t("brand.header_subtitle", "Business Dashboard")}
@@ -166,11 +226,13 @@ export const BrandLayout = () => {
                 }`}
               >
                 {logoUrl ? (
-                  <img 
-                    src={logoUrl} 
-                    alt={brandName} 
-                    className="h-9 w-9 rounded-full object-cover drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" 
-                  />
+                  <div className={isVerified ? "verified-avatar-sm" : ""}>
+                    <img 
+                      src={logoUrl} 
+                      alt={brandName} 
+                      className="h-9 w-9 rounded-full object-cover drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" 
+                    />
+                  </div>
                 ) : (
                   <Building2 className="h-9 w-9 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" strokeWidth={2.4} />
                 )}

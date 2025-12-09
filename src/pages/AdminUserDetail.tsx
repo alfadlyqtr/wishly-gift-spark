@@ -101,8 +101,7 @@ const AdminUserDetail = () => {
   const [activeTab, setActiveTab] = useState("account");
   const [productViewMode, setProductViewMode] = useState<"grid" | "list">("grid");
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [realtimeSyncEnabled, setRealtimeSyncEnabled] = useState(false);
-  
+    
   // Admin Controls dialogs
   const [deleteAccountDialog, setDeleteAccountDialog] = useState(false);
   const [deleteProductDialog, setDeleteProductDialog] = useState<string | null>(null);
@@ -143,8 +142,8 @@ const AdminUserDetail = () => {
     queryKey: ["admin-user-detail", userId],
     enabled: !!userId,
     refetchOnWindowFocus: false, // Prevent refetch from overwriting optimistic updates
-    staleTime: realtimeSyncEnabled ? 0 : 30000, // No stale time when syncing
-    refetchInterval: realtimeSyncEnabled ? 2000 : false, // Poll every 2s when sync enabled
+    staleTime: 30000, // Cache for 30 seconds
+    refetchInterval: false, // No automatic polling - use Fetch button
     queryFn: async () => {
       if (!userId) return null;
 
@@ -200,11 +199,6 @@ const AdminUserDetail = () => {
       const followers = (followersData as any[]) ?? [];
       const following = (followingData as any[]) ?? [];
       const activities = (activitiesData as any[]) ?? [];
-
-      // Debug: Log brand data to see what's being fetched
-      console.log('[AdminUserDetail] Brand data fetched:', brand);
-      console.log('[AdminUserDetail] Brand allow_likes:', brand?.allow_likes);
-      console.log('[AdminUserDetail] Brand allow_messages:', brand?.allow_messages);
 
       // Fetch follower profiles
       const followerIds = followers.map((f: any) => f.user_id).filter(Boolean);
@@ -361,8 +355,27 @@ const AdminUserDetail = () => {
       });
       return { previousData };
     },
-    onSuccess: () => {
+    onSuccess: async (data, variables) => {
       toast.success("Brand setting updated");
+      
+      // If is_verified was changed, send broadcast to update brand UI in real-time
+      if (variables.field === "is_verified" && userId) {
+        const channel = (supabase as any)
+          .channel(`admin-master-control-${userId}`);
+
+        channel.subscribe((status: string) => {
+          if (status === 'SUBSCRIBED') {
+            channel.send({
+              type: 'broadcast',
+              event: 'refresh',
+              payload: { source: 'admin' },
+            });
+            setTimeout(() => {
+              (supabase as any).removeChannel(channel);
+            }, 1000);
+          }
+        });
+      }
     },
     onError: (err: any, variables, context) => {
       if (context?.previousData) {
@@ -1313,27 +1326,36 @@ const AdminUserDetail = () => {
 
           {/* Master Control Toggle */}
           <Card className={`p-4 border-2 ${profile?.admin_master_control ? 'bg-amber-900/20 border-amber-600/50' : 'bg-slate-800/50 border-slate-700'}`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${profile?.admin_master_control ? 'bg-amber-500/20' : 'bg-slate-700'}`}>
-                  <Shield className={`w-5 h-5 ${profile?.admin_master_control ? 'text-amber-400' : 'text-slate-400'}`} />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                    Master Control
-                    {profile?.admin_master_control && (
-                      <Badge className="bg-amber-500/20 text-amber-400 text-xs">ACTIVE</Badge>
-                    )}
+            <div className="space-y-4">
+              {/* Header row */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`p-2 rounded-lg shrink-0 ${profile?.admin_master_control ? 'bg-amber-500/20' : 'bg-slate-700'}`}>
+                    <Shield className={`w-5 h-5 ${profile?.admin_master_control ? 'text-amber-400' : 'text-slate-400'}`} />
                   </div>
-                  <div className="text-xs text-slate-500">
-                    {profile?.admin_master_control 
-                      ? "User cannot change settings below - your settings are enforced" 
-                      : "User has full control over their settings"}
+                  <div className="min-w-0">
+                    <div className="text-sm font-bold text-slate-200 flex items-center gap-2 flex-wrap">
+                      Master Control
+                      {profile?.admin_master_control && (
+                        <Badge className="bg-amber-500/20 text-amber-400 text-xs">ACTIVE</Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {profile?.admin_master_control 
+                        ? "Admin controls enforced" 
+                        : "User has full control"}
+                    </div>
                   </div>
                 </div>
+                <Switch
+                  checked={profile?.admin_master_control === true}
+                  onCheckedChange={(checked) => updateProfileSetting.mutate({ field: "admin_master_control", value: checked })}
+                  className={`shrink-0 ${profile?.admin_master_control ? "data-[state=checked]:bg-amber-500" : ""}`}
+                />
               </div>
-              <div className="flex items-center gap-3">
-                {/* Fetch from User button - works for both account types */}
+              {/* Buttons row */}
+              <div className="flex flex-wrap gap-2">
+                {/* Fetch from User button - existing behavior, keeps admin data in sync */}
                 <Button
                   variant="outline"
                   size="sm"
@@ -1347,38 +1369,53 @@ const AdminUserDetail = () => {
                   <Activity className="w-3 h-3 mr-1" />
                   Fetch from {isBusiness ? 'Brand' : 'User'}
                 </Button>
-                {/* Real-time Sync Toggle - works for both account types */}
+                {/* New Refresh button - triggers remote refresh on brand/user app */}
                 <Button
-                  variant={realtimeSyncEnabled ? "default" : "outline"}
+                  variant="outline"
                   size="sm"
-                  className={`text-xs ${realtimeSyncEnabled 
-                    ? "bg-green-600 hover:bg-green-700 text-white border-green-600" 
-                    : "border-slate-600 hover:bg-slate-700"}`}
-                  onClick={() => {
-                    setRealtimeSyncEnabled(!realtimeSyncEnabled);
-                    if (!realtimeSyncEnabled) {
-                      toast.success(`Real-time sync enabled - watching ${isBusiness ? 'brand' : 'user'} changes`);
+                  className="text-xs border-slate-600 hover:bg-slate-700"
+                  onClick={async () => {
+                    if (!userId) return;
+
+                    if (isBusiness) {
+                      // For brands: send a realtime broadcast that BrandProfile listens to
+                      const channel = (supabase as any)
+                        .channel(`admin-master-control-${userId}`);
+
+                      channel.subscribe((status: string) => {
+                        if (status === 'SUBSCRIBED') {
+                          channel.send({
+                            type: 'broadcast',
+                            event: 'refresh',
+                            payload: { source: 'admin' },
+                          });
+                          // Give time for message to be delivered before cleanup
+                          setTimeout(() => {
+                            (supabase as any).removeChannel(channel);
+                          }, 1000);
+                        }
+                      });
+
+                      toast.success("Refreshed brand data");
                     } else {
-                      toast.info("Real-time sync disabled");
+                      // For personal accounts: fall back to admin-side refetch
+                      await queryClient.refetchQueries({ queryKey: ["admin-user-detail", userId] });
+                      toast.success("Refreshed user data");
                     }
                   }}
                 >
-                  <Wifi className={`w-3 h-3 mr-1 ${realtimeSyncEnabled ? "animate-pulse" : ""}`} />
-                  {realtimeSyncEnabled ? "Live Sync ON" : "Live Sync"}
+                  <Activity className="w-3 h-3 mr-1" />
+                  Refresh {isBusiness ? 'Brand' : 'User'}
                 </Button>
-                <Switch
-                  checked={profile?.admin_master_control === true}
-                  onCheckedChange={(checked) => updateProfileSetting.mutate({ field: "admin_master_control", value: checked })}
-                  className={profile?.admin_master_control ? "data-[state=checked]:bg-amber-500" : ""}
-                />
               </div>
             </div>
           </Card>
 
-          {/* User Settings Controls */}
+          {/* User Settings Controls - Only show for Personal accounts */}
+          {!isBusiness && (
           <Card className="p-4 bg-slate-800/50 border-slate-700">
             <h3 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
-              <Settings className="w-4 h-4" /> User Profile Settings
+              <Settings className="w-4 h-4" /> User Settings
               {profile?.admin_master_control && (
                 <Badge className="bg-amber-500/20 text-amber-400 text-xs ml-2">Admin Enforced</Badge>
               )}
@@ -1474,12 +1511,13 @@ const AdminUserDetail = () => {
               </div>
             </div>
           </Card>
+          )}
 
           {/* Brand Settings (if business) */}
           {isBusiness && brand && (
             <Card className="p-4 bg-slate-800/50 border-slate-700">
               <h3 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
-                <Building2 className="w-4 h-4" /> Brand Settings
+                <Building2 className="w-4 h-4 text-purple-400" /> Brand Settings (brands table)
                 {profile?.admin_master_control && (
                   <Badge className="bg-amber-500/20 text-amber-400 text-xs ml-2">Admin Enforced</Badge>
                 )}
@@ -1525,7 +1563,7 @@ const AdminUserDetail = () => {
                     <div className="text-xs text-slate-500">Automatically accept follows</div>
                   </div>
                   <Switch
-                    checked={brand?.auto_approve_followers !== false}
+                    checked={brand?.auto_approve_followers === true}
                     onCheckedChange={(checked) => updateBrandSetting.mutate({ field: "auto_approve_followers", value: checked, brandId: brand.id })}
                   />
                 </div>
@@ -1583,6 +1621,66 @@ const AdminUserDetail = () => {
                     checked={brand?.show_analytics_publicly === true}
                     onCheckedChange={(checked) => updateBrandSetting.mutate({ field: "show_analytics_publicly", value: checked, brandId: brand.id })}
                   />
+                </div>
+                {/* products_find_mode */}
+                <div className="flex flex-col p-3 rounded-lg bg-slate-900/50">
+                  <div className="mb-2">
+                    <div className="text-sm font-medium text-slate-200">Users can find products</div>
+                    <div className="text-xs text-slate-500">Control if products are findable for everyone or per product</div>
+                  </div>
+                  <div className="inline-flex rounded-full border border-slate-700 bg-slate-900 px-1 py-0.5 text-xs mt-1 self-start">
+                    <button
+                      type="button"
+                      className={`px-3 py-1 rounded-full ${brand?.products_find_mode === 'all_off' ? 'bg-slate-800 text-slate-50' : 'text-slate-400'}`}
+                      onClick={() => updateBrandSetting.mutate({ field: 'products_find_mode', value: 'all_off', brandId: brand.id })}
+                    >
+                      All off
+                    </button>
+                    <button
+                      type="button"
+                      className={`px-3 py-1 rounded-full ${brand?.products_find_mode === 'all_on' ? 'bg-slate-800 text-slate-50' : 'text-slate-400'}`}
+                      onClick={() => updateBrandSetting.mutate({ field: 'products_find_mode', value: 'all_on', brandId: brand.id })}
+                    >
+                      All on
+                    </button>
+                    <button
+                      type="button"
+                      className={`px-3 py-1 rounded-full ${!brand?.products_find_mode || brand?.products_find_mode === 'per_product' ? 'bg-slate-800 text-slate-50' : 'text-slate-400'}`}
+                      onClick={() => updateBrandSetting.mutate({ field: 'products_find_mode', value: 'per_product', brandId: brand.id })}
+                    >
+                      Per product
+                    </button>
+                  </div>
+                </div>
+                {/* products_add_mode */}
+                <div className="flex flex-col p-3 rounded-lg bg-slate-900/50">
+                  <div className="mb-2">
+                    <div className="text-sm font-medium text-slate-200">Users can add products as an item</div>
+                    <div className="text-xs text-slate-500">Control if products can be added to wishlists or items list</div>
+                  </div>
+                  <div className="inline-flex rounded-full border border-slate-700 bg-slate-900 px-1 py-0.5 text-xs mt-1 self-start">
+                    <button
+                      type="button"
+                      className={`px-3 py-1 rounded-full ${brand?.products_add_mode === 'all_off' ? 'bg-slate-800 text-slate-50' : 'text-slate-400'}`}
+                      onClick={() => updateBrandSetting.mutate({ field: 'products_add_mode', value: 'all_off', brandId: brand.id })}
+                    >
+                      All off
+                    </button>
+                    <button
+                      type="button"
+                      className={`px-3 py-1 rounded-full ${brand?.products_add_mode === 'all_on' ? 'bg-slate-800 text-slate-50' : 'text-slate-400'}`}
+                      onClick={() => updateBrandSetting.mutate({ field: 'products_add_mode', value: 'all_on', brandId: brand.id })}
+                    >
+                      All on
+                    </button>
+                    <button
+                      type="button"
+                      className={`px-3 py-1 rounded-full ${!brand?.products_add_mode || brand?.products_add_mode === 'per_product' ? 'bg-slate-800 text-slate-50' : 'text-slate-400'}`}
+                      onClick={() => updateBrandSetting.mutate({ field: 'products_add_mode', value: 'per_product', brandId: brand.id })}
+                    >
+                      Per product
+                    </button>
+                  </div>
                 </div>
               </div>
             </Card>
