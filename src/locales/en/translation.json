@@ -18,6 +18,20 @@
     "title": "Ready to celebrate?",
     "button": "Get Started Free"
   },
+  "home": {
+    "card_birthday_title": "Hassan's Birthday",
+    "card_birthday_meta": "5 items added",
+    "card_product_title": "AirPods Pro",
+    "card_product_meta": "Added by ",
+    "card_product_name": "Mozah",
+    "card_product2_title": "Nike Air Max",
+    "card_product2_meta": "Added by ",
+    "card_product2_name": "Alanoud",
+    "card_product3_title": "PS5 Controller",
+    "card_product3_meta": "Added by ",
+    "card_product3_name": "Jabor",
+    "card_gift_button": "Gift"
+  },
   "auth": {
     "login_title": "Welcome Back",
     "login_subtitle": "Sign in to access your wishlists",
