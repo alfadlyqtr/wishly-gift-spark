@@ -45,6 +45,7 @@ import AdminUsers from "./pages/AdminUsers";
 import AdminUserDetail from "./pages/AdminUserDetail";
 import AdminSupportMessages from "./pages/AdminSupportMessages";
 import AdminContactInbox from "./pages/AdminContactInbox";
+import AdminAIUsage from "./pages/AdminAIUsage";
 
 const queryClient = new QueryClient();
 
@@ -86,6 +87,7 @@ const App = () => (
             <Route path="users/:userId" element={<AdminUserDetail />} />
             <Route path="support-messages" element={<AdminSupportMessages />} />
             <Route path="contact" element={<AdminContactInbox />} />
+            <Route path="ai-usage" element={<AdminAIUsage />} />
           </Route>
 
           {/* Authenticated app shell - personal users */}

@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Mail, Users, Activity, LogOut, Menu, X, MessageCircle } from "lucide-react";
+import { Mail, Users, Activity, LogOut, Menu, X, MessageCircle, Brain } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -33,6 +33,7 @@ export const AdminLayout = () => {
     { to: "/mqtr/users", label: "Users", icon: Users },
     { to: "/mqtr/support-messages", label: "Support Messages", icon: MessageCircle, badge: pendingCount },
     { to: "/mqtr/contact", label: "Contact inbox", icon: Mail },
+    { to: "/mqtr/ai-usage", label: "AI Usage", icon: Brain },
   ];
 
   return (

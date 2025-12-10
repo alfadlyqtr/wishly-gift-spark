@@ -142,6 +142,49 @@ export const MainLayout = () => {
     };
   }, [t]);
 
+  // Real-time listener for admin control changes (LiveSync with admin panel)
+  useEffect(() => {
+    let adminChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    const setupAdminListener = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      adminChannel = supabase
+        .channel(`admin-master-control-${user.id}`)
+        .on(
+          'broadcast',
+          { event: 'refresh' },
+          async () => {
+            // Admin triggered a refresh - refetch user profile/settings
+            const { data: profile } = await supabase
+              .from("user_profiles")
+              .select("avatar_url")
+              .eq("id", user.id)
+              .maybeSingle();
+            setAvatarUrl((profile as any)?.avatar_url || null);
+            
+            // Also refetch pending count
+            const { count } = await supabase
+              .from("followers")
+              .select("id", { count: "exact", head: true })
+              .eq("following_id", user.id)
+              .eq("status", "pending");
+            setPendingCount((count as number | null) ?? 0);
+          }
+        )
+        .subscribe();
+    };
+
+    setupAdminListener();
+
+    return () => {
+      if (adminChannel) {
+        supabase.removeChannel(adminChannel);
+      }
+    };
+  }, []);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* Top Bar (hidden on shared gifter view) */}

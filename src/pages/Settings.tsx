@@ -220,6 +220,7 @@ const Settings = () => {
   const [allowFollowersView, setAllowFollowersView] = useState<boolean>(false);
   const [respectPerWishlistPrivacy, setRespectPerWishlistPrivacy] = useState<boolean>(true);
   const [savingWishlistPrefs, setSavingWishlistPrefs] = useState<boolean>(false);
+  const [adminMasterControl, setAdminMasterControl] = useState<boolean>(false);
 
   const handleAllowFollowersChange = (value: boolean) => {
     setAllowFollowersView(value);
@@ -238,6 +239,25 @@ const Settings = () => {
       setAllowFollowersView(true);
     }
   };
+
+  // Helper to render toggle with admin control
+  const renderToggle = (label: string, checked: boolean, onChange: (value: boolean) => void, disabled: boolean = false) => (
+    <div className="flex flex-col">
+      <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
+        <span className="text-sm text-muted-foreground">{label}</span>
+        <Switch 
+          checked={checked} 
+          onCheckedChange={onChange} 
+          disabled={disabled || adminMasterControl}
+        />
+      </div>
+      {adminMasterControl && (
+        <div className="ml-3 mt-1">
+          <span className="text-xs text-amber-600 font-medium">Disabled by admin</span>
+        </div>
+      )}
+    </div>
+  );
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -369,7 +389,7 @@ const Settings = () => {
         if (!user) return;
         const { data, error } = await (supabase as any)
           .from("user_profiles")
-          .select("is_searchable, require_follow_approval, allow_wishlist_sharing, allow_friends_claim, auto_approve_claims, auto_approve_unclaims, show_countdown_timer, allow_likes, allow_comments, allow_followers_view, enforce_wishlist_privacy, country")
+          .select("is_searchable, require_follow_approval, allow_wishlist_sharing, allow_friends_claim, auto_approve_claims, auto_approve_unclaims, show_countdown_timer, allow_likes, allow_comments, allow_followers_view, enforce_wishlist_privacy, country, admin_master_control")
           .eq("id", user.id)
           .single();
         if (!error && data) {
@@ -400,6 +420,7 @@ const Settings = () => {
             setRespectPerWishlistPrivacy(enforcePrivacyPref !== undefined ? enforcePrivacyPref : true);
           }
           setCountry(((data as any).country || (user.user_metadata as any)?.country || "") as string);
+          setAdminMasterControl((data as any).admin_master_control === true);
         } else if (error) {
           setVisibilitySupported(false);
           setFollowSupported(false);
@@ -408,6 +429,69 @@ const Settings = () => {
         setLoadingVisibility(false);
       }
     })();
+  }, []);
+
+  // Listen for admin master control changes
+  useEffect(() => {
+    let adminChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    const setupAdminListener = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      adminChannel = supabase
+        .channel(`admin-master-control-${user.id}`)
+        .on(
+          'broadcast',
+          { event: 'refresh' },
+          async () => {
+            // Admin triggered a refresh - refetch profile data
+            const { data, error } = await (supabase as any)
+              .from("user_profiles")
+              .select("is_searchable, require_follow_approval, allow_wishlist_sharing, allow_friends_claim, auto_approve_claims, auto_approve_unclaims, show_countdown_timer, allow_likes, allow_comments, allow_followers_view, enforce_wishlist_privacy, country, admin_master_control, receive_notifications")
+              .eq("id", user.id)
+              .single();
+            if (!error && data) {
+              // Update all states
+              setVisibility(data.is_searchable ? "public" : "private");
+              if (typeof data.require_follow_approval === 'boolean') {
+                setFollowMode(data.require_follow_approval ? "approval" : "open");
+              }
+              if (typeof (data as any).allow_wishlist_sharing === 'boolean') setAllowSharing((data as any).allow_wishlist_sharing);
+              if (typeof (data as any).allow_friends_claim === 'boolean') setAllowFriendsClaim((data as any).allow_friends_claim);
+              if (typeof (data as any).auto_approve_claims === 'boolean') setAutoApproveClaims((data as any).auto_approve_claims);
+              if (typeof (data as any).auto_approve_unclaims === 'boolean') setAutoApproveUnclaims((data as any).auto_approve_unclaims);
+              if (typeof (data as any).show_countdown_timer === 'boolean') setShowCountdown((data as any).show_countdown_timer);
+              if (typeof (data as any).allow_likes === 'boolean') setAllowLikes((data as any).allow_likes);
+              if (typeof (data as any).allow_comments === 'boolean') setAllowComments((data as any).allow_comments);
+              if (typeof (data as any).receive_notifications === 'boolean') setNotifications((data as any).receive_notifications);
+              
+              const allowFollowersPref = typeof (data as any).allow_followers_view === 'boolean' ? (data as any).allow_followers_view : false;
+              const enforcePrivacyPref = typeof (data as any).enforce_wishlist_privacy === 'boolean' ? (data as any).enforce_wishlist_privacy : !allowFollowersPref;
+              
+              if (allowFollowersPref) {
+                setAllowFollowersView(true);
+                setRespectPerWishlistPrivacy(false);
+              } else {
+                setAllowFollowersView(false);
+                setRespectPerWishlistPrivacy(enforcePrivacyPref !== undefined ? enforcePrivacyPref : true);
+              }
+              
+              setAdminMasterControl((data as any).admin_master_control === true);
+              setCountry(((data as any).country || (user.user_metadata as any)?.country || "") as string);
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    setupAdminListener();
+
+    return () => {
+      if (adminChannel) {
+        supabase.removeChannel(adminChannel);
+      }
+    };
   }, []);
 
   // Persist visibility on change
@@ -693,12 +777,9 @@ const Settings = () => {
 
           <div className="space-y-2">
             <Label className="flex items-center gap-2"><Bell className="h-4 w-4" /> {t("settings.notifications", "Notifications")}</Label>
-            <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
-              <span className="text-sm text-muted-foreground">{t("settings.notifications_desc", "Receive general updates")}</span>
-              <Switch checked={notifications} onCheckedChange={setNotifications} />
-            </div>
+            {renderToggle(t("settings.notifications_desc", "Receive general updates"), notifications, setNotifications)}
             <div className="pt-2">
-              <Button variant="gradient" onClick={savePreferences} disabled={savingPrefs}>{savingPrefs ? t("common.saving", "Saving...") : t("common.save", "Save")}</Button>
+              <Button variant="gradient" onClick={savePreferences} disabled={savingPrefs || adminMasterControl}>{savingPrefs ? t("common.saving", "Saving...") : t("common.save", "Save")}</Button>
             </div>
           </div>
 
@@ -706,45 +787,18 @@ const Settings = () => {
           <div className="space-y-2 pt-2">
             <Label className="flex items-center gap-2"><Globe2 className="h-4 w-4" /> {t('settings.wishlist_sharing','Wishlist & Sharing')}</Label>
             <div className="space-y-2">
-              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
-                <span className="text-sm text-muted-foreground">{t('settings.allow_followers_view','Let followers see all my wishlists')}</span>
-                <Switch checked={allowFollowersView} onCheckedChange={handleAllowFollowersChange} />
-              </div>
-              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
-                <span className="text-sm text-muted-foreground">{t('settings.respect_per_wishlist','Respect each wishlist\'s privacy setting')}</span>
-                <Switch checked={respectPerWishlistPrivacy} onCheckedChange={handleRespectPrivacyChange} />
-              </div>
-              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
-                <span className="text-sm text-muted-foreground">{t('settings.allow_sharing','Show share icon on my wishlist cards')}</span>
-                <Switch checked={allowSharing} onCheckedChange={(v)=>{ setAllowSharing(v); }} />
-              </div>
-              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
-                <span className="text-sm text-muted-foreground">{t('settings.allow_friends_claim','Allow friends to claim items')}</span>
-                <Switch checked={allowFriendsClaim} onCheckedChange={(v)=>{ setAllowFriendsClaim(v); }} />
-              </div>
-              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
-                <span className="text-sm text-muted-foreground">{t('settings.auto_approve_claims','Auto-approve claim requests')}</span>
-                <Switch checked={autoApproveClaims} onCheckedChange={(v)=>{ setAutoApproveClaims(v); }} />
-              </div>
-              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
-                <span className="text-sm text-muted-foreground">{t('settings.auto_approve_unclaims','Auto-approve unclaim requests')}</span>
-                <Switch checked={autoApproveUnclaims} onCheckedChange={(v)=>{ setAutoApproveUnclaims(v); }} />
-              </div>
-              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
-                <span className="text-sm text-muted-foreground">{t('settings.allow_likes','Allow likes on my wishlists')}</span>
-                <Switch checked={allowLikes} onCheckedChange={(v)=>{ setAllowLikes(v); }} />
-              </div>
-              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
-                <span className="text-sm text-muted-foreground">{t('settings.allow_comments','Allow comments on my wishlists')}</span>
-                <Switch checked={allowComments} onCheckedChange={(v)=>{ setAllowComments(v); }} />
-              </div>
-              <div className="flex items-center justify-between rounded-2xl bg-white/70 backdrop-blur ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
-                <span className="text-sm text-muted-foreground">{t('settings.show_countdown','Show countdown timer on shared page')}</span>
-                <Switch checked={showCountdown} onCheckedChange={(v)=>{ setShowCountdown(v); }} />
-              </div>
+              {renderToggle(t('settings.allow_followers_view','Let followers see all my wishlists'), allowFollowersView, handleAllowFollowersChange)}
+              {renderToggle(t('settings.respect_per_wishlist','Respect each wishlist\'s privacy setting'), respectPerWishlistPrivacy, handleRespectPrivacyChange)}
+              {renderToggle(t('settings.allow_sharing','Show share icon on my wishlist cards'), allowSharing, (v)=>{ setAllowSharing(v); })}
+              {renderToggle(t('settings.allow_friends_claim','Allow friends to claim items'), allowFriendsClaim, (v)=>{ setAllowFriendsClaim(v); })}
+              {renderToggle(t('settings.auto_approve_claims','Auto-approve claim requests'), autoApproveClaims, (v)=>{ setAutoApproveClaims(v); })}
+              {renderToggle(t('settings.auto_approve_unclaims','Auto-approve unclaim requests'), autoApproveUnclaims, (v)=>{ setAutoApproveUnclaims(v); })}
+              {renderToggle(t('settings.allow_likes','Allow likes on my wishlists'), allowLikes, (v)=>{ setAllowLikes(v); })}
+              {renderToggle(t('settings.allow_comments','Allow comments on my wishlists'), allowComments, (v)=>{ setAllowComments(v); })}
+              {renderToggle(t('settings.show_countdown','Show countdown timer on shared page'), showCountdown, (v)=>{ setShowCountdown(v); })}
             </div>
             <div className="pt-2">
-              <Button variant="gradient" onClick={()=>saveWishlistPrefs()} disabled={savingWishlistPrefs}>{savingWishlistPrefs ? t('common.saving','Saving...') : t('common.save','Save')}</Button>
+              <Button variant="gradient" onClick={()=>saveWishlistPrefs()} disabled={savingWishlistPrefs || adminMasterControl}>{savingWishlistPrefs ? t('common.saving','Saving...') : t('common.save','Save')}</Button>
             </div>
           </div>
 
@@ -764,7 +818,7 @@ const Settings = () => {
                 <button
                   type="button"
                   onClick={() => saveVisibility("private")}
-                  disabled={loadingVisibility}
+                  disabled={loadingVisibility || adminMasterControl}
                   className={`relative z-10 flex-1 rounded-full px-4 py-2 text-xs font-semibold ${visibility === 'private' ? 'text-foreground' : 'text-muted-foreground'}`}
                 >
                   {t("settings.private", "Private")}
@@ -772,12 +826,17 @@ const Settings = () => {
                 <button
                   type="button"
                   onClick={() => saveVisibility("public")}
-                  disabled={loadingVisibility}
+                  disabled={loadingVisibility || adminMasterControl}
                   className={`relative z-10 flex-1 rounded-full px-4 py-2 text-xs font-semibold ${visibility === 'public' ? 'text-foreground' : 'text-muted-foreground'}`}
                 >
                   {t("settings.public", "Public")}
                 </button>
               </div>
+              {adminMasterControl && (
+                <div className="ml-3 mt-2">
+                  <span className="text-xs text-amber-600 font-medium">Disabled by admin</span>
+                </div>
+              )}
             </div>
             <div className="space-y-2 pt-4">
               <Label className="flex items-center gap-2"><Shield className="h-4 w-4" /> {t("settings.follow_requests", "Follow Requests")}</Label>
@@ -794,7 +853,7 @@ const Settings = () => {
                   <button
                     type="button"
                     onClick={() => saveFollowMode('approval')}
-                    disabled={loadingFollow}
+                    disabled={loadingFollow || adminMasterControl}
                     className={`relative z-10 flex-1 rounded-full px-4 py-2 text-xs font-semibold ${followMode === 'approval' ? 'text-foreground' : 'text-muted-foreground'}`}
                   >
                     {t("settings.approval_required", "Approval required")}
@@ -802,12 +861,17 @@ const Settings = () => {
                   <button
                     type="button"
                     onClick={() => saveFollowMode('open')}
-                    disabled={loadingFollow}
+                    disabled={loadingFollow || adminMasterControl}
                     className={`relative z-10 flex-1 rounded-full px-4 py-2 text-xs font-semibold ${followMode === 'open' ? 'text-foreground' : 'text-muted-foreground'}`}
                   >
                     {t("settings.anyone_can_follow", "Anyone can follow")}
                   </button>
                 </div>
+                {adminMasterControl && (
+                  <div className="ml-3 mt-2">
+                    <span className="text-xs text-amber-600 font-medium">Disabled by admin</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

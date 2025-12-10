@@ -2,6 +2,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 // Import the Google Generative AI SDK via esm.sh CDN (Deno-compatible)
 import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.21.0';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +11,51 @@ const corsHeaders = {
 
 // 1. Get the new Gemini API Key from Supabase Secrets
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+// Helper to log AI usage
+async function logAIUsage(params: {
+  user_id?: string;
+  function_name: string;
+  model: string;
+  prompt: string;
+  response: string;
+  input_tokens?: number;
+  output_tokens?: number;
+  total_tokens?: number;
+  cost_credits?: number;
+  duration_ms: number;
+  status: 'success' | 'error';
+  error_message?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn('Missing Supabase credentials for AI logging');
+    return;
+  }
+  
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    await supabase.from('ai_logs').insert({
+      user_id: params.user_id || null,
+      function_name: params.function_name,
+      model: params.model,
+      prompt: params.prompt.slice(0, 5000), // Limit prompt size
+      response: params.response.slice(0, 10000), // Limit response size
+      input_tokens: params.input_tokens || 0,
+      output_tokens: params.output_tokens || 0,
+      total_tokens: params.total_tokens || 0,
+      cost_credits: params.cost_credits || 0,
+      duration_ms: params.duration_ms,
+      status: params.status,
+      error_message: params.error_message || null,
+      metadata: params.metadata || {},
+    });
+  } catch (e) {
+    console.error('Failed to log AI usage:', e);
+  }
+}
 
 async function geminiExtractStructure(image_base64: string, locale: string, tone?: string, style?: string) {
   if (!GEMINI_API_KEY) {
@@ -114,15 +160,50 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+  let userId: string | undefined;
+
   try {
+    // Extract user ID from authorization header if present
+    const authHeader = req.headers.get('authorization');
+    if (authHeader && SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user } } = await supabase.auth.getUser(token);
+        userId = user?.id;
+      } catch {
+        // Ignore auth errors, continue without user ID
+      }
+    }
+
     // 3. Request body parsing
     const { image_base64, locale = 'en', tone, style } = await req.json();
     if (!image_base64) {
       throw new Error('image_base64 is required');
     }
 
+    const prompt = `Extract product info from image (locale: ${locale}, tone: ${tone || 'natural'}, style: ${style || 'auto'})`;
+
     // 4. Call the new simplified Gemini function
     const structured = await geminiExtractStructure(image_base64, locale, tone, style);
+    const duration = Date.now() - startTime;
+    const responseJson = JSON.stringify(structured);
+
+    // Log AI usage
+    await logAIUsage({
+      user_id: userId,
+      function_name: 'extract-from-image',
+      model: 'gemini-2.5-flash-lite',
+      prompt: prompt,
+      response: responseJson,
+      total_tokens: Math.ceil((prompt.length + responseJson.length) / 4), // Rough estimate
+      cost_credits: 0.0001, // Minimal cost for flash-lite
+      duration_ms: duration,
+      status: structured.Brand === 'Error' ? 'error' : 'success',
+      error_message: structured.Brand === 'Error' ? structured.Description : undefined,
+      metadata: { locale, tone, style },
+    });
 
     // 5. Return the final structured JSON response
     return new Response(JSON.stringify({
@@ -136,6 +217,20 @@ serve(async (req) => {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    const duration = Date.now() - startTime;
+
+    // Log error
+    await logAIUsage({
+      user_id: userId,
+      function_name: 'extract-from-image',
+      model: 'gemini-2.5-flash-lite',
+      prompt: 'Extract product info from image',
+      response: '',
+      duration_ms: duration,
+      status: 'error',
+      error_message: msg,
+    });
+
     return new Response(JSON.stringify({
       ok: false,
       error: msg
