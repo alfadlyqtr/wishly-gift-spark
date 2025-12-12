@@ -44,7 +44,8 @@ const Signup = () => {
         data: {
           username: username,
           full_name: fullName,
-          dob: dob,
+          // Send null when DOB is not provided so backend date casts don't fail
+          dob: dob || null,
           country: country,
           account_type: "user",
         },

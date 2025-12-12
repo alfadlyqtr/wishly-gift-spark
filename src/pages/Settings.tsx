@@ -571,26 +571,17 @@ const Settings = () => {
 
   const doDeleteAccount = async () => {
     try {
-      const { data: session } = await supabase.auth.getSession();
-      const accessToken = session.session?.access_token;
-      if (!accessToken) {
-        toast.error(t("common.not_authenticated", "Not authenticated"));
-        return;
-      }
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ reason: "user_requested" }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      toast.success(t("settings.account_deletion_requested", "Account deletion requested. You'll be signed out."));
-      await supabase.auth.signOut({ scope: "global" as any });
-      navigate("/");
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to delete account");
-    } finally {
       setDeleteOpen(false);
+      await supabase.functions.invoke("delete-account", {
+        body: { reason: "user_requested" },
+      } as any);
+      // Sign out silently and redirect to goodbye screen
+      await supabase.auth.signOut({ scope: "global" as any }).catch(() => {});
+      navigate("/goodbye");
+    } catch {
+      // Even if the function call fails, sign out and show goodbye
+      await supabase.auth.signOut({ scope: "global" as any }).catch(() => {});
+      navigate("/goodbye");
     }
   };
 

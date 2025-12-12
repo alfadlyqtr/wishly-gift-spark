@@ -40,6 +40,7 @@ import BrandFollowing from "./pages/BrandFollowing";
 import PublicBrandProfile from "./pages/PublicBrandProfile";
 import BrandsFollowing from "./pages/BrandsFollowing";
 import NotFound from "./pages/NotFound";
+import Goodbye from "./pages/Goodbye";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminUsers from "./pages/AdminUsers";
 import AdminUserDetail from "./pages/AdminUserDetail";
@@ -70,6 +71,7 @@ const App = () => (
           <Route path="/signup/user" element={<Signup />} />
           <Route path="/signup/business" element={<BusinessSignup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/goodbye" element={<Goodbye />} />
           {/* Short redirect link for public share (
              keeps public entrypoint; authenticated users will typically use
              the in-app route below which has the full MainLayout chrome. */}

@@ -603,11 +603,6 @@ function usePublicEvents() {
 
         let targetCountry: string | null = resolveCountryCode((user?.user_metadata as any)?.country);
 
-        let query = (supabase as any)
-          .from("events")
-          .select("*")
-          .eq("is_public_holiday", true);
-
         if (!targetCountry && user?.id) {
           const { data: profileRow } = await (supabase as any)
             .from("user_profiles")
@@ -617,20 +612,22 @@ function usePublicEvents() {
           targetCountry = resolveCountryCode((profileRow as any)?.country);
         }
 
-        if (targetCountry) {
-          query = query.eq("country_code", targetCountry);
+        // If we still don't have a country after checking metadata and profile,
+        // don't show any public holidays. The UI already instructs the user to
+        // set their Country/Region first.
+        if (!targetCountry) {
+          return [];
         }
 
-        const { data, error } = await query.order("date", { ascending: true });
+        const { data, error } = await (supabase as any)
+          .from("events")
+          .select("*")
+          .eq("is_public_holiday", true)
+          .eq("country_code", targetCountry)
+          .order("date", { ascending: true });
+
         if (error) return [];
         const rows = (data ?? []) as any[];
-        if (targetCountry) {
-          return rows.filter((row) =>
-            String(row?.country_code || row?.country || "")
-              .toUpperCase()
-              .trim() === targetCountry
-          );
-        }
         return rows;
       } catch {
         return [];
@@ -759,6 +756,7 @@ const Events = () => {
   }, [selectedFriendId, friendsScrollNode]);
 
   const today = useMemo(() => new Date(), []);
+  const myEventsCount = useMemo(() => (myEvents?.length ?? 0), [myEvents]);
 
   const { data: pendingReservations = [], isLoading: pendingReservationsLoading } = useQuery<PendingReservation[]>({
     queryKey: pendingReservationsKey,
@@ -1255,7 +1253,7 @@ const Events = () => {
               </div>
             </CardHeader>
             <CardContent className="pt-2">
-              {(myEvents?.length ?? 0) > 0 && (
+              {myEventsCount > 0 && (
                 <>
                   <div className="w-full flex justify-center py-4 sm:py-6 relative">
                     <WishlistStack
@@ -1264,8 +1262,17 @@ const Events = () => {
                       sendToBackOnClick={false}
                       cardDimensions={{ width: cardSize.width, height: cardSize.height }}
                       cards={(myEvents || []).map((e) => ({ id: e.id, title: e.title || 'Untitled' }))}
+                      disableBirthdayOpen={!profileBundle?.profile?.dob}
                       className="-translate-x-4 sm:-translate-x-6"
                     />
+                    {!profileBundle?.profile?.dob && (
+                      <div className="pointer-events-none absolute -bottom-2 left-1/2 -translate-x-1/2 text-[11px] sm:text-xs text-muted-foreground/90">
+                        <span className="inline-flex items-center gap-1 px-3 py-[3px] rounded-full bg-white/85 border border-white/80 shadow-sm">
+                          <span>🎂</span>
+                          <span>{t('events.birthday_overlay_chip', 'Add your birthday in Settings so we can keep this wishlist in sync.')}</span>
+                        </span>
+                      </div>
+                    )}
                   </div>
                   {(myEvents?.length ?? 0) > 1 && (
                     <div className="absolute bottom-[-2.5rem] left-1/2 -translate-x-1/2 text-center text-[11px] text-muted-foreground z-10">
@@ -1302,8 +1309,48 @@ const Events = () => {
               )}
               {loadingMy ? (
                 <p className="text-sm text-muted-foreground">{t('common.loading', 'Loading...')}</p>
-              ) : (myEvents?.length ?? 0) === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('events.empty_my', 'No upcoming events.')}</p>
+              ) : myEventsCount === 0 ? (
+                profileBundle?.profile?.dob ? (
+                  <p className="text-sm text-muted-foreground">{t('events.empty_my', 'No upcoming events.')}</p>
+                ) : (
+                  <div className="space-y-4 py-4">
+                    <div className="w-full flex justify-center">
+                      <div
+                        className="relative rounded-3xl shadow-[0_18px_40px_rgba(0,0,0,0.22)] border border-white/70 bg-gradient-to-br from-[hsl(var(--brand-warm-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-cool-start))] overflow-hidden"
+                        style={{ width: cardSize.width, height: cardSize.height }}
+                      >
+                        <div className="absolute inset-0 opacity-35 bg-[radial-gradient(circle_at_0_0,#ffffff_0,transparent_55%),radial-gradient(circle_at_100%_100%,#ffffff_0,transparent_55%)]" aria-hidden="true" />
+                        <div className="relative z-10 h-full flex flex-col justify-between p-4">
+                          <div className="flex items-center justify-between text-xs text-white/90">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-black/20 backdrop-blur">
+                              <span>🎂</span>
+                              <span>{t('events.birthday_label', 'Birthday')}</span>
+                            </span>
+                          </div>
+                          <div className="flex-1 flex items-center">
+                            <h3 className="text-xl sm:text-2xl font-extrabold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
+                              {t('events.default_birthday_title', 'My Birthday Wishlist')}
+                            </h3>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-white/90">
+                            <span className="inline-flex items-center gap-1">
+                              <span>💡</span>
+                              <span>{t('events.birthday_hint_short', 'Set your birthday to let Wishly celebrate with you.')}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl bg-white/80 border border-white/70 px-4 py-3 text-xs sm:text-sm text-muted-foreground text-center">
+                      <p className="font-medium mb-1">
+                        {t('events.birthday_overlay_title', 'Let friends know when to celebrate you 🎉')}
+                      </p>
+                      <p>
+                        {t('events.birthday_overlay_body', 'Add your Date of Birth in Settings so we can highlight your birthday and build this wishlist for you automatically.')}
+                      </p>
+                    </div>
+                  </div>
+                )
               ) : null}
             </CardContent>
           </Card>

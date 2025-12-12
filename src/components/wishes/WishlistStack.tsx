@@ -104,6 +104,9 @@ export type WishlistStackProps = {
   className?: string;
   viewerMode?: boolean;
   onCardOpen?: (id: string) => void;
+  // When true, the "My Birthday Wishlist" card shows normally but its Open
+  // button is disabled. Used when the user has not set a Date of Birth yet.
+  disableBirthdayOpen?: boolean;
 };
 
 export default function WishlistStack({
@@ -116,6 +119,7 @@ export default function WishlistStack({
   className = '',
   viewerMode = false,
   onCardOpen,
+  disableBirthdayOpen = false,
 }: WishlistStackProps) {
   const { t } = useTranslation();
   const [stack, setStack] = useState(cards);
@@ -223,6 +227,7 @@ export default function WishlistStack({
       style={{ width: cardDimensions.width, height: cardDimensions.height, perspective: 600 }}
     >
       {stack.map((card, index) => {
+        const isBirthday = card.title === 'My Birthday Wishlist';
         const randomRotate = randomRotation ? Math.random() * 10 - 5 : 0;
         const scale = 1 + index * 0.06 - stack.length * 0.06;
 
@@ -297,7 +302,7 @@ export default function WishlistStack({
                 )}
                 {!viewerMode && (
                   <div className="flex items-center gap-4">
-                    {card.title !== 'My Birthday Wishlist' && (
+                    {!isBirthday && (
                       <button
                         type="button"
                         className="wl-delete-btn"
@@ -318,8 +323,12 @@ export default function WishlistStack({
                     <button
                       type="button"
                       className="wl-open-btn"
+                      disabled={disableBirthdayOpen && isBirthday}
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (disableBirthdayOpen && isBirthday) {
+                          return;
+                        }
                         handleOpen(card.id);
                       }}
                     >
