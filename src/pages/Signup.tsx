@@ -112,25 +112,23 @@ const Signup = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dob">{t('auth.dob')}<span className="text-red-500 ml-0.5">*</span></Label>
+              <Label htmlFor="dob">{t('auth.dob')}</Label>
               <Input
                 id="dob"
                 type="date"
                 value={dob}
                 onChange={(e) => setDob(e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
-                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="country">{t('auth.country', 'Country/Region')}<span className="text-red-500 ml-0.5">*</span></Label>
+              <Label htmlFor="country">{t('auth.country', 'Country/Region')}</Label>
               <Input
                 id="country"
                 type="text"
                 placeholder={t('auth.country_placeholder', 'Qatar')}
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
-                required
               />
             </div>
             <div className="space-y-2">

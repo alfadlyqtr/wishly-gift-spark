@@ -135,14 +135,13 @@ const BusinessSignup = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="country">{t("auth.country", "Country/Region")}<span className="text-red-500 ml-0.5">*</span></Label>
+              <Label htmlFor="country">{t("auth.country", "Country/Region")}</Label>
               <Input
                 id="country"
                 type="text"
                 placeholder={t("auth.country_placeholder", "Qatar")}
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
-                required
               />
             </div>
             <div className="space-y-2">
