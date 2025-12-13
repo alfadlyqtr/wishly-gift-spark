@@ -196,7 +196,12 @@
     "sessions_revoked": "تم إلغاء الجلسات الأخرى",
     "account_deletion_requested": "تم طلب حذف الحساب. سيتم تسجيل خروجك.",
     "preferences_saved": "تم حفظ التفضيلات",
-    "country_saved": "تم تحديث الدولة"
+    "country_saved": "تم تحديث الدولة",
+    "contact_us": "تواصل معنا",
+    "contact_desc": "هل لديك سؤال أو ملاحظات أو تحتاج مساعدة؟ أرسل لنا رسالة وسنرد عليك.",
+    "country": "الدولة/المنطقة",
+    "country_placeholder": "مثال: قطر",
+    "country_help": "تُستخدم لعرض العطلات الرسمية والتجارب الخاصة بمنطقتك."
   }
   ,
   "common": {
@@ -214,9 +219,19 @@
     "back": "رجوع",
     "delete": "حذف",
     "error_generic": "حدث خطأ ما",
-    "not_authenticated": "غير مصادق"
-  }
-  ,
+    "not_authenticated": "غير مصادق",
+    "show": "إظهار",
+    "hide": "إخفاء",
+    "sending": "جاري الإرسال...",
+    "close": "إغلاق"
+  },
+  "support": {
+    "send_message": "إرسال الرسالة"
+  },
+  "share": {
+    "copied": "تم نسخ الرابط!",
+    "copied_instagram": "تم نسخ الرابط! شاركه على إنستغرام"
+  },
   "wishlist": {
     "create_title": "إنشاء قائمة أمنيات",
     "create_hint": "ابدأ بعنوان وتفاصيل اختيارية. يمكنك التخصيص لاحقًا.",
@@ -457,6 +472,13 @@
   "brand": {
     "header_title": "بوابة العلامة التجارية",
     "header_subtitle": "لوحة تحكم الأعمال",
+    "verified": "موثّق",
+    "follow": "متابعة",
+    "followed": "تتابِع العلامة التجارية",
+    "unfollowed": "تم إلغاء المتابعة",
+    "no_products": "لا توجد منتجات عامة لهذه العلامة التجارية بعد.",
+    "untitled_product": "منتج بدون عنوان",
+    "profile_not_found": "ملف العلامة التجارية غير موجود",
     "nav_dashboard": "الرئيسية",
     "nav_products": "المنتجات",
     "nav_insights": "التحليلات",
@@ -635,7 +657,39 @@
       "no_details_found": "تم تحليل الصورة ولكن لم يتم العثور على تفاصيل منظمة.",
       "name_required": "اسم المنتج مطلوب",
       "brand_not_found": "العلامة التجارية غير موجودة",
-      "added_successfully": "تمت إضافة المنتج بنجاح"
+      "added_successfully": "تمت إضافة المنتج بنجاح",
+      "add_title": "إضافة منتج",
+      "add_subtitle": "الصق رابطًا، اكتب وصفًا، أو ارفع صورة.",
+      "tab_url": "رابط / نص",
+      "tab_photo": "رفع صورة",
+      "paste_url": "الصق الرابط",
+      "ai_badge": "Wishly AI",
+      "ai_fetching": "Wishly AI · جاري الجلب…",
+      "ai_style_aria": "نمط جلب الذكاء الاصطناعي",
+      "fetch": "جلب",
+      "fetching": "جاري الجلب…",
+      "tone_tidy": "ذكاء اصطناعي مختصر",
+      "tone_confident": "واثق",
+      "tone_pro": "احترافي",
+      "tone_sales": "مندوب مبيعات",
+      "tone_aggressive": "مبيعات عالية الطاقة",
+      "describe_label": "أو صِف العنصر",
+      "describe_placeholder": "مثال: حذاء رياضي أحمر، مقاس 42، Nike...",
+      "name_label": "اسم المنتج",
+      "description_label": "الوصف",
+      "url_label": "رابط المنتج",
+      "image_url_label": "رابط الصورة",
+      "image_url_placeholder": "انقر بزر الماوس الأيمن على صورة المنتج ← نسخ عنوان الصورة",
+      "image_url_tip": "نصيحة: في صفحة المنتج، انقر بزر الماوس الأيمن على الصورة الرئيسية واختر نسخ عنوان الصورة، ثم الصقه هنا.",
+      "upload_file_label": "رفع ملف صورة",
+      "upload_aria": "رفع صورة المنتج",
+      "preview_alt": "معاينة المنتج",
+      "uploading": "جاري الرفع…",
+      "upload_button": "رفع صورة",
+      "upload_hint": "سنرفع هذه الصورة إلى مخزن علامتك التجارية ونملأ حقل رابط الصورة تلقائيًا.",
+      "extract_ai": "استخراج التفاصيل بالذكاء الاصطناعي",
+      "extracting_ai": "جاري الاستخراج بالذكاء الاصطناعي…",
+      "save_button": "حفظ المنتج"
     },
     "notifications_page": {
       "title": "إشعارات العلامة التجارية",
@@ -683,6 +737,8 @@
     "failed_to_delete": "فشل الحذف",
     "failed_to_load": "فشل التحميل",
     "failed_to_upload": "فشل الرفع",
+    "failed_read_file": "فشل قراءة الملف",
+    "failed_public_url": "تعذر الحصول على رابط عام للصورة",
     "failed_to_send": "فشل الإرسال",
     "failed_to_update": "فشل التحديث",
     "failed_change_password": "فشل تغيير كلمة المرور",
@@ -740,9 +796,40 @@
     "success": "تم إرسال الرسالة بنجاح!",
     "error": "فشل إرسال الرسالة"
   },
+  "contact": {
+    "fill_required": "يرجى ملء جميع الحقول المطلوبة",
+    "email_missing": "لم نتمكن من تحديد بريدك الإلكتروني. يرجى التواصل مع الدعم.",
+    "rate_limited": "لقد أرسلت رسالة اليوم بالفعل. يرجى الانتظار قبل إرسال رسالة أخرى.",
+    "sending_as": "الإرسال باسم",
+    "unknown_user": "حسابك",
+    "cooldown_message": "لقد أرسلت رسالة مؤخراً. يمكنك إرسال رسالة أخرى خلال",
+    "topic": "الموضوع",
+    "topic_placeholder": "اختر موضوعاً",
+    "topic_abuse": "الإبلاغ عن إساءة أو مخالفة",
+    "topic_feedback": "ملاحظات عامة",
+    "topic_question": "سؤال",
+    "topic_tech": "مشكلة تقنية",
+    "topic_feature": "طلب ميزة جديدة",
+    "topic_other": "أخرى",
+    "message": "الرسالة",
+    "message_placeholder": "اكتب رسالتك هنا...",
+    "sending": "جاري الإرسال...",
+    "sent": "تم الإرسال!",
+    "send": "إرسال الرسالة",
+    "success": "تم إرسال الرسالة! سنتواصل معك قريباً."
+  },
   "privacy_page": {
     "title": "الخصوصية والشروط",
     "privacy_title": "سياسة الخصوصية",
     "terms_title": "شروط الخدمة"
+  },
+  "questions": {
+    "view_all_comments": "عرض جميع التعليقات ({{count}})",
+    "add_comment": "أضف تعليقًا...",
+    "no_comments": "لا توجد تعليقات بعد",
+    "reply": "رد",
+    "add_reply_placeholder": "أضف ردًا...",
+    "post": "نشر",
+    "ask_placeholder": "اطرح سؤالاً..."
   }
 }

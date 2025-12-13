@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Share2, X, Copy, MessageCircle, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -46,6 +47,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
   className = '',
   size = 'md',
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -96,7 +98,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
       case 'instagram':
         // Instagram doesn't have direct share URL, copy link instead
         navigator.clipboard.writeText(shareUrl);
-        toast.success('Link copied! Share it on Instagram');
+        toast.success(t('share.copied_instagram', 'Link copied! Share it on Instagram'));
         break;
       case 'snapchat':
         window.open(`https://www.snapchat.com/share?url=${encodedUrl}`, '_blank');
@@ -115,7 +117,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
       case 'copy':
         navigator.clipboard.writeText(shareUrl);
         setCopied(true);
-        toast.success('Link copied to clipboard!');
+        toast.success(t('share.copied', 'Link copied to clipboard!'));
         setTimeout(() => setCopied(false), 2000);
         break;
     }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -16,6 +17,7 @@ interface ProtectedRouteProps {
 
 // Suspension overlay component
 const SuspensionOverlay = ({ message, suspendedUntil, session }: { message: string; suspendedUntil: string | null; session: Session | null }) => {
+  const { t } = useTranslation();
   const [timeLeft, setTimeLeft] = useState("");
   const [supportDialog, setSupportDialog] = useState(false);
   const [supportMessage, setSupportMessage] = useState("");
@@ -280,11 +282,11 @@ const SuspensionOverlay = ({ message, suspendedUntil, session }: { message: stri
               {sendSupportMessage.isPending ? (
                 <>
                   <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Sending...
+                  {t("common.sending", "Sending...")}
                 </>
               ) : (
                 <>
-                  <Send className="w-4 h-4 mr-2" /> Send Message
+                  <Send className="w-4 h-4 mr-2" /> {t("support.send_message", "Send Message")}
                 </>
               )}
             </Button>

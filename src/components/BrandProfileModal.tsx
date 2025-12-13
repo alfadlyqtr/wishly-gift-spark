@@ -323,7 +323,7 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
           className="absolute -top-12 left-0 flex items-center gap-2 px-4 py-2 rounded-lg bg-black/80 text-white hover:bg-black transition-colors"
         >
           <X className="h-4 w-4" />
-          <span className="text-sm font-medium">Back</span>
+          <span className="text-sm font-medium">{t("common.back", "Back")}</span>
         </button>
 
         {loading ? (
@@ -343,7 +343,7 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
             {brand.is_verified === true && (
               <div className="verified-badge">
                 <BadgeCheck />
-                <span>Verified</span>
+                <span>{t("brand.verified", "Verified")}</span>
               </div>
             )}
             

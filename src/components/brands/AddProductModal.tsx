@@ -68,7 +68,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
         const base64 = result.includes(",") ? result.split(",")[1] : result;
         resolve(base64);
       };
-      reader.onerror = () => reject(reader.error || new Error("Failed to read file"));
+      reader.onerror = () => reject(reader.error || new Error(t("errors.failed_read_file", "Failed to read file")));
       reader.readAsDataURL(file);
     });
   };
@@ -82,7 +82,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        throw new Error("Not authenticated");
+        throw new Error(t("common.not_authenticated", "Not authenticated"));
       }
 
       const fileExt = file.name.split(".").pop();
@@ -104,13 +104,13 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
         .getPublicUrl(filePath);
 
       if (!publicUrlData?.publicUrl) {
-        throw new Error("Could not get public URL for image");
+        throw new Error(t("errors.failed_public_url", "Could not get public URL for image"));
       }
       setPhotoFile(file);
       setImageUrl(publicUrlData.publicUrl);
       toast.success(t("brand.product.image_uploaded", "Image uploaded"));
     } catch (err: any) {
-      const message = err?.message || "Failed to upload image";
+      const message = err?.message || t("errors.failed_to_upload", "Failed to upload image");
       setUploadError(message);
       toast.error(message);
     } finally {
@@ -222,7 +222,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
       
       toast.success(t("brand.product.details_fetched", "Product details fetched"));
     } catch (e: any) {
-      toast.error(e?.message || "Failed to fetch product details");
+      toast.error(e?.message || t("errors.failed_fetch_details", "Failed to fetch product details"));
     } finally {
       setLoadingScrape(false);
     }
@@ -291,7 +291,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
         toast.info(t("brand.product.no_details_found", "Image analyzed but no structured details were found."));
       }
     } catch (e: any) {
-      const msg = e?.message || (typeof e === "string" ? e : "") || "Failed to extract from image";
+      const msg = e?.message || (typeof e === "string" ? e : "") || t("errors.failed_extract_image", "Failed to extract from image");
       toast.error(msg);
     } finally {
       setExtractingFromImage(false);
@@ -355,7 +355,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
       setImageUrl("");
       setOpen(false);
     } catch (e: any) {
-      toast.error(e?.message || "Failed to save product");
+      toast.error(e?.message || t("errors.failed_save_product", "Failed to save product"));
     } finally {
       setSaving(false);
     }
@@ -366,13 +366,13 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="w-[92vw] max-w-[420px] p-0 sm:p-0 rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="sr-only">Add Product</DialogTitle>
+          <DialogTitle className="sr-only">{t("brand.product.add_title", "Add Product")}</DialogTitle>
         </DialogHeader>
         <div className="mx-auto w-full rounded-2xl p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
           <div className="rounded-2xl bg-white/90 backdrop-blur p-4 sm:p-6 ring-1 ring-white/70">
-            <h3 className="heading text-center font-semibold text-lg text-foreground">Add Product</h3>
+            <h3 className="heading text-center font-semibold text-lg text-foreground">{t("brand.product.add_title", "Add Product")}</h3>
             <p className="mt-1 text-center text-xs text-muted-foreground">
-              Paste a link, type a description, or upload a photo.
+              {t("brand.product.add_subtitle", "Paste a link, type a description, or upload a photo.")}
             </p>
 
             <div className="mt-3 space-y-3">
@@ -395,7 +395,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
                     }`}
                   >
                     <Link2 className="h-4 w-4" />
-                    <span>URL / Text</span>
+                    <span>{t("brand.product.tab_url", "URL / Text")}</span>
                   </button>
                   <button
                     type="button"
@@ -405,7 +405,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
                     }`}
                   >
                     <ImagePlus className="h-4 w-4" />
-                    <span>Photo Upload</span>
+                    <span>{t("brand.product.tab_photo", "Photo Upload")}</span>
                   </button>
                 </div>
               </div>
@@ -416,29 +416,29 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
                     {/* Paste URL row */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <Label htmlFor="url">Paste URL</Label>
+                        <Label htmlFor="url">{t("brand.product.paste_url", "Paste URL")}</Label>
                         <div className="inline-flex items-center gap-2">
                           <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] px-3 py-0.5 text-[11px] font-medium text-white shadow-sm">
                             <span aria-hidden="true">✨</span>
-                            {loadingScrape ? "Wishly AI · fetching…" : "Wishly AI"}
+                            {loadingScrape ? t("brand.product.ai_fetching", "Wishly AI · fetching…") : t("brand.product.ai_badge", "Wishly AI")}
                           </span>
                           <select
                             className="text-[11px] rounded-full border border-[hsl(var(--brand-cool-start))]/35 bg-white px-3 py-1 text-slate-700 shadow-sm hover:border-[hsl(var(--brand-cool-start))]/70 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--brand-cool-start))]/60"
                             value=""
                             disabled={loadingScrape || !url}
-                            aria-label="AI fetch style"
+                            aria-label={t("brand.product.ai_style_aria", "AI fetch style")}
                             onChange={(e) => {
                               const tone = e.target.value as "" | "tidy" | "confident" | "pro" | "sales" | "aggressive";
                               if (!tone) return;
                               handleScrape(tone);
                             }}
                           >
-                            <option value="">{loadingScrape ? "Fetching…" : "Fetch"}</option>
-                            <option value="tidy">AI tidy (shorter)</option>
-                            <option value="confident">Confident</option>
-                            <option value="pro">Pro</option>
-                            <option value="sales">Sales person</option>
-                            <option value="aggressive">High-energy sales</option>
+                            <option value="">{loadingScrape ? t("brand.product.fetching", "Fetching…") : t("brand.product.fetch", "Fetch")}</option>
+                            <option value="tidy">{t("brand.product.tone_tidy", "AI tidy (shorter)")}</option>
+                            <option value="confident">{t("brand.product.tone_confident", "Confident")}</option>
+                            <option value="pro">{t("brand.product.tone_pro", "Pro")}</option>
+                            <option value="sales">{t("brand.product.tone_sales", "Sales person")}</option>
+                            <option value="aggressive">{t("brand.product.tone_aggressive", "High-energy sales")}</option>
                           </select>
                         </div>
                       </div>
@@ -455,10 +455,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
 
                     {/* Manual description */}
                     <div className="space-y-2">
-                      <Label htmlFor="manual">Or describe the item</Label>
+                      <Label htmlFor="manual">{t("brand.product.describe_label", "Or describe the item")}</Label>
                       <Textarea
                         id="manual"
-                        placeholder="e.g., Red running shoes, size 42, Nike..."
+                        placeholder={t("brand.product.describe_placeholder", "e.g., Red running shoes, size 42, Nike...")}
                         value={manualText}
                         onChange={(e) => setManualText(e.target.value)}
                         rows={3}
@@ -468,28 +468,27 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
                     {/* Editable fields */}
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="title">Product Name</Label>
+                        <Label htmlFor="title">{t("brand.product.name_label", "Product Name")}</Label>
                         <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
                       </div>
                       <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="description">Description</Label>
+                        <Label htmlFor="description">{t("brand.product.description_label", "Description")}</Label>
                         <Textarea id="description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="item_url">Product URL</Label>
+                        <Label htmlFor="item_url">{t("brand.product.url_label", "Product URL")}</Label>
                         <Input id="item_url" value={itemUrl} onChange={(e) => setItemUrl(e.target.value)} />
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="image_url">Image URL</Label>
+                        <Label htmlFor="image_url">{t("brand.product.image_url_label", "Image URL")}</Label>
                         <Input
                           id="image_url"
                           value={imageUrl}
                           onChange={(e) => setImageUrl(e.target.value)}
-                          placeholder="Right-click product image → Copy image address"
+                          placeholder={t("brand.product.image_url_placeholder", "Right-click product image → Copy image address")}
                         />
                         <p className="text-[11px] text-muted-foreground">
-                          Tip: On the product page, right-click the main image and choose{" "}
-                          <span className="font-medium">Copy image address</span>, then paste it here.
+                          {t("brand.product.image_url_tip", "Tip: On the product page, right-click the main image and choose Copy image address, then paste it here.")}
                         </p>
                       </div>
                     </div>
@@ -500,7 +499,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
               <div className="mt-3 flex flex-col items-center">
                     <div className="space-y-3 w-full max-w-xs">
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs font-semibold text-slate-700">Upload image file</Label>
+                        <Label className="text-xs font-semibold text-slate-700">{t("brand.product.upload_file_label", "Upload image file")}</Label>
                       </div>
                       {/* Folder-style upload card with preview */}
                       <style>{`@keyframes folder-float {0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)}}`}</style>
@@ -527,7 +526,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
                           onClick={() => fileRef.current?.click()}
                           className="absolute -top-3 left-1/2 -translate-x-1/2 flex flex-col items-center"
                           style={{ animation: "folder-float 2.5s ease-in-out infinite" }}
-                          aria-label="Upload product image"
+                          aria-label={t("brand.product.upload_aria", "Upload product image")}
                         >
                           <div
                             className="relative overflow-hidden w-[96px] h-[64px] sm:w-[112px] sm:h-[74px]"
@@ -550,7 +549,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
                             {imageUrl ? (
                               <img
                                 src={imageUrl}
-                                alt="Product preview"
+                                alt={t("brand.product.preview_alt", "Product preview")}
                                 className="absolute inset-0 h-full w-full object-contain rounded-[14px] bg-white p-1"
                               />
                             ) : null}
@@ -568,7 +567,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
                             border: "1px solid rgba(255,255,255,0.8)",
                           }}
                         >
-                          {uploadingImage ? "Uploading…" : "Upload a Photo"}
+                          {uploadingImage ? t("brand.product.uploading", "Uploading…") : t("brand.product.upload_button", "Upload a Photo")}
                         </button>
 
                         <input
@@ -583,7 +582,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
                       </div>
 
                       <p className="text-[11px] leading-snug text-muted-foreground mt-2">
-                        We will upload this image to your brand storage and fill the Image URL field automatically.
+                        {t("brand.product.upload_hint", "We will upload this image to your brand storage and fill the Image URL field automatically.")}
                       </p>
                       {uploadError && (
                         <p className="text-xs text-red-500">{uploadError}</p>
@@ -596,7 +595,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
                         className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] px-4 py-2.5 text-[12px] font-semibold text-white shadow-[0_10px_22px_rgba(15,23,42,0.25)] transition-transform transition-shadow duration-150 active:scale-[0.97] hover:shadow-[0_14px_26px_rgba(15,23,42,0.3)] disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         <span aria-hidden="true">✨</span>
-                        {extractingFromImage ? "Extracting with AI…" : "Extract details with AI"}
+                        {extractingFromImage ? t("brand.product.extracting_ai", "Extracting with AI…") : t("brand.product.extract_ai", "Extract details with AI")}
                       </button>
                     </div>
               </div>
@@ -604,10 +603,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
 
               <DialogFooter className="mt-4">
                 <Button variant="secondary" onClick={() => setOpen(false)} disabled={saving}>
-                  Cancel
+                  {t("common.cancel", "Cancel")}
                 </Button>
                 <Button onClick={handleSave} disabled={saving || !title}>
-                  {saving ? "Saving..." : "Save Product"}
+                  {saving ? t("common.saving", "Saving...") : t("brand.product.save_button", "Save Product")}
                 </Button>
               </DialogFooter>
             </div>

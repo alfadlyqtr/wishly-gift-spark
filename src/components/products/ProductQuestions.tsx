@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MessageCircle, Send } from "lucide-react";
@@ -48,6 +49,7 @@ export const ProductQuestions: React.FC<ProductQuestionsProps> = ({
   brandLogo,
   compact = false,
 }) => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [newQuestion, setNewQuestion] = useState("");
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -170,17 +172,17 @@ export const ProductQuestions: React.FC<ProductQuestionsProps> = ({
         },
       ]);
       refetch();
-      toast.success("Question posted!");
+      toast.success(t("success.question_posted", "Question posted!"));
     },
     onError: (e: any) => {
-      toast.error(e?.message || "Failed to post question");
+      toast.error(e?.message || t("errors.failed_post_question", "Failed to post question"));
     },
   });
 
   const answerMutation = useMutation({
     mutationFn: async ({ questionId, answer }: { questionId: string; answer: string }) => {
       const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) throw new Error("Not authenticated");
+      if (!auth.user) throw new Error(t("common.not_authenticated", "Not authenticated"));
 
       const { error } = await (supabase as any)
         .from("product_questions")
@@ -198,10 +200,10 @@ export const ProductQuestions: React.FC<ProductQuestionsProps> = ({
       setReplyingTo(null);
       setReplyText("");
       refetch();
-      toast.success("Answer posted!");
+      toast.success(t("success.answer_posted", "Answer posted!"));
     },
     onError: (e: any) => {
-      toast.error(e?.message || "Failed to post answer");
+      toast.error(e?.message || t("errors.failed_post_answer", "Failed to post answer"));
     },
   });
 
@@ -219,7 +221,7 @@ export const ProductQuestions: React.FC<ProductQuestionsProps> = ({
     const count = localQuestions.length;
     return (
       <button className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
-        {count > 0 ? `View all ${count} comments` : "Add a comment..."}
+        {count > 0 ? t("questions.view_all_comments", "View all {{count}} comments", { count }) : t("questions.add_comment", "Add a comment...")}
       </button>
     );
   }
@@ -230,9 +232,9 @@ export const ProductQuestions: React.FC<ProductQuestionsProps> = ({
         {/* Comments list - Instagram style */}
         <div className="max-h-[180px] overflow-y-auto px-3 py-2 space-y-2">
         {isLoading ? (
-          <p className="text-xs text-muted-foreground px-2">Loading...</p>
+          <p className="text-xs text-muted-foreground px-2">{t("common.loading", "Loading...")}</p>
         ) : localQuestions.length === 0 ? (
-          <p className="text-xs text-muted-foreground px-2">No comments yet</p>
+          <p className="text-xs text-muted-foreground px-2">{t("questions.no_comments", "No comments yet")}</p>
         ) : (
           localQuestions.map((q) => (
             <div key={q.id} className="space-y-1.5">
@@ -265,7 +267,7 @@ export const ProductQuestions: React.FC<ProductQuestionsProps> = ({
                         className="text-[11px] font-semibold text-muted-foreground hover:text-foreground"
                         onClick={() => setReplyingTo(replyingTo === q.id ? null : q.id)}
                       >
-                        Reply
+                        {t("questions.reply", "Reply")}
                       </button>
                     )}
                   </div>
@@ -299,7 +301,7 @@ export const ProductQuestions: React.FC<ProductQuestionsProps> = ({
                 <div className="flex items-center gap-2 px-2 ml-6 mt-1">
                   <input
                     type="text"
-                    placeholder="Add a reply..."
+                    placeholder={t("questions.add_reply_placeholder", "Add a reply...")}
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     onKeyDown={(e) => {
@@ -316,7 +318,7 @@ export const ProductQuestions: React.FC<ProductQuestionsProps> = ({
                     disabled={!replyText.trim() || answerMutation.isPending}
                     className="text-[13px] font-semibold text-[hsl(var(--brand-cool-start))] disabled:opacity-50"
                   >
-                    {answerMutation.isPending ? "..." : "Post"}
+                    {answerMutation.isPending ? "..." : t("questions.post", "Post")}
                   </button>
                 </div>
               )}
@@ -331,7 +333,7 @@ export const ProductQuestions: React.FC<ProductQuestionsProps> = ({
           <MessageCircle className="w-5 h-5 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Ask a question..."
+            placeholder={t("questions.ask_placeholder", "Ask a question...")}
             value={newQuestion}
             onChange={(e) => setNewQuestion(e.target.value)}
             onKeyDown={(e) => {
@@ -347,7 +349,7 @@ export const ProductQuestions: React.FC<ProductQuestionsProps> = ({
             disabled={!newQuestion.trim() || askMutation.isPending}
             className="px-4 py-1.5 rounded-full bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-[13px] font-semibold text-white shadow-[0_8px_18px_rgba(15,23,42,0.25)] hover:shadow-[0_10px_22px_rgba(15,23,42,0.30)] active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
           >
-            {askMutation.isPending ? "..." : "Post"}
+            {askMutation.isPending ? "..." : t("questions.post", "Post")}
           </button>
         </div>
         )}

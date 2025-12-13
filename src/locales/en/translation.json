@@ -76,7 +76,20 @@
     "delete": "Delete",
     "save": "Save",
     "saving": "Saving...",
-    "not_authenticated": "Not authenticated"
+    "not_authenticated": "Not authenticated",
+    "show": "Show",
+    "hide": "Hide",
+    "approve": "Approve",
+    "decline": "Decline",
+    "sending": "Sending...",
+    "close": "Close"
+  },
+  "support": {
+    "send_message": "Send Message"
+  },
+  "share": {
+    "copied": "Link copied to clipboard!",
+    "copied_instagram": "Link copied! Share it on Instagram"
   },
   "wishlist_hub_title": "Wishlists",
   "Notes_button": "Create New Wishlist",
@@ -129,7 +142,12 @@
     "sessions_revoked": "Other sessions revoked",
     "account_deletion_requested": "Account deletion requested. You'll be signed out.",
     "preferences_saved": "Preferences saved",
-    "country_saved": "Country updated"
+    "country_saved": "Country updated",
+    "contact_us": "Contact Us",
+    "contact_desc": "Have a question, feedback, or need help? Send us a message and we'll get back to you.",
+    "country": "Country/Region",
+    "country_placeholder": "e.g. Canada",
+    "country_help": "Used to show public holidays and experiences for your region."
   },
   "wishlist": {
     "create_title": "Create Wishlist",
@@ -352,6 +370,16 @@
   "brand": {
     "header_title": "Brand Portal",
     "header_subtitle": "Business Dashboard",
+    "verified": "Verified",
+    "follow": "Follow",
+    "following": "Following",
+    "followed": "Following brand",
+    "unfollowed": "Unfollowed brand",
+    "products": "Products",
+    "loading_products": "Loading products...",
+    "no_products": "This brand has no public products yet.",
+    "untitled_product": "Untitled product",
+    "profile_not_found": "Brand profile not found",
     "nav_dashboard": "Dashboard",
     "nav_products": "Products",
     "nav_insights": "Insights",
@@ -436,7 +464,39 @@
       "no_details_found": "Image analyzed but no structured details were found.",
       "name_required": "Product name is required",
       "brand_not_found": "Brand not found",
-      "added_successfully": "Product added successfully"
+      "added_successfully": "Product added successfully",
+      "add_title": "Add Product",
+      "add_subtitle": "Paste a link, type a description, or upload a photo.",
+      "tab_url": "URL / Text",
+      "tab_photo": "Photo Upload",
+      "paste_url": "Paste URL",
+      "ai_badge": "Wishly AI",
+      "ai_fetching": "Wishly AI · fetching…",
+      "ai_style_aria": "AI fetch style",
+      "fetch": "Fetch",
+      "fetching": "Fetching…",
+      "tone_tidy": "AI tidy (shorter)",
+      "tone_confident": "Confident",
+      "tone_pro": "Pro",
+      "tone_sales": "Sales person",
+      "tone_aggressive": "High-energy sales",
+      "describe_label": "Or describe the item",
+      "describe_placeholder": "e.g., Red running shoes, size 42, Nike...",
+      "name_label": "Product Name",
+      "description_label": "Description",
+      "url_label": "Product URL",
+      "image_url_label": "Image URL",
+      "image_url_placeholder": "Right-click product image → Copy image address",
+      "image_url_tip": "Tip: On the product page, right-click the main image and choose Copy image address, then paste it here.",
+      "upload_file_label": "Upload image file",
+      "upload_aria": "Upload product image",
+      "preview_alt": "Product preview",
+      "uploading": "Uploading…",
+      "upload_button": "Upload a Photo",
+      "upload_hint": "We will upload this image to your brand storage and fill the Image URL field automatically.",
+      "extract_ai": "Extract details with AI",
+      "extracting_ai": "Extracting with AI…",
+      "save_button": "Save Product"
     },
     "notifications_page": {
       "title": "Brand Notifications",
@@ -491,6 +551,8 @@
     "failed_to_delete": "Failed to delete",
     "failed_to_load": "Failed to load",
     "failed_to_upload": "Failed to upload",
+    "failed_read_file": "Failed to read file",
+    "failed_public_url": "Could not get public URL for image",
     "failed_to_send": "Failed to send",
     "failed_to_update": "Failed to update",
     "failed_change_password": "Failed to change password",
@@ -548,9 +610,40 @@
     "success": "Message sent successfully!",
     "error": "Failed to send message"
   },
+  "contact": {
+    "fill_required": "Please fill in all required fields",
+    "email_missing": "We could not determine your email. Please contact support.",
+    "rate_limited": "You already sent us a message today. Please wait before sending another.",
+    "sending_as": "Sending as",
+    "unknown_user": "Your account",
+    "cooldown_message": "You recently sent us a message. You can send another in",
+    "topic": "Topic",
+    "topic_placeholder": "Select a topic",
+    "topic_abuse": "Report abuse or violation",
+    "topic_feedback": "General feedback",
+    "topic_question": "Question",
+    "topic_tech": "Technical issue",
+    "topic_feature": "Feature request",
+    "topic_other": "Other",
+    "message": "Message",
+    "message_placeholder": "Write your message here...",
+    "sending": "Sending...",
+    "sent": "Sent!",
+    "send": "Send Message",
+    "success": "Message sent! We'll get back to you soon."
+  },
   "privacy_page": {
     "title": "Privacy & Terms",
     "privacy_title": "Privacy Policy",
     "terms_title": "Terms of Service"
+  },
+  "questions": {
+    "view_all_comments": "View all {{count}} comments",
+    "add_comment": "Add a comment...",
+    "no_comments": "No comments yet",
+    "reply": "Reply",
+    "add_reply_placeholder": "Add a reply...",
+    "post": "Post",
+    "ask_placeholder": "Ask a question..."
   }
 }

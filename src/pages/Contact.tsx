@@ -23,7 +23,7 @@ const Contact = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !topic || !message) {
-      toast.error(isAr ? 'يرجى ملء جميع الحقول المطلوبة' : 'Please fill in all required fields');
+      toast.error(t('contact.fill_required', 'Please fill in all required fields'));
       return;
     }
     
@@ -42,11 +42,7 @@ const Contact = () => {
       if (lastSentRaw) {
         const lastSent = parseInt(lastSentRaw, 10);
         if (!Number.isNaN(lastSent) && Date.now() - lastSent < 24 * 60 * 60 * 1000) {
-          toast.error(
-            isAr
-              ? 'لقد أرسلت رسالة بالفعل اليوم. يمكنك إرسال رسالة جديدة لاحقاً.'
-              : 'You already sent us a message today. Please wait before sending another.'
-          );
+          toast.error(t('contact.rate_limited', 'You already sent us a message today. Please wait before sending another.'));
           setSubmitting(false);
           return;
         }
@@ -61,11 +57,7 @@ const Contact = () => {
       if (recentError) {
         console.error('Error checking contact rate limit:', recentError);
       } else if ((recentCount ?? 0) > 0) {
-        toast.error(
-          isAr
-            ? 'لقد أرسلت رسالة بالفعل اليوم. يمكنك إرسال رسالة جديدة لاحقاً.'
-            : 'You already sent us a message recently. Please wait before sending another.'
-        );
+        toast.error(t('contact.rate_limited', 'You already sent us a message recently. Please wait before sending another.'));
         setSubmitting(false);
         return;
       }
@@ -84,7 +76,7 @@ const Contact = () => {
       if (error) throw error;
       
       setSubmitted(true);
-      toast.success(isAr ? 'تم إرسال رسالتك بنجاح!' : 'Your message has been sent successfully!');
+      toast.success(t('contact.success', 'Your message has been sent successfully!'));
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(lockKey, Date.now().toString());
       }
@@ -95,7 +87,7 @@ const Contact = () => {
       setMessage('');
     } catch (err: any) {
       console.error('Error submitting contact form:', err);
-      toast.error(isAr ? 'حدث خطأ أثناء إرسال الرسالة' : 'Failed to send message. Please try again.');
+      toast.error(t('errors.failed_to_send', 'Failed to send message. Please try again.'));
     } finally {
       setSubmitting(false);
     }
