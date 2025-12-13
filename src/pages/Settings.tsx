@@ -272,7 +272,7 @@ const Settings = () => {
       toast.success(t("settings.password_updated", "Password updated"));
       setNewPassword("");
     } catch (err: any) {
-      toast.error(err?.message || "Failed to change password");
+      toast.error(err?.message || t("errors.failed_change_password", "Failed to change password"));
     } finally {
       setChangingPassword(false);
     }
@@ -301,7 +301,7 @@ const Settings = () => {
       }
       toast.success(t("settings.country_saved", "Country updated"));
     } catch (err: any) {
-      toast.error(err?.message || "Failed to save country");
+      toast.error(err?.message || t("errors.failed_save_country", "Failed to save country"));
     } finally {
       setSavingCountry(false);
     }
@@ -368,7 +368,7 @@ const Settings = () => {
       queryClient.invalidateQueries({ queryKey: ["settings", "pending_follows"] });
       queryClient.invalidateQueries({ queryKey: ["profile", "social"] });
     },
-    onError: (e: any) => toast.error(e?.message || "Failed to approve"),
+    onError: (e: any) => toast.error(e?.message || t("errors.failed_approve", "Failed to approve")),
   });
 
   const declineMutation = useMutation({
@@ -377,7 +377,7 @@ const Settings = () => {
       toast.success(t("settings.follow_request_declined", "Request declined"));
       queryClient.invalidateQueries({ queryKey: ["settings", "pending_follows"] });
     },
-    onError: (e: any) => toast.error(e?.message || "Failed to decline"),
+    onError: (e: any) => toast.error(e?.message || t("errors.failed_decline", "Failed to decline")),
   });
 
   // Load initial visibility from profile
@@ -510,7 +510,7 @@ const Settings = () => {
       if (error) throw error;
       toast.success(next === "public" ? t("settings.profile_public", "Profile set to public") : t("settings.profile_private", "Profile set to private"));
     } catch (e: any) {
-      toast.error(e?.message || "Failed to save visibility (ask to add column is_searchable:boolean)");
+      toast.error(e?.message || t("errors.failed_save_visibility", "Failed to save visibility"));
       setVisibilitySupported(false);
     }
   };
@@ -531,7 +531,7 @@ const Settings = () => {
       if (error) throw error;
       toast.success(next === "approval" ? t("settings.follow_approval_on", "Follow requests now require approval") : t("settings.follow_approval_off", "Anyone can follow you"));
     } catch (e: any) {
-      toast.error(e?.message || "Failed to save follow setting (ask to add column require_follow_approval:boolean)");
+      toast.error(e?.message || t("errors.failed_save_follow", "Failed to save follow setting"));
       setFollowSupported(false);
     } finally {
       setLoadingFollow(false);
@@ -551,7 +551,7 @@ const Settings = () => {
       toast.success(t("settings.email_update_requested", "Email update requested. Check your inbox to confirm."));
       setNewEmail("");
     } catch (err: any) {
-      toast.error(err?.message || "Failed to change email");
+      toast.error(err?.message || t("errors.failed_change_email", "Failed to change email"));
     } finally {
       setChangingEmail(false);
     }
@@ -563,7 +563,7 @@ const Settings = () => {
       if (error) throw error;
       toast.success(t("settings.sessions_revoked", "Other sessions revoked"));
     } catch (err: any) {
-      toast.error(err?.message || "Failed to revoke sessions");
+      toast.error(err?.message || t("errors.failed_revoke_sessions", "Failed to revoke sessions"));
     }
   };
 
@@ -600,7 +600,7 @@ const Settings = () => {
       if (error) throw error;
       toast.success(t("settings.preferences_saved", "Preferences saved"));
     } catch (err: any) {
-      toast.error(err?.message || "Failed to save preferences");
+      toast.error(err?.message || t("errors.failed_save_preferences", "Failed to save preferences"));
     } finally {
       setSavingPrefs(false);
     }

@@ -169,7 +169,7 @@ const Profile = () => {
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
     } catch (err: any) {
       console.error(err);
-      toast.error(err?.message || "Failed to upload avatar");
+      toast.error(err?.message || t("errors.failed_upload_avatar", "Failed to upload avatar"));
     } finally {
       // reset input value to allow re-uploading same file
       if (fileInputRef.current) fileInputRef.current.value = "";

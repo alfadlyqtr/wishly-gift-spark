@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ export type AddWishModalProps = React.PropsWithChildren<{
 }>;
 
 export const AddWishModal: React.FC<AddWishModalProps> = ({ children, wishlistId }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   // Tab state and inputs
@@ -96,9 +98,9 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({ children, wishlistId
       setImageUrl(data.image_url ?? imageUrl);
       setItemUrl(data.item_url ?? url);
       if (data.price != null) setPrice(String(data.price));
-      toast.success("Item details fetched");
+      toast.success(t("success.item_details_fetched", "Item details fetched"));
     } catch (e: any) {
-      toast.error(e?.message || "Failed to fetch item details");
+      toast.error(e?.message || t("errors.failed_fetch_details", "Failed to fetch details"));
     } finally {
       setLoadingScrape(false);
     }
@@ -107,11 +109,11 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({ children, wishlistId
   const handleSave = async () => {
     const finalWishlistId = wishlistId || localWishlistId;
     if (!finalWishlistId) {
-      toast.error("Please choose a wishlist");
+      toast.error(t("wish_item.wishlist_placeholder", "Please choose a wishlist"));
       return;
     }
     if (!title) {
-      toast.error("Title is required");
+      toast.error(t("wishlist_detail.title_required", "Title is required"));
       return;
     }
 
@@ -136,7 +138,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({ children, wishlistId
         return;
       }
 
-      toast.success("Wish added to your list");
+      toast.success(t("success.wish_saved", "Wish saved"));
       // Reset fields on success
       setUrl("");
       setManualText("");
@@ -148,7 +150,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({ children, wishlistId
       setLocalWishlistId("");
       setOpen(false);
     } catch (e: any) {
-      toast.error(e?.message || "Failed to save wish");
+      toast.error(e?.message || t("errors.failed_save_wish", "Failed to save wish"));
     } finally {
       setSaving(false);
     }

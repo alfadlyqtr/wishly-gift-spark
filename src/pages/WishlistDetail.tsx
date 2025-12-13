@@ -629,9 +629,9 @@ const WishlistDetail = () => {
                           await queryClient.invalidateQueries({
                             predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'events'
                           });
-                          toast.success("Title updated");
+                          toast.success(t("success.title_updated", "Title updated"));
                         } catch (e: any) {
-                          toast.error(e?.message || "Failed to update title");
+                          toast.error(e?.message || t("errors.failed_update_title", "Failed to update title"));
                         }
                       }}
                       aria-label="Save title"
@@ -919,9 +919,9 @@ const WishlistDetail = () => {
                                       onClick={async () => {
                                         const { error } = await supabase.from("wishlist_items").delete().eq("id", it.id);
                                         if (error) {
-                                          toast.error(error.message || "Failed to delete");
+                                          toast.error(error.message || t("errors.failed_to_delete", "Failed to delete"));
                                         } else {
-                                          toast.success("Deleted");
+                                          toast.success(t("success.deleted", "Deleted"));
                                           await refetch();
                                         }
                                       }}

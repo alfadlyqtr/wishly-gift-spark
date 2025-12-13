@@ -387,9 +387,9 @@ export const MainLayout = () => {
             };
             const { error } = await supabase.from("wishlist_items").insert([payload]);
             if (error) throw error;
-            toast.success("Wish saved");
+            toast.success(t("success.wish_saved", "Wish saved"));
           } catch (e: any) {
-            toast.error(e?.message || "Failed to save wish");
+            toast.error(e?.message || t("errors.failed_save_wish", "Failed to save wish"));
           }
         }}
       />

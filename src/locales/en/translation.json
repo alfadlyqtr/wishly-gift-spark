@@ -484,5 +484,73 @@
     "aquarius": "Aquarius",
     "pisces": "Pisces",
     "unknown": "Unknown"
+  },
+  "errors": {
+    "failed_generic": "Something went wrong",
+    "failed_to_save": "Failed to save",
+    "failed_to_delete": "Failed to delete",
+    "failed_to_load": "Failed to load",
+    "failed_to_upload": "Failed to upload",
+    "failed_to_send": "Failed to send",
+    "failed_to_update": "Failed to update",
+    "failed_change_password": "Failed to change password",
+    "failed_change_email": "Failed to change email",
+    "failed_save_country": "Failed to save country",
+    "failed_approve": "Failed to approve",
+    "failed_decline": "Failed to decline",
+    "failed_save_visibility": "Failed to save visibility",
+    "failed_save_follow": "Failed to save follow setting",
+    "failed_revoke_sessions": "Failed to revoke sessions",
+    "failed_save_preferences": "Failed to save preferences",
+    "failed_upload_avatar": "Failed to upload avatar",
+    "failed_start_conversation": "Failed to start conversation",
+    "failed_save_message": "Failed to save message",
+    "failed_update_reaction": "Failed to update reaction",
+    "failed_send_message": "Failed to send message",
+    "failed_fetch_details": "Failed to fetch details",
+    "failed_extract_image": "Failed to extract from image",
+    "failed_save_product": "Failed to save product",
+    "failed_save_wish": "Failed to save wish",
+    "failed_post_question": "Failed to post question",
+    "failed_post_answer": "Failed to post answer",
+    "failed_send_support": "Failed to send support message",
+    "failed_like": "Failed to like",
+    "failed_comment": "Failed to add comment",
+    "failed_share": "Failed to share",
+    "failed_create_wishlist": "Failed to create wishlist",
+    "failed_update_title": "Failed to update title"
+  },
+  "success": {
+    "saved": "Saved",
+    "deleted": "Deleted",
+    "updated": "Updated",
+    "wish_saved": "Wish saved",
+    "title_updated": "Title updated",
+    "link_copied": "Link copied",
+    "question_posted": "Question posted!",
+    "answer_posted": "Answer posted!",
+    "item_details_fetched": "Item details fetched"
+  },
+  "goodbye": {
+    "title": "Goodbye",
+    "message": "We'll miss you! Wishing you all the best.",
+    "account_deleted": "Your account has been successfully deleted. Thank you for using Wishly.",
+    "redirecting": "Redirecting to home..."
+  },
+  "contact_page": {
+    "title": "Contact Us",
+    "subtitle": "We'd love to hear from you",
+    "name": "Name",
+    "email": "Email",
+    "message": "Message",
+    "send": "Send Message",
+    "sending": "Sending...",
+    "success": "Message sent successfully!",
+    "error": "Failed to send message"
+  },
+  "privacy_page": {
+    "title": "Privacy & Terms",
+    "privacy_title": "Privacy Policy",
+    "terms_title": "Terms of Service"
   }
 }

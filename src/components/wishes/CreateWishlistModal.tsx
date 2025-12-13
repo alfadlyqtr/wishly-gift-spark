@@ -34,7 +34,7 @@ const CreateWishlistModal: React.FC<CreateWishlistModalProps> = ({ children, def
 
   const handleCreate = async () => {
     if (!title.trim()) {
-      toast.error("Title is required");
+      toast.error(t("wishlist_detail.title_required", "Title is required"));
       return;
     }
 
@@ -43,7 +43,7 @@ const CreateWishlistModal: React.FC<CreateWishlistModalProps> = ({ children, def
       const { data: auth } = await supabase.auth.getUser();
       const user = auth.user;
       if (!user) {
-        toast.error("Please sign in to create a wishlist");
+        toast.error(t("common.not_authenticated", "Not authenticated"));
         return;
       }
 
@@ -62,11 +62,11 @@ const CreateWishlistModal: React.FC<CreateWishlistModalProps> = ({ children, def
         .single();
 
       if (error) {
-        toast.error(error.message || "Failed to create wishlist");
+        toast.error(error.message || t("errors.failed_create_wishlist", "Failed to create wishlist"));
         return;
       }
 
-      toast.success("Wishlist created");
+      toast.success(t("success.saved", "Saved"));
       await queryClient.invalidateQueries({ queryKey: ["wishlists"] });
       await queryClient.invalidateQueries({
         predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'events'
