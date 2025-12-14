@@ -186,7 +186,7 @@ const HomePage = () => {
                     <div className="font-bold text-[10px] sm:text-xs lg:text-sm">{t('home.card_product_title', 'AirPods Pro')}</div>
                     <div className="flex items-center gap-1 sm:gap-2 mt-0.5">
                       <span className="inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[10px] lg:text-[11px] font-medium bg-primary/5 text-primary/90">
-                        {t('home.card_product_meta', 'Added by')}{' '}<span className="text-primary font-semibold">{t('home.card_product_name', 'Mozah')}</span>
+                        {t('home.card_product_meta', 'Added by')} <span className="text-primary font-semibold ml-1">{t('home.card_product_name', 'Mozah')}</span>
                       </span>
                       <span className="h-[3px] w-10 rounded-full bg-gradient-to-r from-primary/60 via-accent/70 to-brand-warm-start/80" />
                     </div>
@@ -214,7 +214,7 @@ const HomePage = () => {
                   <div>
                     <div className="font-bold text-[9px] sm:text-xs lg:text-sm">{t('home.card_product2_title', 'Nike Air Max')}</div>
                     <span className="inline-flex items-center px-1 sm:px-1.5 lg:px-2 py-0.5 rounded-full text-[7px] sm:text-[9px] lg:text-[10px] font-medium bg-accent/10 text-accent/90">
-                      {t('home.card_product2_meta', 'Added by')}{' '}<span className="text-accent font-semibold">{t('home.card_product2_name', 'Alanoud')}</span>
+                      {t('home.card_product2_meta', 'Added by')} <span className="text-accent font-semibold ml-1">{t('home.card_product2_name', 'Alanoud')}</span>
                     </span>
                   </div>
                 </div>
@@ -234,7 +234,7 @@ const HomePage = () => {
                   <div>
                     <div className="font-bold text-[9px] sm:text-xs lg:text-sm">{t('home.card_product3_title', 'PS5 Controller')}</div>
                     <span className="inline-flex items-center px-1 sm:px-1.5 lg:px-2 py-0.5 rounded-full text-[7px] sm:text-[9px] lg:text-[10px] font-medium bg-brand-warm-start/10 text-brand-warm-start">
-                      {t('home.card_product3_meta', 'Added by')}{' '}<span className="text-brand-warm-start font-semibold">{t('home.card_product3_name', 'Jabor')}</span>
+                      {t('home.card_product3_meta', 'Added by')} <span className="text-brand-warm-start font-semibold ml-1">{t('home.card_product3_name', 'Jabor')}</span>
                     </span>
                   </div>
                 </div>

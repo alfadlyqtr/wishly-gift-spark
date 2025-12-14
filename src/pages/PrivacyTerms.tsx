@@ -1,9 +1,150 @@
 import { useTranslation } from 'react-i18next';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { Button } from '@/components/ui/button';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Play, Pause, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 
 const PrivacyTerms = () => {
   const { t, i18n } = useTranslation();
+  const isArabic = i18n.language?.startsWith('ar');
+
+  // Audio player state
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const scrollIntervalRef = useRef<number | null>(null);
+  const userScrollingRef = useRef(false);
+  const lastAutoScrollTime = useRef(0);
+
+  // Audio source based on language
+  const audioSrc = isArabic
+    ? '/wishly pravacy arabic.mp3'
+    : '/wishly provacy english.mp3';
+
+  // Auto-scroll logic: scroll page in sync with audio
+  const startAutoScroll = useCallback(() => {
+    if (scrollIntervalRef.current) return;
+    const content = contentRef.current;
+    if (!content || !audioRef.current) return;
+
+    const totalScrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const audioDuration = audioRef.current.duration || 1;
+
+    scrollIntervalRef.current = window.setInterval(() => {
+      if (!audioRef.current || userScrollingRef.current) return;
+      const progress = audioRef.current.currentTime / audioDuration;
+      const targetScroll = progress * totalScrollHeight;
+      lastAutoScrollTime.current = Date.now();
+      window.scrollTo({ top: targetScroll, behavior: 'smooth' });
+    }, 500);
+  }, []);
+
+  const stopAutoScroll = useCallback(() => {
+    if (scrollIntervalRef.current) {
+      clearInterval(scrollIntervalRef.current);
+      scrollIntervalRef.current = null;
+    }
+  }, []);
+
+  // Play/Pause toggle
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+      stopAutoScroll();
+    } else {
+      audioRef.current.play();
+      startAutoScroll();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  // Rewind 10 seconds
+  const rewind = () => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+  };
+
+  // Seek to position when clicking progress bar
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!audioRef.current || !duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = clickX / rect.width;
+    const newTime = percentage * duration;
+    audioRef.current.currentTime = Math.max(0, Math.min(duration, newTime));
+  };
+
+  // Update time display
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleLoadedMetadata = () => setDuration(audio.duration);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      stopAutoScroll();
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('ended', handleEnded);
+      stopAutoScroll();
+    };
+  }, [stopAutoScroll]);
+
+  // Reset audio when language changes
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+      setCurrentTime(0);
+      stopAutoScroll();
+    }
+  }, [isArabic, stopAutoScroll]);
+
+  // Detect user manual scroll and pause auto-scroll temporarily
+  useEffect(() => {
+    let scrollTimeout: number | null = null;
+
+    const handleUserScroll = () => {
+      // Ignore if this scroll was triggered by auto-scroll (within 600ms)
+      if (Date.now() - lastAutoScrollTime.current < 600) return;
+
+      userScrollingRef.current = true;
+
+      // Resume auto-scroll after 3 seconds of no manual scrolling
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      scrollTimeout = window.setTimeout(() => {
+        userScrollingRef.current = false;
+      }, 3000);
+    };
+
+    window.addEventListener('scroll', handleUserScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleUserScroll);
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+    };
+  }, []);
+
+  // Format time as mm:ss
+  const formatTime = (time: number) => {
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -42,8 +183,84 @@ const PrivacyTerms = () => {
         </div>
       </header>
 
-      <main className="relative z-10 container mx-auto px-4 py-10 md:py-16">
+      {/* Fixed Audio Player - Always visible at top */}
+      <div className="fixed top-[73px] left-0 right-0 z-50 px-4">
         <div className="max-w-4xl mx-auto">
+          <div className="bg-card/95 backdrop-blur-xl rounded-2xl border border-primary/20 p-3 sm:p-4 shadow-xl">
+            <audio ref={audioRef} src={audioSrc} preload="metadata" />
+            
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* Mute/Unmute button */}
+              <button
+                onClick={() => {
+                  if (audioRef.current) {
+                    audioRef.current.muted = !isMuted;
+                    setIsMuted(!isMuted);
+                  }
+                }}
+                className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                title={isMuted ? (isArabic ? 'تشغيل الصوت' : 'Unmute') : (isArabic ? 'كتم الصوت' : 'Mute')}
+              >
+                {isMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
+              </button>
+
+              {/* Controls */}
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {/* Rewind button */}
+                <button
+                  onClick={rewind}
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/80 hover:bg-white border border-primary/20 flex items-center justify-center text-primary transition-all hover:scale-105 active:scale-95 shadow-sm"
+                  title={isArabic ? 'تراجع ١٠ ثوانٍ' : 'Rewind 10s'}
+                >
+                  <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </button>
+
+                {/* Play/Pause button */}
+                <button
+                  onClick={togglePlay}
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-primary to-accent hover:from-primary/90 hover:to-accent/90 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-lg"
+                  title={isPlaying ? (isArabic ? 'إيقاف' : 'Pause') : (isArabic ? 'تشغيل' : 'Play')}
+                >
+                  {isPlaying ? <Pause className="w-4 h-4 sm:w-5 sm:h-5" /> : <Play className="w-4 h-4 sm:w-5 sm:h-5 ml-0.5" />}
+                </button>
+              </div>
+
+              {/* Progress bar and time - clickable to seek */}
+              <div className="flex-1 flex items-center gap-2 sm:gap-3">
+                <div 
+                  className="flex-1 h-3 sm:h-4 bg-muted rounded-full overflow-hidden shadow-inner cursor-pointer relative group"
+                  onClick={handleSeek}
+                  title={isArabic ? 'انقر للانتقال' : 'Click to seek'}
+                >
+                  {/* Progress fill */}
+                  <div
+                    className="h-full bg-gradient-to-r from-primary via-accent to-brand-warm-start rounded-full transition-all duration-150"
+                    style={{ width: `${progress}%` }}
+                  />
+                  {/* Hover indicator */}
+                  <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-full" />
+                </div>
+                <span className="text-[10px] sm:text-xs font-medium text-muted-foreground min-w-[55px] sm:min-w-[70px] text-center">
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </span>
+              </div>
+            </div>
+
+            {/* Label - hidden on very small screens */}
+            <p className="hidden sm:block mt-2 text-xs text-muted-foreground text-center">
+              {isArabic
+                ? '🎧 استمع أثناء القراءة – سيتم تمرير الصفحة تلقائياً'
+                : '🎧 Listen while you read – page will auto-scroll'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Spacer for fixed audio player */}
+      <div className="h-20 sm:h-24" />
+
+      <main className="relative z-10 container mx-auto px-4 py-6 md:py-10">
+        <div className="max-w-4xl mx-auto" ref={contentRef}>
           {/* English column */}
           {(!i18n.language || !i18n.language.startsWith('ar')) && (
           <section className="space-y-8 bg-card/80 backdrop-blur rounded-3xl border border-border/50 p-6 md:p-8 shadow-xl">
@@ -244,8 +461,8 @@ const PrivacyTerms = () => {
                 <p>
                   We may update this Privacy &amp; Terms page from time to time, for example when we launch new features or
                   when the law changes. Where changes are significant, we will take reasonable steps to let you know (for
-                  example inside the app or on our website). Your continued use of Wishly means you accept the updated
-                  terms.
+                  example inside the app or on our website). It is also your responsibility to review this page regularly so
+                  you stay informed about any changes. Your continued use of Wishly means you accept the updated terms.
                 </p>
               </section>
 
@@ -464,8 +681,9 @@ const PrivacyTerms = () => {
                 <h3 className="text-base font-semibold text-foreground">10. تحديث هذه الصفحة</h3>
                 <p>
                   قد نقوم بتحديث سياسة الخصوصية وشروط الاستخدام من وقت لآخر، مثلاً عند إضافة ميزات جديدة أو عند تغير
-                  القوانين. سنحاول إبلاغك بالتغييرات الجوهرية داخل التطبيق أو عبر منصاتنا الرسمية. استمرارك في استخدام وشلي
-                  بعد التحديث يعني موافقتك على الشروط المحدَّثة.
+                  القوانين. سنحاول إبلاغك بالتغييرات الجوهرية داخل التطبيق أو عبر منصاتنا الرسمية. كما تقع على عاتقك أيضًا
+                  مسؤولية مراجعة هذه الصفحة بشكل دوري للبقاء على اطِّلاع بأي تحديثات. استمرارك في استخدام وشلي بعد التحديث
+                  يعني موافقتك على الشروط المحدَّثة.
                 </p>
               </section>
 
