@@ -41,8 +41,6 @@ const Messages = () => {
         throw error;
       }
 
-      console.log("Messages.tsx threads raw rows for uid", uid, rows);
-
       return await Promise.all((rows || []).map(async (row: any) => {
         const participants = (row.thread_participants || [])
           .map((p: any) => p.user_profiles)

@@ -3,54 +3,74 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { useEffect, useRef } from "react";
+import { Suspense, lazy, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { MainLayout } from "./components/MainLayout";
 import { BrandLayout } from "./components/BrandLayout";
-import AdminLayout from "./components/AdminLayout";
 import AdminGate from "./components/AdminGate";
-import HomePage from "./pages/HomePage";
-import PrivacyTerms from "./pages/PrivacyTerms";
-import Contact from "./pages/Contact";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import SignupChooser from "./pages/SignupChooser";
-import BusinessSignup from "./pages/BusinessSignup";
-import ForgotPassword from "./pages/ForgotPassword";
-import Dashboard from "./pages/Dashboard";
-import Explore from "./pages/Explore";
-import Events from "./pages/Events";
-import Profile from "./pages/Profile";
-import FollowersFollowing from "./pages/FollowersFollowing";
-import WishlistDetail from "./pages/WishlistDetail";
-import ShortWishRedirect from "./pages/ShortWishRedirect";
-import Wishlists from "./pages/Wishlists";
-import Settings from "./pages/Settings";
-import Messages from "./pages/Messages";
-import Chat from "./pages/Chat";
-import Notifications from "./pages/Notifications";
-import BrandNotifications from "./pages/BrandNotifications";
-import BrandDashboard from "./pages/BrandDashboard";
-import DebugDashboard from "./pages/DebugDashboard";
-import BrandProfile from "./pages/BrandProfile";
-import BrandProducts from "./pages/BrandProducts";
-import BrandProductDetail from "./pages/BrandProductDetail";
-import BrandInsights from "./pages/BrandInsights";
-import BrandFollowers from "./pages/BrandFollowers";
-import BrandFollowing from "./pages/BrandFollowing";
-import PublicBrandProfile from "./pages/PublicBrandProfile";
-import BrandsFollowing from "./pages/BrandsFollowing";
-import NotFound from "./pages/NotFound";
-import Goodbye from "./pages/Goodbye";
-import AdminDashboard from "./pages/AdminDashboard";
-import AdminUsers from "./pages/AdminUsers";
-import AdminUserDetail from "./pages/AdminUserDetail";
-import AdminSupportMessages from "./pages/AdminSupportMessages";
-import AdminContactInbox from "./pages/AdminContactInbox";
-import AdminAIUsage from "./pages/AdminAIUsage";
+const HomePage = lazy(() => import("./pages/HomePage"));
+const PrivacyTerms = lazy(() => import("./pages/PrivacyTerms"));
+const Contact = lazy(() => import("./pages/Contact"));
+const Login = lazy(() => import("./pages/Login"));
+const Signup = lazy(() => import("./pages/Signup"));
+const SignupChooser = lazy(() => import("./pages/SignupChooser"));
+const BusinessSignup = lazy(() => import("./pages/BusinessSignup"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Explore = lazy(() => import("./pages/Explore"));
+const Events = lazy(() => import("./pages/Events"));
+const Profile = lazy(() => import("./pages/Profile"));
+const FollowersFollowing = lazy(() => import("./pages/FollowersFollowing"));
+const WishlistDetail = lazy(() => import("./pages/WishlistDetail"));
+const ShortWishRedirect = lazy(() => import("./pages/ShortWishRedirect"));
+const Wishlists = lazy(() => import("./pages/Wishlists"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Messages = lazy(() => import("./pages/Messages"));
+const Chat = lazy(() => import("./pages/Chat"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const BrandNotifications = lazy(() => import("./pages/BrandNotifications"));
+const BrandDashboard = lazy(() => import("./pages/BrandDashboard"));
+const DebugDashboard = lazy(() => import("./pages/DebugDashboard"));
+const BrandProfile = lazy(() => import("./pages/BrandProfile"));
+const BrandProducts = lazy(() => import("./pages/BrandProducts"));
+const BrandProductDetail = lazy(() => import("./pages/BrandProductDetail"));
+const BrandInsights = lazy(() => import("./pages/BrandInsights"));
+const BrandFollowers = lazy(() => import("./pages/BrandFollowers"));
+const BrandFollowing = lazy(() => import("./pages/BrandFollowing"));
+const PublicBrandProfile = lazy(() => import("./pages/PublicBrandProfile"));
+const BrandsFollowing = lazy(() => import("./pages/BrandsFollowing"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Goodbye = lazy(() => import("./pages/Goodbye"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminUsers = lazy(() => import("./pages/AdminUsers"));
+const AdminUserDetail = lazy(() => import("./pages/AdminUserDetail"));
+const AdminSupportMessages = lazy(() => import("./pages/AdminSupportMessages"));
+const AdminContactInbox = lazy(() => import("./pages/AdminContactInbox"));
+const AdminAIUsage = lazy(() => import("./pages/AdminAIUsage"));
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 10 * 60_000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      retry: (failureCount) => failureCount < 2,
+    },
+    mutations: {
+      retry: 0,
+    },
+  },
+});
 
-const queryClient = new QueryClient();
+const RouteFallback = () => (
+  <div className="min-h-[100dvh] w-full bg-background text-foreground">
+    <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center gap-3 px-6">
+      <div className="h-2 w-40 rounded-full bg-muted" />
+      <div className="h-2 w-56 rounded-full bg-muted" />
+    </div>
+  </div>
+);
 
 const LocaleController = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -96,82 +116,75 @@ const App = () => (
       />
       <BrowserRouter>
         <LocaleController>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<HomePage />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/privacy" element={<PrivacyTerms />} />
-            <Route path="/signup" element={<SignupChooser />} />
-            <Route path="/signup/user" element={<Signup />} />
-            <Route path="/signup/business" element={<BusinessSignup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/goodbye" element={<Goodbye />} />
-            {/* Short redirect link for public share (
-               keeps public entrypoint; authenticated users will typically use
-               the in-app route below which has the full MainLayout chrome. */}
-            <Route path="/w/:id" element={<ShortWishRedirect />} />
-            {/* Public brand profile */}
-            <Route path="/brand/:id" element={<PublicBrandProfile />} />
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/privacy" element={<PrivacyTerms />} />
+              <Route path="/signup" element={<SignupChooser />} />
+              <Route path="/signup/user" element={<Signup />} />
+              <Route path="/signup/business" element={<BusinessSignup />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/goodbye" element={<Goodbye />} />
+              <Route path="/w/:id" element={<ShortWishRedirect />} />
+              <Route path="/brand/:id" element={<PublicBrandProfile />} />
 
-            {/* Superadmin entrypoint */}
-            <Route
-              path="/mqtr"
-              element={<AdminGate />}
-            >
-              <Route index element={<AdminDashboard />} />
-              <Route path="users" element={<AdminUsers />} />
-              <Route path="users/:userId" element={<AdminUserDetail />} />
-              <Route path="support-messages" element={<AdminSupportMessages />} />
-              <Route path="contact" element={<AdminContactInbox />} />
-              <Route path="ai-usage" element={<AdminAIUsage />} />
-            </Route>
+              <Route path="/mqtr" element={<AdminGate />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="users/:userId" element={<AdminUserDetail />} />
+                <Route path="support-messages" element={<AdminSupportMessages />} />
+                <Route path="contact" element={<AdminContactInbox />} />
+                <Route path="ai-usage" element={<AdminAIUsage />} />
+              </Route>
 
-            {/* Authenticated app shell - personal users */}
-            <Route
-              element={
-                <ProtectedRoute mode="personal">
-                  <MainLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/explore" element={<Explore />} />
-              <Route path="/events" element={<Events />} />
-              <Route path="/wishlist/:id" element={<WishlistDetail />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/followers" element={<FollowersFollowing />} />
-              <Route path="/brands-following" element={<BrandsFollowing />} />
-              <Route path="/wishlists" element={<Wishlists />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/chat/:id" element={<Chat />} />
-              <Route path="/notifications" element={<Notifications />} />
-            </Route>
+              <Route
+                element={
+                  <ProtectedRoute mode="personal">
+                    <MainLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/explore" element={<Explore />} />
+                <Route path="/events" element={<Events />} />
+                <Route path="/wishlist/:id" element={<WishlistDetail />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/followers" element={<FollowersFollowing />} />
+                <Route path="/brands-following" element={<BrandsFollowing />} />
+                <Route path="/wishlists" element={<Wishlists />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/messages" element={<Messages />} />
+                <Route path="/chat/:id" element={<Chat />} />
+                <Route path="/notifications" element={<Notifications />} />
+              </Route>
 
-            {/* Brand / business app shell - separate layout */}
-            <Route
-              element={
-                <ProtectedRoute mode="business">
-                  <BrandLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="/brand/dashboard" element={<BrandDashboard />} />
-              <Route path="/brand/debug" element={<DebugDashboard />} />
-              <Route path="/brand/profile" element={<BrandProfile />} />
-              <Route path="/brand/followers" element={<BrandFollowers />} />
-              <Route path="/brand/following" element={<BrandFollowing />} />
-              <Route path="/brand/products" element={<BrandProducts />} />
-              <Route path="/brand/products/:id" element={<BrandProductDetail />} />
-              <Route path="/brand/explore" element={<Explore />} />
-              <Route path="/brand/messages" element={<Messages />} />
-              <Route path="/brand/chat/:id" element={<Chat />} />
-              <Route path="/brand/notifications" element={<BrandNotifications />} />
-            </Route>
+              <Route
+                element={
+                  <ProtectedRoute mode="business">
+                    <BrandLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/brand/dashboard" element={<BrandDashboard />} />
+                {import.meta.env.DEV && (
+                  <Route path="/brand/debug" element={<DebugDashboard />} />
+                )}
+                <Route path="/brand/profile" element={<BrandProfile />} />
+                <Route path="/brand/followers" element={<BrandFollowers />} />
+                <Route path="/brand/following" element={<BrandFollowing />} />
+                <Route path="/brand/products" element={<BrandProducts />} />
+                <Route path="/brand/products/:id" element={<BrandProductDetail />} />
+                <Route path="/brand/explore" element={<Explore />} />
+                <Route path="/brand/messages" element={<Messages />} />
+                <Route path="/brand/chat/:id" element={<Chat />} />
+                <Route path="/brand/notifications" element={<BrandNotifications />} />
+              </Route>
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </LocaleController>
       </BrowserRouter>
     </TooltipProvider>

@@ -564,7 +564,7 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
                             selectedProductLiked ? "is-liked" : ""
                           }`}
                           onClick={handleToggleLikeSelectedProduct}
-                          aria-pressed={selectedProductLiked}
+                          aria-pressed={selectedProductLiked ? "true" : "false"}
                           aria-label={
                             selectedProductLiked
                               ? t("explore.unlike_product", "Unlike product")
@@ -631,7 +631,6 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
                   brand_product_id: productForWishAdd.id || null, // Link to brand product for analytics
                 });
                 if (error) throw error;
-                console.log("✅ Item added with brand_product_id:", productForWishAdd.id);
                 toast.success(t("explore.item_added", "Item added to wishlist"));
                 setProductForWishAdd(null);
               } catch (err: any) {

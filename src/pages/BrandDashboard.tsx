@@ -46,8 +46,10 @@ const BrandDashboard = () => {
         .select("id, name, image_url, product_url")
         .eq("brand_id", brand.id);
 
-      console.log("🏢 Brand ID:", brand.id);
-      console.log("📦 Your Products:", products);
+      if (import.meta.env.DEV) {
+        console.log("🏢 Brand ID:", brand.id);
+        console.log("📦 Your Products:", products);
+      }
 
       // Product views tracking (requires brand_product_views table from migration)
       const viewsCount = 0; // Will be enabled when brand_product_views migration is run
@@ -62,7 +64,9 @@ const BrandDashboard = () => {
         console.error("❌ Error from brand_dashboard_analytics:", analyticsError);
       }
 
-      console.log("📊 Analytics rows:", analytics);
+      if (import.meta.env.DEV) {
+        console.log("📊 Analytics rows:", analytics);
+      }
 
       const analyticsRows = ((analytics || []) as any[]) as Array<{
         product_id: string;
@@ -316,12 +320,16 @@ const BrandDashboard = () => {
       }
 
       if (!products || products.length === 0) {
-        console.log("No products found for brand:", brandId);
+        if (import.meta.env.DEV) {
+          console.log("No products found for brand:", brandId);
+        }
         return [];
       }
 
       const productIds = products.map((p: any) => p.id);
-      console.log("Brand product IDs:", productIds);
+      if (import.meta.env.DEV) {
+        console.log("Brand product IDs:", productIds);
+      }
 
       // Step 2: Get all questions for these products
       const { data: questions, error: questionsError } = await (supabase as any)
@@ -359,7 +367,9 @@ const BrandDashboard = () => {
         }));
       }
 
-      console.log("Questions found:", questions?.length || 0);
+      if (import.meta.env.DEV) {
+        console.log("Questions found:", questions?.length || 0);
+      }
       return questions || [];
     },
     enabled: !!brandId,

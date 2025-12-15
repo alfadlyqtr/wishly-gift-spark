@@ -181,8 +181,10 @@ const AdminUserDetail = () => {
             .eq("thread_id", targetId)
             .order("created_at", { ascending: false })
             .limit(10);
-          
-          console.log("Messages query:", { targetId, messagesData, msgErr });
+
+          if (import.meta.env.DEV) {
+            console.log("Messages query:", { targetId, messagesData, msgErr });
+          }
           
           if (messagesData && messagesData.length > 0) {
             details.chatMessages = messagesData.reverse(); // Show oldest first

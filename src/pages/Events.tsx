@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Pencil, Trash2, Loader2, Hourglass, Check } from "lucide-react";
+import { Calendar, Pencil, Trash2, Loader2, Hourglass, Check, Users, Globe2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -1229,11 +1229,49 @@ const Events = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "mine" | "friends" | "public")} className="w-full">
-        <TabsList className="grid grid-cols-3 rounded-2xl bg-white/40 backdrop-blur px-1 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] ring-1 ring-white/50 h-10 sm:h-11">
-          <TabsTrigger value="mine" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl transition px-3 py-2 text-xs sm:text-sm">{t('events.tab_my', 'My Events')}</TabsTrigger>
-          <TabsTrigger value="friends" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl transition px-3 py-2 text-xs sm:text-sm">{t('events.tab_friends', "Friends' Events")}</TabsTrigger>
-          <TabsTrigger value="public" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl transition px-3 py-2 text-xs sm:text-sm">{t('events.tab_general', 'General Events')}</TabsTrigger>
-        </TabsList>
+        <div className="mx-auto w-full max-w-md">
+          <div className="relative mx-auto rounded-full p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_12px_28px_rgba(0,0,0,0.10)]">
+            <TabsList className="relative flex w-full items-center rounded-full bg-white/70 backdrop-blur px-1 py-1 ring-1 ring-white/70 shadow-[inset_0_1px_3px_rgba(255,255,255,0.55),_0_6px_14px_rgba(0,0,0,0.06)] overflow-hidden h-10 sm:h-11">
+              <span className="pointer-events-none absolute inset-x-6 -top-1 h-5 rounded-full bg-white/60 blur-md opacity-60" />
+              <span
+                className="pointer-events-none absolute top-1 bottom-1 rounded-full p-[1px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))]/40 via-[hsl(var(--brand-cool-end))]/35 to-[hsl(var(--brand-warm-end))]/40 shadow-[0_6px_16px_rgba(200,80,192,0.14)] transition-all duration-300 ease-out z-0"
+                style={{
+                  width: '33.3333%',
+                  left:
+                    activeTab === 'mine'
+                      ? '0%'
+                      : activeTab === 'friends'
+                      ? '33.3333%'
+                      : '66.6666%',
+                }}
+              >
+                <span className="absolute inset-0 rounded-full ring-1 ring-white/60" />
+                <span className="relative block h-full w-full rounded-full bg-white/20 backdrop-blur-[2px] shadow-[inset_0_1px_3px_rgba(255,255,255,0.6),_0_4px_10px_rgba(0,0,0,0.06)]" />
+              </span>
+              <TabsTrigger
+                value="mine"
+                className="relative z-10 flex-1 rounded-full px-3 py-2 text-[11px] sm:text-sm font-semibold transition-colors duration-200 flex items-center justify-center gap-1 data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground"
+              >
+                <Calendar className="h-4 w-4" />
+                <span>{t('events.tab_my', 'My Events')}</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="friends"
+                className="relative z-10 flex-1 rounded-full px-3 py-2 text-[11px] sm:text-sm font-semibold transition-colors duration-200 flex items-center justify-center gap-1 data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground"
+              >
+                <Users className="h-4 w-4" />
+                <span>{t('events.tab_friends', "Friends' Events")}</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="public"
+                className="relative z-10 flex-1 rounded-full px-3 py-2 text-[11px] sm:text-sm font-semibold transition-colors duration-200 flex items-center justify-center gap-1 data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground"
+              >
+                <Globe2 className="h-4 w-4" />
+                <span>{t('events.tab_general', 'General Events')}</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
+        </div>
 
         <TabsContent value="mine" className="pt-4">
           <Card className="border-0 rounded-2xl ring-0 shadow-none bg-transparent sm:ring-1 sm:bg-gradient-to-br sm:from-[hsl(var(--brand-cool-start))]/10 sm:via-[hsl(var(--brand-cool-end))]/10 sm:to-[hsl(var(--brand-warm-end))]/10 sm:shadow-[0_18px_40px_rgba(0,0,0,0.20)] overflow-visible">
@@ -1255,7 +1293,7 @@ const Events = () => {
             <CardContent className="pt-2">
               {myEventsCount > 0 && (
                 <>
-                  <div className="w-full flex justify-center py-4 sm:py-6 relative">
+                  <div className="w-full flex justify-center pt-16 pb-4 sm:pt-16 sm:pb-6 relative">
                     <WishlistStack
                       randomRotation={true}
                       sensitivity={180}

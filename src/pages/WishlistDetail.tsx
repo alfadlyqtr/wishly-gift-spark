@@ -1,10 +1,9 @@
 import { useParams, useNavigate, Link, useSearchParams, useLocation } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import BackButton from "@/components/BackButton";
 import WishAddDialog from "@/components/wishes/WishAddDialog";
-import FloatingLines from "@/components/FloatingLines";
 import Counter from "@/components/Counter";
 import { useWishlists } from "@/hooks/use-wishlists";
 import { toast } from "sonner";
@@ -38,6 +37,8 @@ type ReservationInfo = {
     avatar_url: string | null;
   } | null;
 };
+
+const FloatingLines = lazy(() => import("@/components/FloatingLines"));
 
 const WishlistDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -494,19 +495,21 @@ const WishlistDetail = () => {
     <div className={`container max-w-2xl mx-auto px-4 py-6 space-y-4 ${isGifterMode ? 'relative' : ''}`}>
       {isGifterMode && !isMobile && (
         <div className="fixed inset-0 z-0">
-          <FloatingLines
-            enabledWaves={["top","middle","bottom"]}
-            lineCount={[6,10,12] as any}
-            lineDistance={[6,5,4] as any}
-            bendRadius={5.0}
-            bendStrength={-0.5}
-            interactive={true}
-            parallax={true}
-            animationSpeed={0.85}
-            parallaxStrength={0.12}
-            linesGradient={["#4f46e5","#06b6d4","#ec4899","#f59e0b"]}
-            mixBlendMode="normal"
-          />
+          <Suspense fallback={null}>
+            <FloatingLines
+              enabledWaves={["top", "middle", "bottom"]}
+              lineCount={[6, 10, 12] as any}
+              lineDistance={[6, 5, 4] as any}
+              bendRadius={5.0}
+              bendStrength={-0.5}
+              interactive={true}
+              parallax={true}
+              animationSpeed={0.85}
+              parallaxStrength={0.12}
+              linesGradient={["#4f46e5", "#06b6d4", "#ec4899", "#f59e0b"]}
+              mixBlendMode="normal"
+            />
+          </Suspense>
         </div>
       )}
       <div className={`${isGifterMode ? 'relative z-10' : ''}`}>
@@ -1093,13 +1096,11 @@ const WishlistDetail = () => {
               // Handle image upload if there's a new file
               let finalImageUrl = editingItem.image_url;
               if (data.imageFile) {
-                console.log('Uploading new image file:', data.imageFile.name);
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
                   const fileExt = data.imageFile.name.split('.').pop();
                   const filePath = `wishlist-items/${user.id}/${Date.now()}.${fileExt}`;
-                  
-                  console.log('Uploading to path:', filePath);
+
                   const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('wishlist_images')
                     .upload(filePath, data.imageFile, {
@@ -1112,20 +1113,16 @@ const WishlistDetail = () => {
                     toast.error(`Image upload failed: ${uploadError.message}`);
                     // Continue with update but keep old image
                   } else {
-                    console.log('Upload successful:', uploadData);
                     const { data: urlData } = supabase.storage
                       .from('wishlist_images')
                       .getPublicUrl(filePath);
                     finalImageUrl = urlData.publicUrl;
-                    console.log('New image URL:', finalImageUrl);
                   }
                 }
               } else if (data.imagePreviewUrl && data.imagePreviewUrl !== editingItem.image_url) {
                 // If there's a new preview URL (from fetch), use it
                 finalImageUrl = data.imagePreviewUrl;
               }
-              
-              console.log('Final image URL to save:', finalImageUrl);
 
               // Update the item in the database
               const { error } = await supabase

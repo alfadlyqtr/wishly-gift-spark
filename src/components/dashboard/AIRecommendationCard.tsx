@@ -16,6 +16,7 @@ type BrandProduct = {
   description: string | null;
   image_url: string | null;
   allow_add_as_item: boolean;
+  product_url?: string | null;
   brands: {
     id: string;
     brand_name: string;
@@ -39,7 +40,7 @@ export const AIRecommendationCard = () => {
         setLoading(true);
         const { data, error } = await (supabase as any)
           .from("brand_products")
-          .select("id,name,description,image_url,allow_add_as_item,brands!inner(id,brand_name,logo_url)")
+          .select("id,name,description,image_url,product_url,allow_add_as_item,brands!inner(id,brand_name,logo_url)")
           .eq("is_findable", true)
           .limit(8)
           .order("created_at", { ascending: false });
@@ -251,22 +252,19 @@ export const AIRecommendationCard = () => {
             try {
               const effectiveTitle = title || productForWishAdd.name || "";
               const effectiveBrand = brand || productForWishAdd.brands?.brand_name || "";
-              const { data: { user } } = await supabase.auth.getUser();
-              if (!user) {
-                toast.error(t("common.login_required", "Please login to add items"));
-                return;
-              }
-              const { error } = await supabase.from("wishlist_items").insert({
+
+              const { error } = await (supabase as any).from("wishlist_items").insert({
                 wishlist_id: wishlistId,
                 title: effectiveTitle,
                 brand: effectiveBrand,
                 description: description || "",
                 desire: desire,
                 image_url: imagePreviewUrl || productForWishAdd.image_url || null,
+                item_url: productForWishAdd.product_url || null,
                 brand_product_id: productForWishAdd.id || null, // Link to brand product for analytics
               });
               if (error) throw error;
-              console.log("✅ Item added with brand_product_id:", productForWishAdd.id);
+
               toast.success(t("explore.item_added", "Item added to wishlist"));
               setProductForWishAdd(null);
             } catch (err: any) {

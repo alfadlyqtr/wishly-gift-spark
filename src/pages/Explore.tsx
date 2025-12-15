@@ -459,7 +459,7 @@ const Explore = () => {
             className={`relative z-10 flex-1 rounded-full px-3 py-2 text-[11px] font-semibold transition-colors duration-200 flex items-center justify-center gap-1 ${
               mode === 'brands' ? 'text-foreground' : 'text-muted-foreground'
             }`}
-            aria-pressed={mode === 'brands'}
+            aria-pressed={mode === 'brands' ? 'true' : 'false'}
           >
             <Store className="h-4 w-4" />
             <span>{t('explore.segment_brands', 'Brands/Stores')}</span>
@@ -470,7 +470,7 @@ const Explore = () => {
             className={`relative z-10 flex-1 rounded-full px-3 py-2 text-[11px] font-semibold transition-colors duration-200 flex items-center justify-center gap-1 ${
               mode === 'products' ? 'text-foreground' : 'text-muted-foreground'
             }`}
-            aria-pressed={mode === 'products'}
+            aria-pressed={mode === 'products' ? 'true' : 'false'}
           >
             <Store className="h-4 w-4" />
             <span>{t('explore.segment_products', 'Products')}</span>
@@ -481,7 +481,7 @@ const Explore = () => {
             className={`relative z-10 flex-1 rounded-full px-3 py-2 text-[11px] font-semibold transition-colors duration-200 flex items-center justify-center gap-1 ${
               mode === 'users' ? 'text-foreground' : 'text-muted-foreground'
             }`}
-            aria-pressed={mode === 'users'}
+            aria-pressed={mode === 'users' ? 'true' : 'false'}
           >
             <Users className="h-4 w-4" />
             <span>{t('explore.segment_users', 'Users')}</span>
@@ -670,7 +670,7 @@ const Explore = () => {
                                     isLiked ? 'is-liked' : ''
                                   }`}
                                   onClick={() => handleToggleLike(p)}
-                                  aria-pressed={isLiked}
+                                  aria-pressed={isLiked ? 'true' : 'false'}
                                   aria-label={
                                     isLiked
                                       ? t('explore.unlike_product', 'Unlike product')
@@ -779,7 +779,7 @@ const Explore = () => {
                                 isLiked ? 'is-liked' : ''
                               }`}
                               onClick={() => handleToggleLike(p)}
-                              aria-pressed={isLiked}
+                              aria-pressed={isLiked ? 'true' : 'false'}
                               aria-label={
                                 isLiked
                                   ? t('explore.unlike_product', 'Unlike product')
@@ -1065,7 +1065,7 @@ const Explore = () => {
                               isLiked ? 'is-liked' : ''
                             }`}
                             onClick={() => handleToggleLike(selectedProductForModal)}
-                            aria-pressed={isLiked}
+                            aria-pressed={isLiked ? 'true' : 'false'}
                             aria-label={
                               isLiked
                                 ? t('explore.unlike_product', 'Unlike product')
@@ -1144,10 +1144,6 @@ const Explore = () => {
                 brand_product_id: productForAdd.id || null, // Link to brand product for analytics
               };
 
-              console.log("🔍 Saving wishlist item with brand_product_id:", itemData.brand_product_id);
-              console.log("📦 Full product data:", productForAdd);
-              console.log("💾 Item data being saved:", itemData);
-
               // Prevent adding the same Explore product twice to the same wishlist
               // 1) Check by brand_product_id when present
               if (itemData.brand_product_id) {
@@ -1216,8 +1212,6 @@ const Explore = () => {
                 console.error("❌ Error saving wishlist item:", error);
                 throw error;
               }
-
-              console.log("✅ Wishlist item saved successfully!");
 
               toast.success(
                 t("explore.added_product_to_wishlist", "Added to your wishlist"),

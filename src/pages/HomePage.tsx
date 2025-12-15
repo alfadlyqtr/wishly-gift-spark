@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { LanguageToggle } from '@/components/LanguageToggle';
-import { motion } from 'framer-motion';
+import { LazyMotion, domAnimation, m as motion } from 'framer-motion';
 import { Camera, Lock, Check, Gift, Heart, Share2, Store, Users, Sparkles } from 'lucide-react';
 
 const HomePage = () => {
@@ -55,37 +55,38 @@ const HomePage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
-      {/* Background decor */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-primary/5 blur-3xl animate-pulse" />
-        <div
-          className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-brand-warm-start/5 blur-3xl animate-pulse"
-          style={{ animationDelay: '1s' }}
-        />
-      </div>
-
-      {/* Header (keep) */}
-      <header className="relative z-10 container mx-auto px-4 py-6 flex justify-between items-center backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <img
-            src="/wishly logo trans.png"
-            alt="Wishly"
-            className="h-28 sm:h-32 w-28 sm:w-32 rounded-full object-cover drop-shadow-lg"
+    <LazyMotion features={domAnimation}>
+      <div className="min-h-screen bg-background overflow-hidden">
+        {/* Background decor */}
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-primary/5 blur-3xl animate-pulse" />
+          <div
+            className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-brand-warm-start/5 blur-3xl animate-pulse"
+            style={{ animationDelay: '1s' }}
           />
         </div>
-        <LanguageToggle />
-      </header>
 
-      {/* HERO */}
-      <section className="relative z-10 container mx-auto px-4 pt-12 pb-24 lg:py-32">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <motion.div
-            initial="initial"
-            animate="animate"
-            variants={staggerContainer}
-            className="text-center lg:text-left space-y-8"
-          >
+        {/* Header (keep) */}
+        <header className="relative z-10 container mx-auto px-4 py-6 flex justify-between items-center backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <img
+              src="/wishly logo trans.png"
+              alt="Wishly"
+              className="h-28 sm:h-32 w-28 sm:w-32 rounded-full object-cover drop-shadow-lg"
+            />
+          </div>
+          <LanguageToggle />
+        </header>
+
+        {/* HERO */}
+        <section className="relative z-10 container mx-auto px-4 pt-12 pb-24 lg:py-32">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <motion.div
+              initial="initial"
+              animate="animate"
+              variants={staggerContainer}
+              className="text-center lg:text-left space-y-8"
+            >
             <motion.div variants={fadeIn} className="inline-block">
               <span className="px-4 py-1.5 rounded-full bg-gradient-to-r from-brand-warm-start/15 via-primary/10 to-accent/10 border border-primary/10 text-primary font-semibold text-xs tracking-wide uppercase flex items-center gap-2 w-fit mx-auto lg:mx-0 shadow-sm">
                 <Sparkles className="w-4 h-4" />
@@ -399,8 +400,8 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* FINAL CTA – keep text, upgrade styling */}
-      <section className="relative z-10 container mx-auto px-4 py-32 text-center">
+        {/* FINAL CTA – keep text, upgrade styling */}
+        <section className="relative z-10 container mx-auto px-4 py-32 text-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           whileInView={{ opacity: 1, scale: 1 }}
@@ -456,7 +457,8 @@ const HomePage = () => {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </LazyMotion>
   );
 };
 

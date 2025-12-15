@@ -89,8 +89,6 @@ export const ProductQuestions: React.FC<ProductQuestionsProps> = ({
   const { data: questions, isLoading, refetch } = useQuery({
     queryKey: ["product-questions", productId],
     queryFn: async () => {
-      console.log("🔍 Fetching questions for product:", productId);
-      
       // First get the questions
       const { data: rawQuestions, error: qError } = await (supabase as any)
         .from("product_questions")
@@ -102,9 +100,7 @@ export const ProductQuestions: React.FC<ProductQuestionsProps> = ({
         console.error("❌ Error fetching questions:", qError);
         throw qError;
       }
-      
-      console.log("📦 Raw questions:", rawQuestions);
-      
+
       if (!rawQuestions || rawQuestions.length === 0) {
         return [] as Question[];
       }
@@ -122,8 +118,6 @@ export const ProductQuestions: React.FC<ProductQuestionsProps> = ({
         ...q,
         user_profiles: profileMap.get(q.user_id) || undefined,
       }));
-      
-      console.log("✅ Enriched questions:", enriched);
       return enriched as Question[];
     },
     enabled: !!productId,
