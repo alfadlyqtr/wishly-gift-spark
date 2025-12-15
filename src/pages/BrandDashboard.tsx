@@ -486,7 +486,7 @@ const BrandDashboard = () => {
           {isVerified && (
             <span className="verified-chip">
               <BadgeCheck className="h-3.5 w-3.5" />
-              Verified
+              {t("brand.verified", "Verified")}
             </span>
           )}
         </div>
@@ -498,23 +498,23 @@ const BrandDashboard = () => {
           <TabsList className="inline-flex min-w-max bg-white/70 backdrop-blur border border-white/40 px-1 py-1 rounded-full gap-1">
             <TabsTrigger value="overview" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(var(--brand-cool-start))] data-[state=active]:to-[hsl(var(--brand-warm-end))] data-[state=active]:text-white rounded-full px-3 py-1.5 text-xs sm:text-sm">
               <BarChart3 className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">{t("brand.dashboard_tab_overview", "Overview")}</span>
+              <span className="hidden sm:inline">{t("dashboard_tab_overview", "Overview")}</span>
             </TabsTrigger>
             <TabsTrigger value="products" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(var(--brand-cool-start))] data-[state=active]:to-[hsl(var(--brand-warm-end))] data-[state=active]:text-white rounded-full px-3 py-1.5 text-xs sm:text-sm">
               <Package className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">{t("brand.dashboard_tab_products", "Products")}</span>
+              <span className="hidden sm:inline">{t("dashboard_tab_products", "Products")}</span>
             </TabsTrigger>
             <TabsTrigger value="analytics" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(var(--brand-cool-start))] data-[state=active]:to-[hsl(var(--brand-warm-end))] data-[state=active]:text-white rounded-full px-3 py-1.5 text-xs sm:text-sm">
               <BarChart3 className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">{t("brand.dashboard_tab_analytics", "Analytics")}</span>
+              <span className="hidden sm:inline">{t("dashboard_tab_analytics", "Analytics")}</span>
             </TabsTrigger>
             <TabsTrigger value="activity" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(var(--brand-cool-start))] data-[state=active]:to-[hsl(var(--brand-warm-end))] data-[state=active]:text-white rounded-full px-3 py-1.5 text-xs sm:text-sm">
               <Activity className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">{t("brand.dashboard_tab_activity", "Activity")}</span>
+              <span className="hidden sm:inline">{t("dashboard_tab_activity", "Activity")}</span>
             </TabsTrigger>
             <TabsTrigger value="questions" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(var(--brand-cool-start))] data-[state=active]:to-[hsl(var(--brand-warm-end))] data-[state=active]:text-white rounded-full px-3 py-1.5 text-xs sm:text-sm relative">
               <MessageCircle className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">{t("brand.dashboard_tab_questions", "Questions")}</span>
+              <span className="hidden sm:inline">{t("dashboard_tab_questions", "Questions")}</span>
               {unansweredCount > 0 && (
                 <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-[10px] font-bold text-white flex items-center justify-center">
                   {unansweredCount > 9 ? "9+" : unansweredCount}
