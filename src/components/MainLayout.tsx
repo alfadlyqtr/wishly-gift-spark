@@ -234,18 +234,18 @@ export const MainLayout = () => {
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
       >
         <div className="mx-auto w-[min(720px,95%)] p-[2px] rounded-3xl bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
-          <div className="flex items-end justify-between gap-2 px-3 py-2 rounded-3xl bg-white/85 backdrop-blur shadow-[0_12px_32px_rgba(0,0,0,0.12)] touch-manipulation">
+          <div className="flex items-end justify-between gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-3xl bg-white/85 backdrop-blur shadow-[0_12px_32px_rgba(0,0,0,0.12)] touch-manipulation">
           <Link to="/dashboard" className="flex flex-1 justify-center min-w-0" style={{ WebkitTapHighlightColor: 'transparent' }}>
             <Button
               variant="ghost"
               size="sm"
-              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-2 touch-manipulation select-none ${
+              className={`w-full max-w-[64px] sm:max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-2 touch-manipulation select-none ${
                 isActive("/dashboard") ? "text-primary" : "text-muted-foreground"
               }`}
             >
               <img src={wishlyLogo} alt="Dash" className="h-8 w-8 rounded-full ring-1 ring-white/70 object-cover" />
               <span
-                className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                className="min-w-0 w-full truncate text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
                 style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
               >
                 {t('nav.dash', 'Dash')}
@@ -257,13 +257,13 @@ export const MainLayout = () => {
             <Button
               variant="ghost"
               size="sm"
-              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 touch-manipulation select-none ${
+              className={`w-full max-w-[64px] sm:max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 touch-manipulation select-none ${
                 isActive("/explore") ? "text-primary" : "text-muted-foreground"
               }`}
             >
               <Store className="h-9 w-9 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" strokeWidth={2.4} />
               <span
-                className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                className="min-w-0 w-full truncate text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
                 style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
               >
                 {t('nav.explore', 'Explore')}
@@ -299,13 +299,13 @@ export const MainLayout = () => {
             <Button
               variant="ghost"
               size="sm"
-              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 touch-manipulation select-none ${
+              className={`w-full max-w-[64px] sm:max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 touch-manipulation select-none ${
                 isActive("/events") ? "text-primary" : "text-muted-foreground"
               }`}
             >
               <Calendar className="h-9 w-9 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" strokeWidth={2.4} />
               <span
-                className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                className="min-w-0 w-full truncate text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
                 style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
               >
                 {t('nav.events', 'Events')}
@@ -317,7 +317,7 @@ export const MainLayout = () => {
             <Button
               variant="ghost"
               size="sm"
-              className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-2 touch-manipulation select-none ${
+              className={`w-full max-w-[64px] sm:max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-2 touch-manipulation select-none ${
                 isActive("/profile") ? "text-primary" : "text-muted-foreground"
               }`}
             >
@@ -332,7 +332,7 @@ export const MainLayout = () => {
                 <User className="h-8 w-8" />
               )}
               <span
-                className="text-xs sm:text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                className="min-w-0 w-full truncate text-xs sm:text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
                 style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
               >
                 {t('nav.profile', 'Profile')}
@@ -343,6 +343,7 @@ export const MainLayout = () => {
         </div>
       </nav>
       )}
+
       {/* Simplified Add Wish dialog */}
       {!isGifterShared && (
       <WishAddDialog

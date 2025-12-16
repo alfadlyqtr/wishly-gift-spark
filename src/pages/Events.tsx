@@ -1227,7 +1227,7 @@ const Events = () => {
           {t('events.title', 'Events')}
         </h2>
       </div>
-
+@@
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "mine" | "friends" | "public")} className="w-full">
         <div className="mx-auto w-full max-w-md">
           <div className="relative mx-auto rounded-full p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_12px_28px_rgba(0,0,0,0.10)]">
@@ -1250,24 +1250,24 @@ const Events = () => {
               </span>
               <TabsTrigger
                 value="mine"
-                className="relative z-10 flex-1 rounded-full px-3 py-2 text-[11px] sm:text-sm font-semibold transition-colors duration-200 flex items-center justify-center gap-1 data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground"
+                className="relative z-10 flex-1 min-w-0 rounded-full px-2 sm:px-3 py-2 text-[10px] sm:text-sm font-semibold transition-colors duration-200 flex items-center justify-center gap-1 data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground"
               >
                 <Calendar className="h-4 w-4" />
-                <span>{t('events.tab_my', 'My Events')}</span>
+                <span className="min-w-0 truncate">{t('events.tab_my', 'My Events')}</span>
               </TabsTrigger>
               <TabsTrigger
                 value="friends"
-                className="relative z-10 flex-1 rounded-full px-3 py-2 text-[11px] sm:text-sm font-semibold transition-colors duration-200 flex items-center justify-center gap-1 data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground"
+                className="relative z-10 flex-1 min-w-0 rounded-full px-2 sm:px-3 py-2 text-[10px] sm:text-sm font-semibold transition-colors duration-200 flex items-center justify-center gap-1 data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground"
               >
                 <Users className="h-4 w-4" />
-                <span>{t('events.tab_friends', "Friends' Events")}</span>
+                <span className="min-w-0 truncate">{t('events.tab_friends', "Friends' Events")}</span>
               </TabsTrigger>
               <TabsTrigger
                 value="public"
-                className="relative z-10 flex-1 rounded-full px-3 py-2 text-[11px] sm:text-sm font-semibold transition-colors duration-200 flex items-center justify-center gap-1 data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground"
+                className="relative z-10 flex-1 min-w-0 rounded-full px-2 sm:px-3 py-2 text-[10px] sm:text-sm font-semibold transition-colors duration-200 flex items-center justify-center gap-1 data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground"
               >
                 <Globe2 className="h-4 w-4" />
-                <span>{t('events.tab_general', 'General Events')}</span>
+                <span className="min-w-0 truncate">{t('events.tab_general', 'General Events')}</span>
               </TabsTrigger>
             </TabsList>
           </div>
