@@ -682,6 +682,114 @@ const BrandDashboard = () => {
                 <div className="text-xs text-muted-foreground mt-2">{t("brand.dashboard_card_unique_users_sub", "With your products")}</div>
               </CardContent>
             </Card>
+
+            {/* Engagement Donut Card */}
+            <Card className="bg-white/70 backdrop-blur border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300">
+              <CardContent className="p-3 sm:p-4 md:p-6">
+                <div className="flex items-center justify-between mb-2 sm:mb-4">
+                  <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))]/20 to-[hsl(var(--brand-warm-end))]/20">
+                    <BarChart3 className="h-4 w-4 sm:h-6 sm:w-6 text-[hsl(var(--brand-cool-start))]" />
+                  </div>
+                </div>
+
+                {(() => {
+                  const views = stats.totalViews || 0;
+                  const adds = stats.wishlistAdds || 0;
+                  const likes = stats.totalLikes || 0;
+                  const total = views + adds + likes;
+
+                  const r = 18;
+                  const c = 2 * Math.PI * r;
+                  const gap = 2;
+
+                  const v = total ? (views / total) * c : 0;
+                  const a = total ? (adds / total) * c : 0;
+                  const l = total ? (likes / total) * c : 0;
+
+                  const vLen = Math.max(0, v - gap);
+                  const aLen = Math.max(0, a - gap);
+                  const lLen = Math.max(0, l - gap);
+
+                  const o1 = 0;
+                  const o2 = v;
+                  const o3 = v + a;
+
+                  return (
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex flex-col min-w-0">
+                        <div className="text-sm text-muted-foreground">{t("brand.dashboard_performance_mini_chart_label", "Engagement mix")}</div>
+                        <div className="text-xs text-muted-foreground mt-1">{t("brand.dashboard_card_views_sub", "Last 30 days")}</div>
+
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-center gap-2 text-[11px] text-slate-700">
+                            <span className="inline-block h-2.5 w-2.5 rounded-full bg-[hsl(var(--brand-cool-start))]" />
+                            <span className="truncate">{t("brand.dashboard_card_views", "Views")}</span>
+                            <span className="ml-auto tabular-nums text-muted-foreground">{views.toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px] text-slate-700">
+                            <span className="inline-block h-2.5 w-2.5 rounded-full bg-[hsl(var(--brand-cool-end))]" />
+                            <span className="truncate">{t("brand.dashboard_card_wishlist_adds", "Adds")}</span>
+                            <span className="ml-auto tabular-nums text-muted-foreground">{adds.toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px] text-slate-700">
+                            <span className="inline-block h-2.5 w-2.5 rounded-full bg-[hsl(var(--brand-warm-end))]" />
+                            <span className="truncate">{t("brand.dashboard_card_likes", "Likes")}</span>
+                            <span className="ml-auto tabular-nums text-muted-foreground">{likes.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0">
+                        <div className="relative h-20 w-20">
+                          <svg viewBox="0 0 48 48" className="h-full w-full">
+                            <circle cx="24" cy="24" r={r} fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="6" />
+                            <g transform="rotate(-90 24 24)">
+                              <circle
+                                cx="24"
+                                cy="24"
+                                r={r}
+                                fill="none"
+                                stroke={`hsl(var(--brand-cool-start))`}
+                                strokeWidth="6"
+                                strokeLinecap="round"
+                                strokeDasharray={`${vLen} ${c - vLen}`}
+                                strokeDashoffset={-o1}
+                              />
+                              <circle
+                                cx="24"
+                                cy="24"
+                                r={r}
+                                fill="none"
+                                stroke={`hsl(var(--brand-cool-end))`}
+                                strokeWidth="6"
+                                strokeLinecap="round"
+                                strokeDasharray={`${aLen} ${c - aLen}`}
+                                strokeDashoffset={-o2}
+                              />
+                              <circle
+                                cx="24"
+                                cy="24"
+                                r={r}
+                                fill="none"
+                                stroke={`hsl(var(--brand-warm-end))`}
+                                strokeWidth="6"
+                                strokeLinecap="round"
+                                strokeDasharray={`${lLen} ${c - lLen}`}
+                                strokeDashoffset={-o3}
+                              />
+                            </g>
+                          </svg>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <div className="text-sm font-semibold text-slate-900 tabular-nums">{total.toLocaleString()}</div>
+                            <div className="text-[10px] text-muted-foreground">{t("brand.dashboard_total", "Total")}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Performance Chart */}
