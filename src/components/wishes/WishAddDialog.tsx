@@ -705,19 +705,21 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button type="button" variant="secondary" className="px-2 shrink-0" aria-label="Style presets">
+                      <Button type="button" variant="secondary" className="px-2 shrink-0" aria-label={t("wish_item.style_presets_aria", "Style presets")}>
                         <ChevronDown className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setStylePreset('Auto')}>Auto</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setStylePreset('Professional')}>Professional</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setStylePreset('Natural')}>Natural</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setStylePreset('GenZ')}>Gen Z</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setStylePreset('Auto')}>{t("wish_item.style_auto", "Auto")}</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setStylePreset('Professional')}>{t("wish_item.style_professional", "Professional")}</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setStylePreset('Natural')}>{t("wish_item.style_natural", "Natural")}</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setStylePreset('GenZ')}>{t("wish_item.style_genz", "Gen Z")}</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                <span className="basis-full ml-1 text-xs text-muted-foreground">Style: {stylePreset}</span>
+                <span className="basis-full ml-1 text-xs text-muted-foreground">
+                  {t("wish_item.style_label", "Style")}: {t(`wish_item.style_${String(stylePreset).toLowerCase()}` as any, stylePreset)}
+                </span>
               </div>
             </div>
 

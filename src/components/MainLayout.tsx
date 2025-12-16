@@ -245,7 +245,7 @@ export const MainLayout = () => {
             >
               <img src={wishlyLogo} alt="Dash" className="h-8 w-8 rounded-full ring-1 ring-white/70 object-cover" />
               <span
-                className="min-w-0 w-full truncate text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                className="min-w-0 w-full whitespace-nowrap text-[10px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
                 style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
               >
                 {t('nav.dash', 'Dash')}
@@ -263,10 +263,11 @@ export const MainLayout = () => {
             >
               <Store className="h-9 w-9 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" strokeWidth={2.4} />
               <span
-                className="min-w-0 w-full truncate text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                className="min-w-0 w-full whitespace-nowrap text-[10px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
                 style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
               >
-                {t('nav.explore', 'Explore')}
+                <span className="sm:hidden">{t('nav.find', 'Find')}</span>
+                <span className="hidden sm:inline">{t('nav.explore', 'Explore')}</span>
               </span>
             </Button>
           </Link>
@@ -289,7 +290,8 @@ export const MainLayout = () => {
                   className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
                   style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
                 >
-                  {t('nav.add_wish', 'Add Wish')}
+                  <span className="sm:hidden">{t('nav.add', 'Add')}</span>
+                  <span className="hidden sm:inline">{t('nav.add_wish', 'Add Wish')}</span>
                 </span>
               </div>
             </Button>
@@ -305,7 +307,7 @@ export const MainLayout = () => {
             >
               <Calendar className="h-9 w-9 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" strokeWidth={2.4} />
               <span
-                className="min-w-0 w-full truncate text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                className="min-w-0 w-full whitespace-nowrap text-[10px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
                 style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
               >
                 {t('nav.events', 'Events')}
@@ -332,7 +334,7 @@ export const MainLayout = () => {
                 <User className="h-8 w-8" />
               )}
               <span
-                className="min-w-0 w-full truncate text-xs sm:text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                className="min-w-0 w-full whitespace-nowrap text-[10px] sm:text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
                 style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
               >
                 {t('nav.profile', 'Profile')}

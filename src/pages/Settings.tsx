@@ -253,7 +253,7 @@ const Settings = () => {
       </div>
       {adminMasterControl && (
         <div className="ml-3 mt-1">
-          <span className="text-xs text-amber-600 font-medium">Disabled by admin</span>
+          <span className="text-xs text-amber-600 font-medium">{t('settings.disabled_by_admin', 'Disabled by admin')}</span>
         </div>
       )}
     </div>
@@ -825,7 +825,7 @@ const Settings = () => {
               </div>
               {adminMasterControl && (
                 <div className="ml-3 mt-2">
-                  <span className="text-xs text-amber-600 font-medium">Disabled by admin</span>
+                  <span className="text-xs text-amber-600 font-medium">{t('settings.disabled_by_admin', 'Disabled by admin')}</span>
                 </div>
               )}
             </div>
@@ -860,7 +860,7 @@ const Settings = () => {
                 </div>
                 {adminMasterControl && (
                   <div className="ml-3 mt-2">
-                    <span className="text-xs text-amber-600 font-medium">Disabled by admin</span>
+                    <span className="text-xs text-amber-600 font-medium">{t('settings.disabled_by_admin', 'Disabled by admin')}</span>
                   </div>
                 )}
               </div>

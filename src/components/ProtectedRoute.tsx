@@ -185,21 +185,21 @@ const SuspensionOverlay = ({ message, suspendedUntil, session }: { message: stri
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-950/50 flex items-center justify-center">
             <Ban className="w-8 h-8 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold text-red-400 mb-2">Account Suspended</h1>
+          <h1 className="text-2xl font-bold text-red-400 mb-2">{t('suspension.title', 'Account Suspended')}</h1>
           <p className="text-slate-400 mb-6">{message || "Your account has been suspended."}</p>
           
           {suspendedUntil && (
             <div className="bg-slate-800/50 rounded-xl p-4 mb-6">
               <div className="flex items-center justify-center gap-2 text-slate-300 mb-1">
                 <Clock className="w-4 h-4" />
-                <span className="text-sm">Suspension expires in:</span>
+                <span className="text-sm">{t('suspension.expires_in', 'Suspension expires in:')}</span>
               </div>
               <div className="text-2xl font-mono font-bold text-amber-400">{timeLeft}</div>
             </div>
           )}
           
           <p className="text-xs text-slate-500 mb-4">
-            If you believe this is a mistake, please contact support.
+            {t('suspension.contact_hint', 'If you believe this is a mistake, please contact support.')}
           </p>
           
           {canSendMessage ? (
@@ -207,7 +207,7 @@ const SuspensionOverlay = ({ message, suspendedUntil, session }: { message: stri
               className="w-full bg-blue-600 text-white hover:bg-blue-700 border-blue-500 shadow-lg"
               onClick={() => setSupportDialog(true)}
             >
-              <MessageCircle className="w-4 h-4 mr-2" /> Contact Support
+              <MessageCircle className="w-4 h-4 mr-2" /> {t('support.contact_title', 'Contact Support')}
             </Button>
           ) : (
             <div className="text-center">
@@ -215,10 +215,10 @@ const SuspensionOverlay = ({ message, suspendedUntil, session }: { message: stri
                 className="w-full bg-slate-700 text-slate-400 cursor-not-allowed"
                 disabled
               >
-                <Clock className="w-4 h-4 mr-2" /> Message Sent
+                <Clock className="w-4 h-4 mr-2" /> {t('support.message_sent', 'Message Sent')}
               </Button>
               <p className="text-xs text-slate-500 mt-2">
-                You can send another message in {cooldownTimeLeft}
+                {t('support.cooldown_message', 'You can send another message in {{time}}', { time: cooldownTimeLeft })}
               </p>
             </div>
           )}
@@ -229,35 +229,35 @@ const SuspensionOverlay = ({ message, suspendedUntil, session }: { message: stri
       <Dialog open={supportDialog} onOpenChange={setSupportDialog}>
         <DialogContent className="bg-slate-900 border-slate-700 z-[10000]">
           <DialogHeader>
-            <DialogTitle className="text-white font-bold">Contact Support</DialogTitle>
+            <DialogTitle className="text-white font-bold">{t('support.contact_title', 'Contact Support')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <div className="text-sm text-white">
-                <strong>Username:</strong> {displayName}
+                <strong>{t('support.username_label', 'Username')}:</strong> {displayName}
               </div>
               <div className="text-sm text-white">
-                <strong>Email:</strong> {session?.user?.email || 'unknown@example.com'}
+                <strong>{t('support.email_label', 'Email')}:</strong> {session?.user?.email || 'unknown@example.com'}
               </div>
               {userInfo?.account_type && (
                 <div className="text-sm text-white">
-                  <strong>Account Type:</strong> {userInfo.account_type === 'business' ? 'Business' : 'Personal'}
+                  <strong>{t('support.account_type_label', 'Account Type')}:</strong> {userInfo.account_type === 'business' ? t('support.business', 'Business') : t('support.personal', 'Personal')}
                   {userInfo.brandName && <span className="ml-2 text-purple-400">({userInfo.brandName})</span>}
                 </div>
               )}
             </div>
             
             <div>
-              <label className="text-sm text-white mb-2 block">Message</label>
+              <label className="text-sm text-white mb-2 block">{t('support.message_label', 'Message')}</label>
               <Textarea
                 value={supportMessage}
                 onChange={(e) => setSupportMessage(e.target.value)}
-                placeholder="Please describe your issue or appeal your suspension..."
+                placeholder={t('support.message_placeholder', 'Please describe your issue or appeal your suspension...')}
                 className="bg-slate-800 border-slate-600 text-white min-h-[120px]"
                 maxLength={1000}
               />
               <p className="text-xs text-gray-300 mt-1">
-                {supportMessage.length}/1000 characters
+                {t('support.characters_count', '{{count}}/1000 characters', { count: supportMessage.length })}
               </p>
             </div>
           </div>
@@ -270,7 +270,7 @@ const SuspensionOverlay = ({ message, suspendedUntil, session }: { message: stri
                 setSupportMessage("");
               }}
             >
-              Cancel
+              {t('common.cancel', 'Cancel')}
             </Button>
             <Button
               className="bg-blue-600 text-white hover:bg-blue-700"

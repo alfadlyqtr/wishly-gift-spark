@@ -572,7 +572,7 @@ const WishlistDetail = () => {
             borderRadius={8}
             horizontalPadding={6}
           />
-          <span className="mt-1 text-xs text-white drop-shadow-sm">{isAr ? t('giftr.days_left_ar','أيام متبقية') : t('giftr.days_left','days left')}</span>
+          <span className="mt-1 text-xs text-white drop-shadow-sm">{t('giftr.days_left','days left')}</span>
         </div>
       )}
 
@@ -1065,7 +1065,7 @@ const WishlistDetail = () => {
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Preview</DialogTitle>
+            <DialogTitle>{t('wishlist_detail.preview_title', 'Preview')}</DialogTitle>
           </DialogHeader>
           <div className="flex items-center justify-center">
             {previewSrc ? (

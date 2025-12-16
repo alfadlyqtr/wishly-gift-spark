@@ -1227,7 +1227,6 @@ const Events = () => {
           {t('events.title', 'Events')}
         </h2>
       </div>
-@@
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "mine" | "friends" | "public")} className="w-full">
         <div className="mx-auto w-full max-w-md">
           <div className="relative mx-auto rounded-full p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_12px_28px_rgba(0,0,0,0.10)]">
@@ -1666,7 +1665,14 @@ const Events = () => {
                   }
                 }}
               >
-                {refreshing ? t('common.loading', 'Loading...') : t('events.refresh_holidays', 'Refresh Holidays')}
+                {refreshing ? (
+                  t('common.loading', 'Loading...')
+                ) : (
+                  <>
+                    <span className="sm:hidden">{t('events.refresh_short', 'Refresh')}</span>
+                    <span className="hidden sm:inline">{t('events.refresh_holidays', 'Refresh Holidays')}</span>
+                  </>
+                )}
               </Button>
               </div>
             </CardHeader>
@@ -1750,7 +1756,30 @@ const Events = () => {
                     <div className="divide-y divide-white/20">
                       {merged.map((e: any) => (
                         <div key={e.id || `${e.name}-${e.date}-${e.country_code || e.country}`} className="py-2">
-                          <div className="flex items-center justify-between rounded-xl bg-white/50 backdrop-blur px-3 py-2 ring-1 ring-white/60 shadow-sm">
+                          {(() => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const dStart = (e?.date_start || e?.date || e?.event_date || '') as string;
+                            const dEnd = (e?.date_end || '') as string;
+                            const endDate = new Date((dEnd || dStart || '').toString());
+                            const isPast = !Number.isNaN(endDate.getTime()) ? endDate < today : false;
+                            return (
+                              <div
+                                className={`relative flex items-center justify-between rounded-xl bg-white/50 backdrop-blur px-3 py-2 ring-1 ring-white/60 shadow-sm overflow-hidden ${
+                                  isPast ? 'opacity-75 saturate-[0.85]' : ''
+                                }`}
+                              >
+                                {isPast && (
+                                  <div className="pointer-events-none absolute inset-0">
+                                    <div className="absolute inset-0 bg-[repeating-linear-gradient(135deg,rgba(148,163,184,0.10)_0,rgba(148,163,184,0.10)_6px,transparent_6px,transparent_16px)]" />
+                                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-400/10" />
+                                  </div>
+                                )}
+                                {isPast && (
+                                  <span className="pointer-events-none absolute top-2 right-2 inline-flex items-center rounded-full bg-white/75 px-2 py-0.5 text-[10px] font-semibold text-slate-700 ring-1 ring-black/5">
+                                    {t('events.past_badge', 'Passed')}
+                                  </span>
+                                )}
                             <div className="min-w-0">
                               <div className="font-medium truncate">{mapTitle(String(e?.name || e?.title || t('events.untitled', 'Untitled')))}</div>
                               {(() => {
@@ -1811,7 +1840,9 @@ const Events = () => {
                                 return (e?.date || e?.event_date) ? fmt(e?.date || e?.event_date) : '';
                               })()}
                             </div>
-                          </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       ))}
                     </div>
@@ -1846,7 +1877,7 @@ const Events = () => {
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <p className="mt-2 text-xs font-semibold opacity-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{previewEventDate}</p>
                         <span className="inline-flex items-center rounded-full bg-white/80 px-2 py-0.5 text-[11px] ring-1 ring-black/10 text-blue-900">
-                          {previewItems.length} {t('giftr.items', 'items')}
+                          {t('wishlist_detail.items_badge', '{{count}} items', { count: previewItems.length })}
                         </span>
                         {(previewOwner?.show_countdown_timer ?? true) && previewCountdown && (
                           <span
@@ -2012,20 +2043,20 @@ const Events = () => {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Event</DialogTitle>
+            <DialogTitle>{t('events.edit_event_title', 'Edit Event')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label htmlFor="evt-title">Title</Label>
-              <Input id="evt-title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Event title" />
+              <Label htmlFor="evt-title">{t('common.title', 'Title')}</Label>
+              <Input id="evt-title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder={t('events.event_title_placeholder', 'Event title')} />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="evt-desc">Description</Label>
-              <Input id="evt-desc" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Description" />
+              <Label htmlFor="evt-desc">{t('common.description', 'Description')}</Label>
+              <Input id="evt-desc" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder={t('common.description', 'Description')} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>{t('common.cancel', 'Cancel')}</Button>
             <Button
               onClick={async () => {
                 try {
@@ -2043,7 +2074,7 @@ const Events = () => {
                 } catch {}
               }}
             >
-              Save
+              {t('common.save', 'Save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2052,10 +2083,10 @@ const Events = () => {
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete this event?</DialogTitle>
+            <DialogTitle>{t('events.delete_event_title', 'Delete this event?')}</DialogTitle>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>{t('common.cancel', 'Cancel')}</Button>
             <Button
               variant="destructive"
               onClick={async () => {
@@ -2071,7 +2102,7 @@ const Events = () => {
                 } catch {}
               }}
             >
-              Delete
+              {t('common.delete', 'Delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

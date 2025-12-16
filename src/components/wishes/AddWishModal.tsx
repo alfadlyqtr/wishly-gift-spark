@@ -165,8 +165,8 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({ children, wishlistId
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div>
-              <DialogTitle>Add Wish</DialogTitle>
-              <DialogDescription>Paste a link, type a description, or upload a photo.</DialogDescription>
+              <DialogTitle>{t('wish_item.add_wish_title', 'Add Wish')}</DialogTitle>
+              <DialogDescription>{t('wish_item.add_wish_desc', 'Paste a link, type a description, or upload a photo.')}</DialogDescription>
             </div>
             <DialogClose asChild>
               <button aria-label="Close" className="rounded-md px-2 py-1 text-sm hover:bg-muted">✕</button>
@@ -178,14 +178,14 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({ children, wishlistId
           {/* Optional wishlist selector if not in simple mode */}
           {!simpleMode && (
             <div className="space-y-2">
-              <Label htmlFor="wishlist">Wishlist</Label>
+              <Label htmlFor="wishlist">{t('wish_item.wishlist_label', 'Wishlist')}</Label>
               <Select value={localWishlistId} onValueChange={setLocalWishlistId}>
                 <SelectTrigger id="wishlist">
-                  <SelectValue placeholder="Choose a wishlist" />
+                  <SelectValue placeholder={t('wish_item.wishlist_placeholder', 'Choose a wishlist')} />
                 </SelectTrigger>
                 <SelectContent>
                   {(wishlistsData?.length ?? 0) === 0 ? (
-                    <SelectItem value="" disabled>No wishlists found</SelectItem>
+                    <SelectItem value="" disabled>{t('wish_item.no_wishlists', 'No wishlists found')}</SelectItem>
                   ) : (
                     (wishlistsData ?? []).map((w) => (
                       <SelectItem key={w.id} value={w.id}>
@@ -201,31 +201,31 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({ children, wishlistId
           {simpleMode ? (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="title">{t('common.title', 'Title')}</Label>
                 <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price">Price (optional)</Label>
+                <Label htmlFor="price">{t('wish_item.price_optional', 'Price (optional)')}</Label>
                 <Input id="price" type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="image_url">Image URL (optional)</Label>
+                <Label htmlFor="image_url">{t('wish_item.image_url_optional', 'Image URL (optional)')}</Label>
                 <Input id="image_url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="description">Description (optional)</Label>
+                <Label htmlFor="description">{t('wish_item.description_optional', 'Description (optional)')}</Label>
                 <Textarea id="description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
               <TabsList>
-                <TabsTrigger value="link">URL / Text</TabsTrigger>
-                <TabsTrigger value="photo">Photo Upload</TabsTrigger>
+                <TabsTrigger value="link">{t('wish_item.tab_url_text', 'URL / Text')}</TabsTrigger>
+                <TabsTrigger value="photo">{t('wish_item.tab_photo', 'Photo Upload')}</TabsTrigger>
               </TabsList>
               <TabsContent value="link" className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="url">Paste URL</Label>
+                  <Label htmlFor="url">{t('wish_item.paste_url', 'Paste URL')}</Label>
                   <div className="flex gap-2">
                     <Input
                       id="url"
@@ -234,13 +234,13 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({ children, wishlistId
                       onChange={(e) => setUrl(e.target.value)}
                     />
                     <Button type="button" onClick={handleScrape} disabled={loadingScrape || !url}>
-                      {loadingScrape ? "Scraping..." : "Fetch"}
+                      {loadingScrape ? t('wish_item.scraping', 'Scraping...') : t('wish_item.fetch', 'Fetch')}
                     </Button>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="manual">Or describe the item</Label>
+                  <Label htmlFor="manual">{t('wish_item.describe_item', 'Or describe the item')}</Label>
                   <Textarea
                     id="manual"
                     placeholder="e.g., Red running shoes, size 42, Nike..."
@@ -252,23 +252,23 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({ children, wishlistId
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="title">Title</Label>
+                    <Label htmlFor="title">{t('common.title', 'Title')}</Label>
                     <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="price">Price</Label>
+                    <Label htmlFor="price">{t('wish_item.price', 'Price')}</Label>
                     <Input id="price" type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="description">Description</Label>
+                    <Label htmlFor="description">{t('common.description', 'Description')}</Label>
                     <Textarea id="description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="item_url">Item URL</Label>
+                    <Label htmlFor="item_url">{t('wish_item.item_url', 'Item URL')}</Label>
                     <Input id="item_url" value={itemUrl} onChange={(e) => setItemUrl(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="image_url">Image URL</Label>
+                    <Label htmlFor="image_url">{t('wish_item.image_url', 'Image URL')}</Label>
                     <Input id="image_url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
                   </div>
                 </div>
@@ -276,14 +276,14 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({ children, wishlistId
 
               <TabsContent value="photo" className="space-y-4 pt-4">
                 <div className="rounded-md border p-4 text-sm text-muted-foreground">
-                  <p className="mb-2 font-medium text-foreground">Photo Upload (placeholder)</p>
+                  <p className="mb-2 font-medium text-foreground">{t('wish_item.photo_placeholder_title', 'Photo Upload (placeholder)')}</p>
                   <p>
                     This is a placeholder for integrating Supabase Storage. Provide a file input, upload to Storage,
                     then set <code>image_url</code> to the public URL.
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="image_url_photo">Image URL</Label>
+                  <Label htmlFor="image_url_photo">{t('wish_item.image_url', 'Image URL')}</Label>
                   <Input id="image_url_photo" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
                 </div>
               </TabsContent>
@@ -293,10 +293,10 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({ children, wishlistId
 
         <DialogFooter>
           <Button variant="secondary" onClick={() => setOpen(false)} disabled={saving}>
-            Cancel
+            {t('common.cancel', 'Cancel')}
           </Button>
           <Button onClick={handleSave} disabled={saving || !title}>
-            {saving ? "Saving..." : "Save to Wishlist"}
+            {saving ? t('common.saving', 'Saving...') : t('wish_item.save_to_wishlist', 'Save to Wishlist')}
           </Button>
         </DialogFooter>
       </DialogContent>

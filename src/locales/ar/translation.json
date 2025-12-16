@@ -201,11 +201,13 @@
     "contact_desc": "هل لديك سؤال أو ملاحظات أو تحتاج مساعدة؟ أرسل لنا رسالة وسنرد عليك.",
     "country": "الدولة/المنطقة",
     "country_placeholder": "مثال: قطر",
-    "country_help": "تُستخدم لعرض العطلات الرسمية والتجارب الخاصة بمنطقتك."
+    "country_help": "تُستخدم لعرض العطلات الرسمية والتجارب الخاصة بمنطقتك.",
+    "disabled_by_admin": "معطّل من قبل المسؤول"
   }
   ,
   "common": {
     "title": "العنوان",
+    "description": "الوصف",
     "description_optional": "الوصف (اختياري)",
     "cancel": "إلغاء",
     "creating": "جاري الإنشاء...",
@@ -226,7 +228,22 @@
     "close": "إغلاق"
   },
   "support": {
-    "send_message": "إرسال الرسالة"
+    "send_message": "إرسال الرسالة",
+    "contact_title": "تواصل مع الدعم",
+    "message_label": "الرسالة",
+    "message_placeholder": "يرجى وصف مشكلتك أو الاستئناف على تعليق حسابك...",
+    "username_label": "اسم المستخدم",
+    "email_label": "البريد الإلكتروني",
+    "account_type_label": "نوع الحساب",
+    "business": "تجاري",
+    "personal": "شخصي",
+    "characters_count": "{{count}}/1000 حرف",
+    "message_sent": "تم إرسال الرسالة",
+    "cooldown_message": "يمكنك إرسال رسالة أخرى خلال {{time}}"
+  },
+  "giftr": {
+    "days_left": "أيام متبقية",
+    "items": "عناصر"
   },
   "share": {
     "copied": "تم نسخ الرابط!",
@@ -235,6 +252,8 @@
   "wishlist": {
     "create_title": "إنشاء قائمة أمنيات",
     "create_hint": "ابدأ بعنوان وتفاصيل اختيارية. يمكنك التخصيص لاحقًا.",
+    "title_placeholder": "عيد ميلاد 2026",
+    "description_placeholder": "بضع كلمات عن هذه القائمة",
     "event_date": "تاريخ المناسبة",
     "hub_title": "قوائم أمنياتك",
     "hub_subtitle": "اسحب واضغط على البطاقة لفتحها.",
@@ -280,6 +299,7 @@
     "month_10": "أكتوبر",
     "month_11": "نوفمبر",
     "month_12": "ديسمبر",
+    "past_badge": "انتهت",
     "helper_fresh_start": "بداية جديدة",
     "helper_new_beginnings": "بدايات جديدة",
     "helper_keep_in_shape": "لنحافظ على لياقتنا",
@@ -292,7 +312,11 @@
     "helper_merry_and_bright": "بهجة وأجواء مبهرة",
     "helper_seasonal_balance": "توازن فصلي",
     "pending_claims_title": "طلبات الحجز المعلقة",
-    "pending_claims_caption": "وافق أو ارفض لإعلام أصدقائك بحالة حجزهم."
+    "pending_claims_caption": "وافق أو ارفض لإعلام أصدقائك بحالة حجزهم.",
+    "refresh_short": "تحديث",
+    "edit_event_title": "تعديل الفعالية",
+    "event_title_placeholder": "عنوان الفعالية",
+    "delete_event_title": "حذف هذه الفعالية؟"
   }
   ,
   "explore": {
@@ -302,6 +326,7 @@
     "search_placeholder_users": "ابحث عن المستخدمين",
     "search_aria": "بحث",
     "segment_brands": "العلامات/المتاجر",
+    "segment_products": "المنتجات",
     "segment_users": "المستخدمون",
     "empty_brands": "ابحث عن العلامات التجارية، المتاجر، أو المنتجات.",
     "empty_users": "اكتب اسمًا، اسم مستخدم، أو بريدًا للبحث عن المستخدمين.",
@@ -372,19 +397,54 @@
   "nav": {
     "dash": "الرئيسية",
     "explore": "استكشف",
+    "find": "بحث",
+    "add": "أضف",
     "add_wish": "أضف أمنية",
     "events": "الفعاليات",
     "profile": "ملفى"
+  },
+  "suspension": {
+    "title": "الحساب موقوف",
+    "expires_in": "ينتهي التعليق خلال:",
+    "contact_hint": "إذا كنت تعتقد أن هذا خطأ، يرجى التواصل مع الدعم."
   }
   ,
   "wish_item": {
     "add_hidden": "إضافة أمنية",
+    "add_wish_title": "أضف أمنية",
+    "add_wish_desc": "الصق رابطًا، أو اكتب وصفًا، أو ارفع صورة.",
     "edit_hidden": "تعديل أمنية",
     "create_title": "إنشاء عنصر في قائمة الأمنيات",
     "edit_title": "تعديل عنصر قائمة الأمنيات",
     "wishlist_label": "قائمة الأمنيات",
     "wishlist_placeholder": "اختر قائمة أمنيات",
+    "no_wishlists": "لا توجد قوائم أمنيات",
+    "price": "السعر",
+    "price_optional": "السعر (اختياري)",
+    "image_url": "رابط الصورة",
+    "image_url_optional": "رابط الصورة (اختياري)",
+    "description_optional": "الوصف (اختياري)",
+    "tab_url_text": "رابط / نص",
+    "tab_photo": "رفع صورة",
+    "paste_url": "الصق الرابط",
+    "scraping": "جاري الجلب...",
+    "fetch": "جلب",
+    "describe_item": "أو صف العنصر",
+    "item_url": "رابط العنصر",
+    "photo_placeholder_title": "رفع الصورة (قريبًا)",
+    "save_to_wishlist": "حفظ في قائمة الأمنيات",
     "wishlist_move_hint": "اختر قائمة أمنيات أخرى لنقل هذا العنصر.",
+    "paste_link_label": "الصق الرابط",
+    "paste_link_placeholder": "https://...",
+    "paste_link_hint": "اجلب تفاصيل المنتج من أي رابط",
+    "or": "أو",
+    "ai_subtitle": "دع Wishly AI يتكفّل بالباقي",
+    "style_presets_aria": "أنماط الكتابة",
+    "style_label": "النمط",
+    "style_auto": "تلقائي",
+    "style_professional": "احترافي",
+    "style_natural": "طبيعي",
+    "style_genz": "أسلوب جيل زد",
     "upload_label": "رفع صورة",
     "upload_aria": "رفع صورة",
     "upload_button": "رفع ملف",
@@ -400,6 +460,7 @@
     "description_label": "الوصف",
     "description_placeholder": "أضف الحجم أو اللون أو سبب رغبتك فيه…",
     "desire_label": "كم تريده بشدة؟",
+    "double_check_hint": "✨ مراجعة سريعة! تأكد أن كل شيء صحيح قبل الحفظ",
     "save_button": "حفظ العنصر",
     "update_button": "تحديث العنصر"
   }
@@ -425,6 +486,7 @@
     "privacy_toast_shared": "تمت مشاركة القائمة مع المتابعين",
     "privacy_toast_error": "فشل تحديث الخصوصية",
     "items_badge": "{{count}} عنصر",
+    "preview_title": "معاينة",
     "my_birthday_wishlist": "قائمة أمنيات عيد ميلادي",
     "claimed_by_badge": "تم حجزه من قبل {{name}}",
     "pending_claim_badge": "بانتظار الموافقة",

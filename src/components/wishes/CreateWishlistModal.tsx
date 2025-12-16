@@ -105,7 +105,7 @@ const CreateWishlistModal: React.FC<CreateWishlistModalProps> = ({ children, def
                 <Label htmlFor="wl-title">{t('common.title', 'Title')}</Label>
                 <Input
                   id="wl-title"
-                  placeholder="Birthday 2026"
+                  placeholder={t('wishlist.title_placeholder', 'Birthday 2026')}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
@@ -116,7 +116,7 @@ const CreateWishlistModal: React.FC<CreateWishlistModalProps> = ({ children, def
                 <Label htmlFor="wl-description">{t('common.description_optional', 'Description (optional)')}</Label>
                 <Textarea
                   id="wl-description"
-                  placeholder="A few words about this wishlist"
+                  placeholder={t('wishlist.description_placeholder', 'A few words about this wishlist')}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}

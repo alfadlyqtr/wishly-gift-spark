@@ -87,6 +87,10 @@
   "support": {
     "send_message": "Send Message"
   },
+  "giftr": {
+    "days_left": "days left",
+    "items": "items"
+  },
   "share": {
     "copied": "Link copied to clipboard!",
     "copied_instagram": "Link copied! Share it on Instagram"
@@ -197,6 +201,7 @@
     "month_10": "October",
     "month_11": "November",
     "month_12": "December",
+    "past_badge": "Passed",
     "helper_fresh_start": "Fresh start",
     "helper_new_beginnings": "New beginnings",
     "helper_keep_in_shape": "Let's keep in shape",
@@ -301,6 +306,17 @@
     "wishlist_label": "Wishlist",
     "wishlist_placeholder": "Tap to choose a wishlist",
     "wishlist_move_hint": "Select a different wishlist to move this item.",
+    "paste_link_label": "Paste Link",
+    "paste_link_placeholder": "https://...",
+    "paste_link_hint": "Fetch product details from any URL",
+    "or": "OR",
+    "ai_subtitle": "let's wishly ai take care",
+    "style_presets_aria": "Style presets",
+    "style_label": "Style",
+    "style_auto": "Auto",
+    "style_professional": "Professional",
+    "style_natural": "Natural",
+    "style_genz": "Gen Z",
     "upload_label": "Upload Image",
     "upload_aria": "Upload image",
     "upload_button": "Upload a File",
