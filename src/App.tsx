@@ -63,15 +63,6 @@ const queryClient = new QueryClient({
   },
 });
 
-const RouteFallback = () => (
-  <div className="min-h-[100dvh] w-full bg-background text-foreground">
-    <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center gap-3 px-6">
-      <div className="h-2 w-40 rounded-full bg-muted" />
-      <div className="h-2 w-56 rounded-full bg-muted" />
-    </div>
-  </div>
-);
-
 const LocaleController = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const { i18n } = useTranslation();
@@ -116,7 +107,7 @@ const App = () => (
       />
       <BrowserRouter>
         <LocaleController>
-          <Suspense fallback={<RouteFallback />}>
+          <Suspense fallback={null}>
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<Login />} />

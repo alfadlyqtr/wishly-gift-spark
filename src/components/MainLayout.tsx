@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { Home, Store, Calendar, User, Plus, Bell, MessageSquare } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -24,6 +24,70 @@ export const MainLayout = () => {
 
   const isActive = (path: string) => location.pathname === path;
   const isGifterShared = new URLSearchParams(location.search).get('mode')?.toLowerCase() === 'gifter';
+
+  const prefetchRoute = useCallback((path: string) => {
+    if (typeof window === "undefined") return;
+
+    // Prefetch only the routes that are relevant to the bottom nav / common flows.
+    // These imports correspond to the route-level lazy() modules in App.tsx.
+    switch (path) {
+      case "/dashboard":
+        void import("@/pages/Dashboard");
+        break;
+      case "/explore":
+        void import("@/pages/Explore");
+        break;
+      case "/events":
+        void import("@/pages/Events");
+        break;
+      case "/profile":
+        void import("@/pages/Profile");
+        break;
+      case "/notifications":
+        void import("@/pages/Notifications");
+        break;
+      case "/messages":
+        void import("@/pages/Messages");
+        break;
+      case "/wishlists":
+        void import("@/pages/Wishlists");
+        break;
+      case "/settings":
+        void import("@/pages/Settings");
+        break;
+      default:
+        break;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const run = () => {
+      prefetchRoute("/dashboard");
+      prefetchRoute("/explore");
+      prefetchRoute("/events");
+      prefetchRoute("/profile");
+      prefetchRoute("/notifications");
+      prefetchRoute("/messages");
+    };
+
+    // Prefetch when the browser is idle so it doesn't compete with initial paint.
+    const ric = (window as any).requestIdleCallback as
+      | ((cb: () => void, opts?: { timeout?: number }) => number)
+      | undefined;
+
+    if (ric) {
+      const id = ric(run, { timeout: 1500 });
+      return () => {
+        const cancel = (window as any).cancelIdleCallback as ((id: number) => void) | undefined;
+        cancel?.(id);
+      };
+    }
+
+    const t = window.setTimeout(run, 600);
+    return () => window.clearTimeout(t);
+  }, [prefetchRoute]);
 
   // Extract wishlist ID from path if we are on a wishlist detail page
   const currentWishlistId = location.pathname.match(/^\/wishlist\/([^/]+)/)?.[1];
@@ -186,7 +250,7 @@ export const MainLayout = () => {
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div dir="ltr" className="flex min-h-screen flex-col bg-background">
       {/* Top Bar (hidden on shared gifter view) */}
       {!isGifterShared && (
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-card px-4 shadow-sm">
@@ -224,18 +288,37 @@ export const MainLayout = () => {
             : 'calc(env(safe-area-inset-bottom, 0px) + 6rem)',
         }}
       >
-        <Outlet />
+        <Suspense
+          fallback={
+            <div className="container max-w-2xl mx-auto px-4 py-8 space-y-6">
+              <div className="h-4 w-44 rounded-full bg-muted" />
+              <div className="h-3 w-64 rounded-full bg-muted" />
+              <div className="h-24 w-full rounded-2xl bg-muted/60" />
+              <div className="h-24 w-full rounded-2xl bg-muted/60" />
+              <div className="h-24 w-full rounded-2xl bg-muted/60" />
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </main>
 
       {/* Bottom Navigation (hidden on shared gifter view) */}
       {!isGifterShared && (
       <nav
+        dir="ltr"
         className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-white/95 via-white/90 to-transparent pt-4 pb-2"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
       >
         <div className="mx-auto w-[min(720px,95%)] p-[2px] rounded-3xl bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
-          <div className="flex items-end justify-between gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-3xl bg-white/85 backdrop-blur shadow-[0_12px_32px_rgba(0,0,0,0.12)] touch-manipulation">
-          <Link to="/dashboard" className="flex flex-1 justify-center min-w-0" style={{ WebkitTapHighlightColor: 'transparent' }}>
+          <div dir="ltr" className="flex flex-row items-end justify-between gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-3xl bg-white/85 backdrop-blur shadow-[0_12px_32px_rgba(0,0,0,0.12)] touch-manipulation">
+          <Link
+            to="/dashboard"
+            className="flex flex-1 justify-center min-w-0"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+            onMouseEnter={() => prefetchRoute('/dashboard')}
+            onTouchStart={() => prefetchRoute('/dashboard')}
+          >
             <Button
               variant="ghost"
               size="sm"
@@ -253,7 +336,13 @@ export const MainLayout = () => {
             </Button>
           </Link>
 
-          <Link to="/explore" className="flex flex-1 justify-center min-w-0" style={{ WebkitTapHighlightColor: 'transparent' }}>
+          <Link
+            to="/explore"
+            className="flex flex-1 justify-center min-w-0"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+            onMouseEnter={() => prefetchRoute('/explore')}
+            onTouchStart={() => prefetchRoute('/explore')}
+          >
             <Button
               variant="ghost"
               size="sm"
@@ -297,7 +386,13 @@ export const MainLayout = () => {
             </Button>
           </div>
 
-          <Link to="/events" className="flex flex-1 justify-center min-w-0" style={{ WebkitTapHighlightColor: 'transparent' }}>
+          <Link
+            to="/events"
+            className="flex flex-1 justify-center min-w-0"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+            onMouseEnter={() => prefetchRoute('/events')}
+            onTouchStart={() => prefetchRoute('/events')}
+          >
             <Button
               variant="ghost"
               size="sm"
@@ -315,7 +410,13 @@ export const MainLayout = () => {
             </Button>
           </Link>
 
-          <Link to="/profile" className="flex flex-1 justify-center min-w-0" style={{ WebkitTapHighlightColor: 'transparent' }}>
+          <Link
+            to="/profile"
+            className="flex flex-1 justify-center min-w-0"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+            onMouseEnter={() => prefetchRoute('/profile')}
+            onTouchStart={() => prefetchRoute('/profile')}
+          >
             <Button
               variant="ghost"
               size="sm"

@@ -1,6 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { Link2, ImagePlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -28,16 +27,14 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
-  // Tab state and inputs
-  const [activeTab, setActiveTab] = useState<"link" | "photo">("link");
+  // Inputs
   const [url, setUrl] = useState("");
-  const [manualText, setManualText] = useState("");
 
   // AI scraping result / editable fields
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [itemUrl, setItemUrl] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [selectedTone, setSelectedTone] = useState<"" | "tidy" | "confident" | "pro" | "sales" | "aggressive">("");
 
   const [loadingScrape, setLoadingScrape] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -152,7 +149,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
       let finalDescription = data.description ?? description;
       setTitle(finalTitle);
       setDescription(finalDescription);
-      setItemUrl(data.item_url ?? url);
+      if (data.item_url) setUrl(data.item_url);
 
       // Step 2: If a tone was selected, rewrite the description with AI
       if (tone && finalDescription) {
@@ -183,42 +180,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
         }
       }
 
-      // Step 3: Download and upload external image to Supabase Storage
-      if (data.image_url) {
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            const imageResponse = await fetch(data.image_url);
-            const imageBlob = await imageResponse.blob();
-            
-            const fileExt = data.image_url.split('.').pop()?.split('?')[0] || 'jpg';
-            const filePath = `brand-products/${user.id}/${Date.now()}.${fileExt}`;
-            
-            const { error: uploadError } = await (supabase as any).storage
-              .from("brand-media")
-              .upload(filePath, imageBlob, {
-                cacheControl: "3600",
-                upsert: false,
-              });
-            
-            if (!uploadError) {
-              const { data: publicUrlData } = (supabase as any).storage
-                .from("brand-media")
-                .getPublicUrl(filePath);
-              
-              if (publicUrlData?.publicUrl) {
-                setImageUrl(publicUrlData.publicUrl);
-              }
-            } else {
-              setImageUrl(data.image_url);
-            }
-          } else {
-            setImageUrl(data.image_url);
-          }
-        } catch (imgError) {
-          setImageUrl(data.image_url);
-        }
-      }
+      // Step 3: Reuse the discovered image URL directly (do not re-upload)
+      if (data.image_url) setImageUrl(data.image_url);
       
       toast.success(t("brand.product.details_fetched", "Product details fetched"));
     } catch (e: any) {
@@ -230,18 +193,31 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
 
   const handleExtractFromPhoto = async () => {
     try {
-      if (!photoFile) {
-        toast.error(t("brand.product.upload_photo_first", "Please upload a photo first"));
-        return;
-      }
       if (!extractFromImageUrl || !supabaseUrl) {
         toast.error(t("brand.product.extractor_not_configured", "Image AI extractor is not configured."));
         return;
       }
 
+      const canUseExistingImageUrl = Boolean(imageUrl);
+      if (!photoFile && !canUseExistingImageUrl) {
+        toast.error(t("brand.product.upload_photo_first", "Please upload a photo first"));
+        return;
+      }
+
       setExtractingFromImage(true);
 
-      const base64 = await readFileAsBase64(photoFile);
+      let base64: string;
+      if (photoFile) {
+        base64 = await readFileAsBase64(photoFile);
+      } else {
+        const resImg = await fetch(imageUrl);
+        if (!resImg.ok) {
+          throw new Error(t("errors.failed_to_load", "Failed to load"));
+        }
+        const blob = await resImg.blob();
+        const f = new File([blob], "image", { type: blob.type || "image/jpeg" });
+        base64 = await readFileAsBase64(f);
+      }
       const { data: session } = await supabase.auth.getSession();
       const token = session.session?.access_token;
 
@@ -280,13 +256,12 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
         updated = true;
       }
       if (urlFromApi) {
-        setItemUrl(urlFromApi);
+        setUrl(urlFromApi);
         updated = true;
       }
 
       if (updated) {
         toast.success(t("brand.product.extracted_from_image", "Extracted details from image"));
-        setActiveTab("link");
       } else {
         toast.info(t("brand.product.no_details_found", "Image analyzed but no structured details were found."));
       }
@@ -296,6 +271,19 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
     } finally {
       setExtractingFromImage(false);
     }
+  };
+
+  const handleWishlyAi = async () => {
+    // Prefer using the image if we have one (uploaded or scraped), otherwise use URL fetch.
+    if (photoFile || imageUrl) {
+      await handleExtractFromPhoto();
+      return;
+    }
+    if (url) {
+      await handleScrape(selectedTone || undefined);
+      return;
+    }
+    toast.error(t("brand.product.paste_url_first", "Please paste a URL first."));
   };
 
   const handleSave = async () => {
@@ -329,8 +317,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
         {
           brand_id: brandData.id,
           name: title,
-          description: description || manualText || null,
-          product_url: itemUrl || url || null,
+          description: description || null,
+          product_url: url || null,
           image_url: imageUrl || null,
           status: "active",
         },
@@ -348,10 +336,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
       toast.success(t("brand.product.added_successfully", "Product added successfully"));
       // Reset fields on success
       setUrl("");
-      setManualText("");
       setTitle("");
       setDescription("");
-      setItemUrl("");
       setImageUrl("");
       setOpen(false);
     } catch (e: any) {
@@ -364,142 +350,23 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="w-[92vw] max-w-[420px] p-0 sm:p-0 rounded-2xl">
+      <DialogContent className="w-[92vw] max-w-[420px] p-0 sm:p-0 rounded-2xl max-h-[85vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="sr-only">{t("brand.product.add_title", "Add Product")}</DialogTitle>
         </DialogHeader>
         <div className="mx-auto w-full rounded-2xl p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
-          <div className="rounded-2xl bg-white/90 backdrop-blur p-4 sm:p-6 ring-1 ring-white/70">
+          <div className="rounded-2xl bg-white/90 backdrop-blur p-4 sm:p-6 ring-1 ring-white/70 max-h-[calc(85vh-12px)] overflow-y-auto overscroll-contain">
             <h3 className="heading text-center font-semibold text-lg text-foreground">{t("brand.product.add_title", "Add Product")}</h3>
             <p className="mt-1 text-center text-xs text-muted-foreground">
               {t("brand.product.add_subtitle", "Paste a link, type a description, or upload a photo.")}
             </p>
 
             <div className="mt-3 space-y-3">
-              {/* Tab selector - Explore style */}
-              <div className="rounded-full p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-md">
-                <div className="relative flex items-center rounded-full bg-white/80 backdrop-blur px-1 py-1 ring-1 ring-white/70 overflow-hidden">
-                  {/* Sliding highlight */}
-                  <span
-                    className="pointer-events-none absolute top-1 bottom-1 rounded-full bg-white shadow-md transition-all duration-300 ease-out z-0"
-                    style={{
-                      width: '50%',
-                      left: activeTab === 'link' ? '0%' : '50%',
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('link')}
-                    className={`relative z-10 flex-1 rounded-full px-3 py-2 text-[12px] font-semibold transition-colors duration-200 flex items-center justify-center gap-1.5 ${
-                      activeTab === 'link' ? 'text-foreground' : 'text-muted-foreground'
-                    }`}
-                  >
-                    <Link2 className="h-4 w-4" />
-                    <span>{t("brand.product.tab_url", "URL / Text")}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('photo')}
-                    className={`relative z-10 flex-1 rounded-full px-3 py-2 text-[12px] font-semibold transition-colors duration-200 flex items-center justify-center gap-1.5 ${
-                      activeTab === 'photo' ? 'text-foreground' : 'text-muted-foreground'
-                    }`}
-                  >
-                    <ImagePlus className="h-4 w-4" />
-                    <span>{t("brand.product.tab_photo", "Photo Upload")}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Tab content */}
-              {activeTab === 'link' && (
               <div className="flex flex-col gap-3 mt-3">
-                    {/* Paste URL row */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <Label htmlFor="url">{t("brand.product.paste_url", "Paste URL")}</Label>
-                        <div className="inline-flex items-center gap-2">
-                          <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] px-3 py-0.5 text-[11px] font-medium text-white shadow-sm">
-                            <span aria-hidden="true">✨</span>
-                            {loadingScrape ? t("brand.product.ai_fetching", "Wishly AI · fetching…") : t("brand.product.ai_badge", "Wishly AI")}
-                          </span>
-                          <select
-                            className="text-[11px] rounded-full border border-[hsl(var(--brand-cool-start))]/35 bg-white px-3 py-1 text-slate-700 shadow-sm hover:border-[hsl(var(--brand-cool-start))]/70 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--brand-cool-start))]/60"
-                            value=""
-                            disabled={loadingScrape || !url}
-                            aria-label={t("brand.product.ai_style_aria", "AI fetch style")}
-                            onChange={(e) => {
-                              const tone = e.target.value as "" | "tidy" | "confident" | "pro" | "sales" | "aggressive";
-                              if (!tone) return;
-                              handleScrape(tone);
-                            }}
-                          >
-                            <option value="">{loadingScrape ? t("brand.product.fetching", "Fetching…") : t("brand.product.fetch", "Fetch")}</option>
-                            <option value="tidy">{t("brand.product.tone_tidy", "AI tidy (shorter)")}</option>
-                            <option value="confident">{t("brand.product.tone_confident", "Confident")}</option>
-                            <option value="pro">{t("brand.product.tone_pro", "Pro")}</option>
-                            <option value="sales">{t("brand.product.tone_sales", "Sales person")}</option>
-                            <option value="aggressive">{t("brand.product.tone_aggressive", "High-energy sales")}</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                          id="url"
-                          type="url"
-                          placeholder="https://example.com/product"
-                          value={url}
-                          onChange={(e) => setUrl(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Manual description */}
-                    <div className="space-y-2">
-                      <Label htmlFor="manual">{t("brand.product.describe_label", "Or describe the item")}</Label>
-                      <Textarea
-                        id="manual"
-                        placeholder={t("brand.product.describe_placeholder", "e.g., Red running shoes, size 42, Nike...")}
-                        value={manualText}
-                        onChange={(e) => setManualText(e.target.value)}
-                        rows={3}
-                      />
-                    </div>
-
-                    {/* Editable fields */}
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="title">{t("brand.product.name_label", "Product Name")}</Label>
-                        <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
-                      </div>
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="description">{t("brand.product.description_label", "Description")}</Label>
-                        <Textarea id="description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="item_url">{t("brand.product.url_label", "Product URL")}</Label>
-                        <Input id="item_url" value={itemUrl} onChange={(e) => setItemUrl(e.target.value)} />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="image_url">{t("brand.product.image_url_label", "Image URL")}</Label>
-                        <Input
-                          id="image_url"
-                          value={imageUrl}
-                          onChange={(e) => setImageUrl(e.target.value)}
-                          placeholder={t("brand.product.image_url_placeholder", "Right-click product image → Copy image address")}
-                        />
-                        <p className="text-[11px] text-muted-foreground">
-                          {t("brand.product.image_url_tip", "Tip: On the product page, right-click the main image and choose Copy image address, then paste it here.")}
-                        </p>
-                      </div>
-                    </div>
-              </div>
-              )}
-
-              {activeTab === 'photo' && (
-              <div className="mt-3 flex flex-col items-center">
+                    <div className="mt-2 flex flex-col items-center">
                     <div className="space-y-3 w-full max-w-xs">
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs font-semibold text-slate-700">{t("brand.product.upload_file_label", "Upload image file")}</Label>
+                        <Label htmlFor="photo_file" className="text-xs font-semibold text-slate-700">{t("brand.product.upload_file_label", "Upload image file")}</Label>
                       </div>
                       {/* Folder-style upload card with preview */}
                       <style>{`@keyframes folder-float {0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)}}`}</style>
@@ -567,7 +434,11 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
                             border: "1px solid rgba(255,255,255,0.8)",
                           }}
                         >
-                          {uploadingImage ? t("brand.product.uploading", "Uploading…") : t("brand.product.upload_button", "Upload a Photo")}
+                          {uploadingImage
+                            ? t("brand.product.uploading", "Uploading…")
+                            : imageUrl
+                            ? t("brand.product.change_photo", "Change Photo")
+                            : t("brand.product.upload_button", "Upload a Photo")}
                         </button>
 
                         <input
@@ -576,13 +447,15 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
                           type="file"
                           accept="image/*"
                           className="hidden"
+                          aria-label={t("brand.product.upload_aria", "Upload product image")}
+                          title={t("brand.product.upload_aria", "Upload product image")}
                           onChange={(e) => handlePhotoUpload(e.target.files?.[0] || null)}
                           disabled={uploadingImage}
                         />
                       </div>
 
                       <p className="text-[11px] leading-snug text-muted-foreground mt-2">
-                        {t("brand.product.upload_hint", "We will upload this image to your brand storage and fill the Image URL field automatically.")}
+                        {t("brand.product.upload_hint_minimal", "We will use this image for your product and AI extraction.")}
                       </p>
                       {uploadError && (
                         <p className="text-xs text-red-500">{uploadError}</p>
@@ -590,16 +463,69 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
 
                       <button
                         type="button"
-                        onClick={handleExtractFromPhoto}
-                        disabled={extractingFromImage || !photoFile}
+                        onClick={handleWishlyAi}
+                        disabled={extractingFromImage || loadingScrape || (!photoFile && !imageUrl && !url)}
                         className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] px-4 py-2.5 text-[12px] font-semibold text-white shadow-[0_10px_22px_rgba(15,23,42,0.25)] transition-transform transition-shadow duration-150 active:scale-[0.97] hover:shadow-[0_14px_26px_rgba(15,23,42,0.3)] disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         <span aria-hidden="true">✨</span>
-                        {extractingFromImage ? t("brand.product.extracting_ai", "Extracting with AI…") : t("brand.product.extract_ai", "Extract details with AI")}
+                        {extractingFromImage || loadingScrape
+                          ? t("brand.product.ai_working", "Wishly AI · working…")
+                          : t("brand.product.ai_action", "Extract/fetch with Wishly AI")}
                       </button>
                     </div>
+                    </div>
+
+                    {/* Paste URL row */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <Label htmlFor="url">{t("brand.product.paste_url", "Paste URL")}</Label>
+                        <div className="inline-flex items-center gap-2">
+                          <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] px-3 py-0.5 text-[11px] font-medium text-white shadow-sm">
+                            <span aria-hidden="true">✨</span>
+                            {loadingScrape ? t("brand.product.ai_fetching", "Wishly AI · fetching…") : t("brand.product.ai_badge", "Wishly AI")}
+                          </span>
+                          <select
+                            className="text-[11px] rounded-full border border-[hsl(var(--brand-cool-start))]/35 bg-white px-3 py-1 text-slate-700 shadow-sm hover:border-[hsl(var(--brand-cool-start))]/70 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--brand-cool-start))]/60"
+                            value={selectedTone}
+                            disabled={loadingScrape || extractingFromImage}
+                            aria-label={t("brand.product.ai_style_aria", "AI fetch style")}
+                            onChange={(e) => {
+                              const tone = e.target.value as "" | "tidy" | "confident" | "pro" | "sales" | "aggressive";
+                              setSelectedTone(tone);
+                            }}
+                          >
+                            <option value="">{t("brand.product.tone_select", "Style")}</option>
+                            <option value="tidy">{t("brand.product.tone_tidy", "AI tidy (shorter)")}</option>
+                            <option value="confident">{t("brand.product.tone_confident", "Confident")}</option>
+                            <option value="pro">{t("brand.product.tone_pro", "Pro")}</option>
+                            <option value="sales">{t("brand.product.tone_sales", "Sales person")}</option>
+                            <option value="aggressive">{t("brand.product.tone_aggressive", "High-energy sales")}</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          id="url"
+                          type="url"
+                          placeholder={t("brand.product.url_placeholder", "https://example.com/product")}
+                          value={url}
+                          onChange={(e) => setUrl(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Editable fields */}
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="title">{t("brand.product.name_label", "Product Name")}</Label>
+                        <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
+                      </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="description">{t("brand.product.description_label", "Description")}</Label>
+                        <Textarea id="description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+                      </div>
+                    </div>
               </div>
-              )}
 
               <DialogFooter className="mt-4">
                 <Button variant="secondary" onClick={() => setOpen(false)} disabled={saving}>

@@ -7,6 +7,7 @@ import wishlyLogo from "@/assets/wishly-logo.png";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePresence } from "@/hooks/usePresence";
+import { AddProductModal } from "@/components/brands/AddProductModal";
 
 export const BrandLayout = () => {
   const location = useLocation();
@@ -198,6 +199,33 @@ export const BrandLayout = () => {
                 </span>
               </Button>
             </Link>
+
+            <div className="flex flex-1 justify-center min-w-0">
+              <AddProductModal>
+                <Button
+                  type="button"
+                  size="lg"
+                  className="relative w-full max-w-[92px] sm:max-w-none -mt-9 px-3 py-2 bg-transparent shadow-none ring-0 transition-all touch-manipulation select-none"
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                  aria-label={t("brand.product.add_title", "Add Product")}
+                >
+                  <div className="flex flex-col items-center">
+                    <span
+                      className="text-[30px] font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                      style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+                    >
+                      +
+                    </span>
+                    <span
+                      className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                      style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
+                    >
+                      {t("brand.product.add_title", "Add Product")}
+                    </span>
+                  </div>
+                </Button>
+              </AddProductModal>
+            </div>
 
             <Link to="/brand/explore" className="flex flex-1 justify-center min-w-0" style={{ WebkitTapHighlightColor: 'transparent' }}>
               <Button
