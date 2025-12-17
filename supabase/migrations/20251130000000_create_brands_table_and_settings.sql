@@ -1,3 +1,4 @@
+
 -- ========================================
 -- BRANDS TABLE & ENHANCED SETTINGS
 -- ========================================
@@ -98,103 +99,262 @@ ALTER TABLE public.brand_settings_history ENABLE ROW LEVEL SECURITY;
 
 -- 6. CREATE RLS POLICIES FOR BRANDS
 -- Public brands visible to all
-CREATE POLICY "Public brands visible to all authenticated users"
-  ON public.brands FOR SELECT
-  USING (is_public = TRUE AND auth.role() = 'authenticated');
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brands'
+      AND policyname = 'Public brands visible to all authenticated users'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Public brands visible to all authenticated users" ON public.brands FOR SELECT USING (is_public = TRUE AND auth.role() = ''authenticated'')';
+  END IF;
+END
+$$;
 
 -- Brand owners can view their own brand
-CREATE POLICY "Brand owners can view their own brand"
-  ON public.brands FOR SELECT
-  USING (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brands'
+      AND policyname = 'Brand owners can view their own brand'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Brand owners can view their own brand" ON public.brands FOR SELECT USING (auth.uid() = user_id)';
+  END IF;
+END
+$$;
 
 -- Brand owners can insert their brand
-CREATE POLICY "Users can create their brand profile"
-  ON public.brands FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brands'
+      AND policyname = 'Users can create their brand profile'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Users can create their brand profile" ON public.brands FOR INSERT WITH CHECK (auth.uid() = user_id)';
+  END IF;
+END
+$$;
 
 -- Brand owners can update their brand
-CREATE POLICY "Brand owners can update their brand"
-  ON public.brands FOR UPDATE
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brands'
+      AND policyname = 'Brand owners can update their brand'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Brand owners can update their brand" ON public.brands FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)';
+  END IF;
+END
+$$;
 
 -- Brand owners can delete their brand
-CREATE POLICY "Brand owners can delete their brand"
-  ON public.brands FOR DELETE
-  USING (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brands'
+      AND policyname = 'Brand owners can delete their brand'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Brand owners can delete their brand" ON public.brands FOR DELETE USING (auth.uid() = user_id)';
+  END IF;
+END
+$$;
 
 -- 7. CREATE RLS POLICIES FOR BRAND_FOLLOWERS
 -- Anyone can view accepted followers of public brands
-CREATE POLICY "View accepted followers of public brands"
-  ON public.brand_followers FOR SELECT
-  USING (
-    status = 'accepted' AND
-    EXISTS (SELECT 1 FROM public.brands WHERE id = brand_id AND is_public = TRUE)
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brand_followers'
+      AND policyname = 'View accepted followers of public brands'
+  ) THEN
+    EXECUTE 'CREATE POLICY "View accepted followers of public brands" ON public.brand_followers FOR SELECT USING (status = ''accepted'' AND EXISTS (SELECT 1 FROM public.brands WHERE id = brand_id AND is_public = TRUE))';
+  END IF;
+END
+$$;
 
 -- Brand owners can view all their followers
-CREATE POLICY "Brand owners can view all their followers"
-  ON public.brand_followers FOR SELECT
-  USING (
-    brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid())
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brand_followers'
+      AND policyname = 'Brand owners can view all their followers'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Brand owners can view all their followers" ON public.brand_followers FOR SELECT USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()))';
+  END IF;
+END
+$$;
 
 -- Users can view their own follow status
-CREATE POLICY "Users can view their own follow status"
-  ON public.brand_followers FOR SELECT
-  USING (follower_id = auth.uid());
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brand_followers'
+      AND policyname = 'Users can view their own follow status'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Users can view their own follow status" ON public.brand_followers FOR SELECT USING (follower_id = auth.uid())';
+  END IF;
+END
+$$;
 
 -- Users can follow brands
-CREATE POLICY "Users can follow brands"
-  ON public.brand_followers FOR INSERT
-  WITH CHECK (follower_id = auth.uid());
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brand_followers'
+      AND policyname = 'Users can follow brands'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Users can follow brands" ON public.brand_followers FOR INSERT WITH CHECK (follower_id = auth.uid())';
+  END IF;
+END
+$$;
 
 -- Users can unfollow brands
-CREATE POLICY "Users can unfollow brands"
-  ON public.brand_followers FOR DELETE
-  USING (follower_id = auth.uid());
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brand_followers'
+      AND policyname = 'Users can unfollow brands'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Users can unfollow brands" ON public.brand_followers FOR DELETE USING (follower_id = auth.uid())';
+  END IF;
+END
+$$;
 
 -- Brand owners can manage followers (accept/block)
-CREATE POLICY "Brand owners can manage their followers"
-  ON public.brand_followers FOR UPDATE
-  USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brand_followers'
+      AND policyname = 'Brand owners can manage their followers'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Brand owners can manage their followers" ON public.brand_followers FOR UPDATE USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()))';
+  END IF;
+END
+$$;
 
 -- 8. CREATE RLS POLICIES FOR BRAND_FOLLOWING
 -- Anyone can view accepted following of public brands
-CREATE POLICY "View accepted following of public brands"
-  ON public.brand_following FOR SELECT
-  USING (
-    status = 'accepted' AND
-    EXISTS (SELECT 1 FROM public.brands WHERE id = brand_id AND is_public = TRUE)
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brand_following'
+      AND policyname = 'View accepted following of public brands'
+  ) THEN
+    EXECUTE 'CREATE POLICY "View accepted following of public brands" ON public.brand_following FOR SELECT USING (status = ''accepted'' AND EXISTS (SELECT 1 FROM public.brands WHERE id = brand_id AND is_public = TRUE))';
+  END IF;
+END
+$$;
 
 -- Brand owners can view all their following
-CREATE POLICY "Brand owners can view all their following"
-  ON public.brand_following FOR SELECT
-  USING (
-    brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid())
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brand_following'
+      AND policyname = 'Brand owners can view all their following'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Brand owners can view all their following" ON public.brand_following FOR SELECT USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()))';
+  END IF;
+END
+$$;
 
 -- Users can view if a brand is following them
-CREATE POLICY "Users can view brands following them"
-  ON public.brand_following FOR SELECT
-  USING (following_id = auth.uid());
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brand_following'
+      AND policyname = 'Users can view brands following them'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Users can view brands following them" ON public.brand_following FOR SELECT USING (following_id = auth.uid())';
+  END IF;
+END
+$$;
 
 -- Brands can follow users/other brands
-CREATE POLICY "Brands can follow users/brands"
-  ON public.brand_following FOR INSERT
-  WITH CHECK (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brand_following'
+      AND policyname = 'Brands can follow users/brands'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Brands can follow users/brands" ON public.brand_following FOR INSERT WITH CHECK (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()))';
+  END IF;
+END
+$$;
 
 -- Brands can unfollow
-CREATE POLICY "Brands can unfollow"
-  ON public.brand_following FOR DELETE
-  USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brand_following'
+      AND policyname = 'Brands can unfollow'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Brands can unfollow" ON public.brand_following FOR DELETE USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()))';
+  END IF;
+END
+$$;
 
 -- 9. CREATE RLS POLICIES FOR BRAND_SETTINGS_HISTORY
 -- Brand owners can view their settings history
-CREATE POLICY "Brand owners can view their settings history"
-  ON public.brand_settings_history FOR SELECT
-  USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'brand_settings_history'
+      AND policyname = 'Brand owners can view their settings history'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Brand owners can view their settings history" ON public.brand_settings_history FOR SELECT USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()))';
+  END IF;
+END
+$$;
 
 -- 10. CREATE INDEXES FOR PERFORMANCE
 CREATE INDEX IF NOT EXISTS idx_brands_user_id ON public.brands(user_id);
@@ -216,6 +376,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 12. CREATE TRIGGER FOR updated_at
+DROP TRIGGER IF EXISTS update_brands_updated_at_trigger ON public.brands;
 CREATE TRIGGER update_brands_updated_at_trigger
   BEFORE UPDATE ON public.brands
   FOR EACH ROW
@@ -246,6 +407,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 14. CREATE TRIGGER FOR SETTINGS LOGGING
+DROP TRIGGER IF EXISTS log_brand_settings_change_trigger ON public.brands;
 CREATE TRIGGER log_brand_settings_change_trigger
   AFTER UPDATE ON public.brands
   FOR EACH ROW
@@ -254,5 +416,26 @@ CREATE TRIGGER log_brand_settings_change_trigger
 -- 15. ENABLE REALTIME FOR BRAND FOLLOWERS
 ALTER TABLE public.brand_followers REPLICA IDENTITY FULL;
 ALTER TABLE public.brand_following REPLICA IDENTITY FULL;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.brand_followers;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.brand_following;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'brand_followers'
+  ) THEN
+    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.brand_followers';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'brand_following'
+  ) THEN
+    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.brand_following';
+  END IF;
+END
+$$;

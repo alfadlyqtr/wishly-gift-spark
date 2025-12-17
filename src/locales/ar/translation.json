@@ -780,6 +780,33 @@
       "loading": "جاري التحميل…"
     }
   },
+  "thank_you": {
+    "title": "رسالة شكر",
+    "default_prefix": "شكراً",
+    "photo": "صورة",
+    "photo_uploaded": "تم رفع الصورة",
+    "tone": "النبرة",
+    "tone_grateful": "امتنان",
+    "tone_sweet": "لطيف",
+    "tone_funny": "مضحك",
+    "tone_formal": "رسمي",
+    "tone_romantic": "رومانسي",
+    "generate": "توليد",
+    "generating": "جارٍ التوليد...",
+    "generated": "تم التوليد",
+    "no_message": "لم يتم توليد رسالة",
+    "message_placeholder": "اكتب رسالة شكر...",
+    "save": "حفظ",
+    "saved": "تم الحفظ",
+    "publish": "نشر",
+    "published": "تم النشر",
+    "mark_received": "تأكيد الاستلام",
+    "marked_received": "تم تأكيد الاستلام",
+    "already_marked": "تم تأكيد الاستلام بالفعل",
+    "received": "تم الاستلام",
+    "post": "انشر الشكر",
+    "edit": "تعديل الشكر"
+  },
   "notfound": {
     "message": "عذراً! الصفحة غير موجودة",
     "return_home": "العودة للرئيسية"

@@ -17,7 +17,79 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { url, mode, tone, name, description, product_url, locale } = body ?? {};
+    const { url, mode, tone, name, description, product_url, locale, claimer_name, claimer_handle } = body ?? {};
+
+    // If mode is generate-thank-you, generate a thank you message and return early
+    if (mode === 'generate-thank-you') {
+      if (!DEEPSEEK_API_KEY) {
+        throw new Error('DeepSeek API key is not set in project secrets.');
+      }
+
+      const systemPrompt = `You are helping a recipient write a short thank-you post after receiving a gift.
+You must respond ONLY with valid JSON, no explanations or markdown.
+
+Return a JSON object with this shape:
+{
+  "message": "thank-you message"
+}
+
+Rules:
+- Keep it warm, personal, and specific.
+- 2-5 sentences max.
+- Do NOT mention price, do NOT mention private information.
+- Do NOT invent facts. If you don't know something, keep it general.
+- Tone options: grateful, sweet, funny, formal, romantic.
+- Language: ${locale || 'en'}.
+`;
+
+      const mention = (claimer_handle || claimer_name || '').trim();
+      const userContent = `tone: ${tone || 'grateful'}
+gift item: ${name || ''}
+context/description: ${description || ''}
+link: ${product_url || ''}
+claimer mention (must include if present): ${mention}`;
+
+      const deepseekResponse = await fetch(DEEPSEEK_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userContent },
+          ],
+          temperature: 0.7,
+          max_tokens: 220,
+        }),
+      });
+
+      if (!deepseekResponse.ok) {
+        const errorBody = await deepseekResponse.text();
+        console.error('DeepSeek thank-you API Error:', errorBody);
+        throw new Error('Failed to generate thank-you message with AI.');
+      }
+
+      const aiResult = await deepseekResponse.json();
+      const aiContent = aiResult.choices?.[0]?.message?.content || '{}';
+
+      let parsed: { message?: string } = {};
+      try {
+        const jsonStr = aiContent.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
+        parsed = JSON.parse(jsonStr);
+      } catch (e) {
+        console.error('Failed to parse DeepSeek thank-you response as JSON:', aiContent);
+        parsed = {};
+      }
+
+      return new Response(JSON.stringify({
+        message: parsed.message ?? '',
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // If mode is rewrite-description, use DeepSeek to rewrite copy and return early
     if (mode === 'rewrite-description') {

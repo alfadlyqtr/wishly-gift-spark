@@ -7,7 +7,7 @@ import WishAddDialog from "@/components/wishes/WishAddDialog";
 import Counter from "@/components/Counter";
 import { useWishlists } from "@/hooks/use-wishlists";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Check, X, Lock, Loader2, Heart, MessageCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, Lock, Loader2, Heart, MessageCircle, Sparkles, Camera } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, type CarouselApi } from "@/components/ui/carousel";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,25 @@ type ReservationInfo = {
     username: string | null;
     avatar_url: string | null;
   } | null;
+};
+
+type GiftReceiptRow = {
+  id: string;
+  item_id: string;
+  reservation_id: string | null;
+  recipient_user_id: string;
+  gifter_user_id: string | null;
+  gifted_at: string | null;
+};
+
+type ThankYouPostRow = {
+  id: string;
+  item_id: string;
+  status: "draft" | "published";
+  visibility: "public" | "only_gifter" | "private";
+  image_url: string | null;
+  message: string | null;
+  ai_tone: string | null;
 };
 
 const FloatingLines = lazy(() => import("@/components/FloatingLines"));
@@ -68,6 +87,16 @@ const WishlistDetail = () => {
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [visibilityPrefs, setVisibilityPrefs] = useState<{ allowFollowersView: boolean; enforceWishlistPrivacy: boolean } | null>(null);
   const [activeTab, setActiveTab] = useState<"items" | "activity">("items");
+
+  const [thankYouOpen, setThankYouOpen] = useState(false);
+  const [thankYouItem, setThankYouItem] = useState<WishlistItem | null>(null);
+  const [thankYouReservation, setThankYouReservation] = useState<ReservationInfo | null>(null);
+  const [thankYouTone, setThankYouTone] = useState<"" | "sweet" | "funny" | "formal" | "romantic" | "grateful">("");
+  const [thankYouMessage, setThankYouMessage] = useState("");
+  const [thankYouImageUrl, setThankYouImageUrl] = useState<string | null>(null);
+  const [thankYouUploading, setThankYouUploading] = useState(false);
+  const [thankYouGenerating, setThankYouGenerating] = useState(false);
+  const [thankYouSaving, setThankYouSaving] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["wishlist-detail", id],
@@ -151,6 +180,237 @@ const WishlistDetail = () => {
       return acc;
     }, {});
   }, [reservationRows]);
+
+  const addOnKeyDeps = useMemo(() => items.map((item) => item.id).sort().join("|"), [items]);
+  const { data: giftReceipts = [] } = useQuery({
+    queryKey: ["wishlist-detail", id, "gift-receipts", addOnKeyDeps],
+    enabled: Boolean(id) && items.length > 0,
+    queryFn: async (): Promise<GiftReceiptRow[]> => {
+      const itemIds = items.map((item) => item.id).filter(Boolean);
+      if (itemIds.length === 0) return [];
+      const { data: rows, error } = await (supabase as any)
+        .from("gift_receipts")
+        .select("id,item_id,reservation_id,recipient_user_id,gifter_user_id,gifted_at")
+        .in("item_id", itemIds);
+      if (error) throw error;
+      return (rows ?? []) as GiftReceiptRow[];
+    },
+  });
+
+  const { data: thankYouPosts = [] } = useQuery({
+    queryKey: ["wishlist-detail", id, "thank-you-posts", addOnKeyDeps],
+    enabled: Boolean(id) && items.length > 0,
+    queryFn: async (): Promise<ThankYouPostRow[]> => {
+      const itemIds = items.map((item) => item.id).filter(Boolean);
+      if (itemIds.length === 0) return [];
+      const { data: rows, error } = await (supabase as any)
+        .from("thank_you_posts")
+        .select("id,item_id,status,visibility,image_url,message,ai_tone")
+        .in("item_id", itemIds);
+      if (error) throw error;
+      return (rows ?? []) as ThankYouPostRow[];
+    },
+  });
+
+  const giftReceiptByItem = useMemo(() => {
+    const map: Record<string, GiftReceiptRow> = {};
+    for (const r of giftReceipts) {
+      if (r?.item_id) map[r.item_id] = r;
+    }
+    return map;
+  }, [giftReceipts]);
+
+  const thankYouPostByItem = useMemo(() => {
+    const map: Record<string, ThankYouPostRow> = {};
+    for (const p of thankYouPosts) {
+      if (p?.item_id) map[p.item_id] = p;
+    }
+    return map;
+  }, [thankYouPosts]);
+
+  const aiGatewayUrl = useMemo(() => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+    if (!supabaseUrl) return "";
+    return `${supabaseUrl}/functions/v1/ai-gateway`;
+  }, []);
+
+  const supabaseAnonKey = useMemo(() => {
+    return (
+      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+      import.meta.env.VITE_SUPABASE_ANON_KEY ||
+      ""
+    );
+  }, []);
+
+  const handleMarkReceived = async (item: WishlistItem, reservation: ReservationInfo | null) => {
+    try {
+      const { data: auth, error: authErr } = await supabase.auth.getUser();
+      if (authErr) throw authErr;
+      const userId = auth.user?.id;
+      if (!userId) throw new Error(t("common.not_authenticated", "Not authenticated"));
+
+      const existing = giftReceiptByItem[item.id];
+      if (existing) {
+        toast.success(t("thank_you.already_marked", "Already marked as received"));
+        return;
+      }
+
+      const gifterId = reservation?.claimer?.id || null;
+      const { error } = await (supabase as any)
+        .from("gift_receipts")
+        .insert({
+          item_id: item.id,
+          reservation_id: reservation?.id || null,
+          recipient_user_id: userId,
+          gifter_user_id: gifterId,
+          gifted_at: new Date().toISOString(),
+        });
+      if (error) throw error;
+
+      toast.success(t("thank_you.marked_received", "Marked as received"));
+      await queryClient.invalidateQueries({ queryKey: ["wishlist-detail", id, "gift-receipts", addOnKeyDeps] });
+    } catch (e: any) {
+      toast.error(e?.message || t("errors.failed", "Failed"));
+    }
+  };
+
+  const handleThankYouUpload = async (file: File | null) => {
+    if (!file) return;
+    try {
+      setThankYouUploading(true);
+      const { data: auth, error: authErr } = await supabase.auth.getUser();
+      if (authErr) throw authErr;
+      const userId = auth.user?.id;
+      if (!userId) throw new Error(t("common.not_authenticated", "Not authenticated"));
+
+      const fileExt = file.name.split(".").pop() || "jpg";
+      const filePath = `thank-you/${userId}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("wishlist_images")
+        .upload(filePath, file, { cacheControl: "3600", upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from("wishlist_images").getPublicUrl(filePath);
+      if (!urlData?.publicUrl) throw new Error(t("errors.failed_public_url", "Could not get public URL"));
+
+      setThankYouImageUrl(urlData.publicUrl);
+      toast.success(t("thank_you.photo_uploaded", "Photo uploaded"));
+    } catch (e: any) {
+      toast.error(e?.message || t("errors.failed_to_upload", "Failed to upload"));
+    } finally {
+      setThankYouUploading(false);
+    }
+  };
+
+  const handleGenerateThankYou = async () => {
+    try {
+      if (!aiGatewayUrl) {
+        toast.error(t("brand.product.ai_not_configured", "AI gateway is not configured."));
+        return;
+      }
+      if (!thankYouItem) {
+        toast.error(t("errors.failed", "Failed"));
+        return;
+      }
+
+      const claimerName = thankYouReservation?.claimer?.full_name || thankYouReservation?.claimer?.username || "";
+      const claimerHandle = thankYouReservation?.claimer?.username ? `@${thankYouReservation.claimer.username}` : "";
+
+      setThankYouGenerating(true);
+
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+
+      const res = await fetch(aiGatewayUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token
+            ? { Authorization: `Bearer ${token}` }
+            : supabaseAnonKey
+            ? { Authorization: `Bearer ${supabaseAnonKey}` }
+            : {}),
+        },
+        body: JSON.stringify({
+          mode: "generate-thank-you",
+          tone: thankYouTone || "grateful",
+          name: thankYouItem.title,
+          description: thankYouItem.description || "",
+          product_url: thankYouItem.item_url || "",
+          claimer_name: claimerName,
+          claimer_handle: claimerHandle,
+          locale: i18n.language?.startsWith("ar") ? "ar" : "en",
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `AI request failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      const msg = (data?.message || data?.description || "") as string;
+      if (msg) {
+        setThankYouMessage(msg);
+        toast.success(t("thank_you.generated", "Generated"));
+      } else {
+        toast.error(t("thank_you.no_message", "No message generated"));
+      }
+    } catch (e: any) {
+      toast.error(e?.message || t("errors.failed", "Failed"));
+    } finally {
+      setThankYouGenerating(false);
+    }
+  };
+
+  const handleSaveThankYou = async (publish: boolean) => {
+    try {
+      if (!thankYouItem) return;
+      setThankYouSaving(true);
+
+      const { data: auth, error: authErr } = await supabase.auth.getUser();
+      if (authErr) throw authErr;
+      const userId = auth.user?.id;
+      if (!userId) throw new Error(t("common.not_authenticated", "Not authenticated"));
+
+      const receipt = giftReceiptByItem[thankYouItem.id] || null;
+      const existingPost = thankYouPostByItem[thankYouItem.id] || null;
+      const gifterId = thankYouReservation?.claimer?.id || receipt?.gifter_user_id || null;
+
+      const payload: any = {
+        item_id: thankYouItem.id,
+        reservation_id: thankYouReservation?.id || receipt?.reservation_id || null,
+        receipt_id: receipt?.id || null,
+        recipient_user_id: userId,
+        gifter_user_id: gifterId,
+        status: publish ? "published" : "draft",
+        visibility: "public",
+        image_url: thankYouImageUrl || null,
+        message: thankYouMessage || null,
+        ai_tone: thankYouTone || null,
+      };
+
+      const { error } = await (supabase as any)
+        .from("thank_you_posts")
+        .upsert(
+          existingPost?.id
+            ? { ...payload, id: existingPost.id }
+            : payload,
+          { onConflict: "item_id" },
+        );
+      if (error) throw error;
+
+      toast.success(publish ? t("thank_you.published", "Published") : t("thank_you.saved", "Saved"));
+      await queryClient.invalidateQueries({ queryKey: ["wishlist-detail", id, "thank-you-posts", addOnKeyDeps] });
+      setThankYouOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || t("errors.failed", "Failed"));
+    } finally {
+      setThankYouSaving(false);
+    }
+  };
 
   // Wishlist-level likes (for Activity tab)
   const { data: wishlistLikes = [] } = useQuery({
@@ -853,6 +1113,46 @@ const WishlistDetail = () => {
                                       {t('wishlist_detail.claimed_by_badge', 'Claimed by {{name}}', { name: getClaimerName(approvedReservation) })}
                                     </Badge>
                                   )}
+                                  {isOwner && approvedReservation && (
+                                    <div className={`mt-2 flex flex-wrap items-center gap-2 ${isAr ? 'justify-end' : ''}`}>
+                                      <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        className="h-8 px-3"
+                                        disabled={Boolean(giftReceiptByItem[it.id])}
+                                        onClick={() => handleMarkReceived(it, approvedReservation)}
+                                      >
+                                        {giftReceiptByItem[it.id]
+                                          ? t('thank_you.received', 'Received')
+                                          : t('thank_you.mark_received', 'Mark received')}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        className="h-8 px-3 gap-1.5"
+                                        disabled={!giftReceiptByItem[it.id]}
+                                        onClick={() => {
+                                          const post = thankYouPostByItem[it.id] || null;
+                                          setThankYouItem(it);
+                                          setThankYouReservation(approvedReservation || null);
+                                          setThankYouTone((post?.ai_tone as any) || "");
+                                          setThankYouMessage(post?.message || (() => {
+                                            const handle = approvedReservation?.claimer?.username ? `@${approvedReservation.claimer.username}` : "";
+                                            const name = approvedReservation?.claimer?.full_name || "";
+                                            if (handle) return `${t('thank_you.default_prefix', 'Thanks')} ${handle}! `;
+                                            if (name) return `${t('thank_you.default_prefix', 'Thanks')} ${name}! `;
+                                            return "";
+                                          })());
+                                          setThankYouImageUrl(post?.image_url || null);
+                                          setThankYouOpen(true);
+                                        }}
+                                      >
+                                        <Sparkles className="h-3.5 w-3.5" />
+                                        {thankYouPostByItem[it.id]?.status === 'published'
+                                          ? t('thank_you.edit', 'Edit thanks')
+                                          : t('thank_you.post', 'Post thanks')}
+                                      </Button>
+                                    </div>
+                                  )}
                                   {!isOwner && hasPending && (
                                     <Badge variant="secondary" className="mt-2 bg-white/80 text-amber-700">
                                       {t('wishlist_detail.pending_claim_badge', 'Pending approval')}
@@ -1071,6 +1371,113 @@ const WishlistDetail = () => {
             {previewSrc ? (
               <img src={previewSrc} alt="Preview" className="max-h-[75vh] max-w-full object-contain rounded-md" />
             ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={thankYouOpen}
+        onOpenChange={(o) => {
+          setThankYouOpen(o);
+          if (!o) {
+            setThankYouItem(null);
+            setThankYouReservation(null);
+            setThankYouTone("");
+            setThankYouMessage("");
+            setThankYouImageUrl(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-sm sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">
+              {t('thank_you.title', 'Thank you post')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-xs text-muted-foreground">
+              {thankYouItem?.title || ''}
+            </div>
+
+            {thankYouImageUrl ? (
+              <img src={thankYouImageUrl} alt="" className="w-full max-h-56 object-contain rounded-lg bg-muted" />
+            ) : (
+              <div className="w-full h-40 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
+                <Camera className="h-6 w-6" />
+              </div>
+            )}
+
+            <div className="flex items-center gap-2">
+              <span className="sr-only">{t('thank_you.photo', 'Photo')}</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleThankYouUpload(e.target.files?.[0] || null)}
+                disabled={thankYouUploading}
+                aria-label={t('thank_you.photo', 'Photo')}
+                title={t('thank_you.photo', 'Photo')}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <select
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={thankYouTone}
+                onChange={(e) => setThankYouTone(e.target.value as any)}
+                aria-label={t('thank_you.tone', 'Tone')}
+                title={t('thank_you.tone', 'Tone')}
+              >
+                <option value="">{t('thank_you.tone', 'Tone')}</option>
+                <option value="grateful">{t('thank_you.tone_grateful', 'Grateful')}</option>
+                <option value="sweet">{t('thank_you.tone_sweet', 'Sweet')}</option>
+                <option value="funny">{t('thank_you.tone_funny', 'Funny')}</option>
+                <option value="formal">{t('thank_you.tone_formal', 'Formal')}</option>
+                <option value="romantic">{t('thank_you.tone_romantic', 'Romantic')}</option>
+              </select>
+              <Button
+                type="button"
+                size="sm"
+                className="gap-1.5"
+                disabled={thankYouGenerating}
+                onClick={handleGenerateThankYou}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {thankYouGenerating ? t('thank_you.generating', 'Generating...') : t('thank_you.generate', 'Generate')}
+              </Button>
+            </div>
+
+            <textarea
+              className="w-full min-h-[120px] rounded-md border bg-background px-3 py-2 text-sm"
+              value={thankYouMessage}
+              onChange={(e) => setThankYouMessage(e.target.value)}
+              placeholder={t('thank_you.message_placeholder', 'Write a thank you message...')}
+            />
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setThankYouOpen(false)}
+                disabled={thankYouSaving}
+              >
+                {t('common.cancel', 'Cancel')}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleSaveThankYou(false)}
+                disabled={thankYouSaving}
+              >
+                {thankYouSaving ? t('common.saving', 'Saving...') : t('thank_you.save', 'Save')}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => handleSaveThankYou(true)}
+                disabled={thankYouSaving}
+              >
+                {thankYouSaving ? t('common.saving', 'Saving...') : t('thank_you.publish', 'Publish')}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

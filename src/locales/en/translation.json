@@ -541,6 +541,33 @@
       "loading": "Loading…"
     }
   },
+  "thank_you": {
+    "title": "Thank you post",
+    "default_prefix": "Thanks",
+    "photo": "Photo",
+    "photo_uploaded": "Photo uploaded",
+    "tone": "Tone",
+    "tone_grateful": "Grateful",
+    "tone_sweet": "Sweet",
+    "tone_funny": "Funny",
+    "tone_formal": "Formal",
+    "tone_romantic": "Romantic",
+    "generate": "Generate",
+    "generating": "Generating...",
+    "generated": "Generated",
+    "no_message": "No message generated",
+    "message_placeholder": "Write a thank you message...",
+    "save": "Save",
+    "saved": "Saved",
+    "publish": "Publish",
+    "published": "Published",
+    "mark_received": "Mark received",
+    "marked_received": "Marked as received",
+    "already_marked": "Already marked as received",
+    "received": "Received",
+    "post": "Post thanks",
+    "edit": "Edit thanks"
+  },
   "notfound": {
     "message": "Oops! Page not found",
     "return_home": "Return to Home"
