@@ -217,6 +217,7 @@ const Settings = () => {
   const [showCountdown, setShowCountdown] = useState<boolean>(true);
   const [allowLikes, setAllowLikes] = useState<boolean>(true);
   const [allowComments, setAllowComments] = useState<boolean>(true);
+  const [allowThankYouPosts, setAllowThankYouPosts] = useState<boolean>(true);
   const [allowFollowersView, setAllowFollowersView] = useState<boolean>(false);
   const [respectPerWishlistPrivacy, setRespectPerWishlistPrivacy] = useState<boolean>(true);
   const [savingWishlistPrefs, setSavingWishlistPrefs] = useState<boolean>(false);
@@ -307,7 +308,7 @@ const Settings = () => {
     }
   };
 
-  const saveWishlistPrefs = async (changes?: Partial<{ allow_wishlist_sharing: boolean; allow_friends_claim: boolean; auto_approve_claims: boolean; auto_approve_unclaims: boolean; show_countdown_timer: boolean; allow_followers_view: boolean; enforce_wishlist_privacy: boolean; allow_likes: boolean; allow_comments: boolean }>) => {
+  const saveWishlistPrefs = async (changes?: Partial<{ allow_wishlist_sharing: boolean; allow_friends_claim: boolean; auto_approve_claims: boolean; auto_approve_unclaims: boolean; show_countdown_timer: boolean; allow_followers_view: boolean; enforce_wishlist_privacy: boolean; allow_likes: boolean; allow_comments: boolean; allow_thank_you_posts: boolean }>) => {
     try {
       setSavingWishlistPrefs(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -323,6 +324,7 @@ const Settings = () => {
         show_countdown_timer: showCountdown,
         allow_likes: allowLikes,
         allow_comments: allowComments,
+        allow_thank_you_posts: allowThankYouPosts,
         allow_followers_view: allowFollowersView,
         enforce_wishlist_privacy: respectPerWishlistPrivacy,
         ...changes,
@@ -389,7 +391,7 @@ const Settings = () => {
         if (!user) return;
         const { data, error } = await (supabase as any)
           .from("user_profiles")
-          .select("is_searchable, require_follow_approval, allow_wishlist_sharing, allow_friends_claim, auto_approve_claims, auto_approve_unclaims, show_countdown_timer, allow_likes, allow_comments, allow_followers_view, enforce_wishlist_privacy, country, admin_master_control")
+          .select("is_searchable, require_follow_approval, allow_wishlist_sharing, allow_friends_claim, auto_approve_claims, auto_approve_unclaims, show_countdown_timer, allow_likes, allow_comments, allow_thank_you_posts, allow_followers_view, enforce_wishlist_privacy, country, admin_master_control")
           .eq("id", user.id)
           .single();
         if (!error && data) {
@@ -408,6 +410,7 @@ const Settings = () => {
           if (typeof (data as any).show_countdown_timer === 'boolean') setShowCountdown((data as any).show_countdown_timer);
           if (typeof (data as any).allow_likes === 'boolean') setAllowLikes((data as any).allow_likes);
           if (typeof (data as any).allow_comments === 'boolean') setAllowComments((data as any).allow_comments);
+          if (typeof (data as any).allow_thank_you_posts === 'boolean') setAllowThankYouPosts((data as any).allow_thank_you_posts);
 
           const allowFollowersPref = typeof (data as any).allow_followers_view === 'boolean' ? (data as any).allow_followers_view : false;
           const enforcePrivacyPref = typeof (data as any).enforce_wishlist_privacy === 'boolean' ? (data as any).enforce_wishlist_privacy : !allowFollowersPref;
@@ -448,7 +451,7 @@ const Settings = () => {
             // Admin triggered a refresh - refetch profile data
             const { data, error } = await (supabase as any)
               .from("user_profiles")
-              .select("is_searchable, require_follow_approval, allow_wishlist_sharing, allow_friends_claim, auto_approve_claims, auto_approve_unclaims, show_countdown_timer, allow_likes, allow_comments, allow_followers_view, enforce_wishlist_privacy, country, admin_master_control, receive_notifications")
+              .select("is_searchable, require_follow_approval, allow_wishlist_sharing, allow_friends_claim, auto_approve_claims, auto_approve_unclaims, show_countdown_timer, allow_likes, allow_comments, allow_thank_you_posts, allow_followers_view, enforce_wishlist_privacy, country, admin_master_control, receive_notifications")
               .eq("id", user.id)
               .single();
             if (!error && data) {
@@ -464,6 +467,7 @@ const Settings = () => {
               if (typeof (data as any).show_countdown_timer === 'boolean') setShowCountdown((data as any).show_countdown_timer);
               if (typeof (data as any).allow_likes === 'boolean') setAllowLikes((data as any).allow_likes);
               if (typeof (data as any).allow_comments === 'boolean') setAllowComments((data as any).allow_comments);
+              if (typeof (data as any).allow_thank_you_posts === 'boolean') setAllowThankYouPosts((data as any).allow_thank_you_posts);
               if (typeof (data as any).receive_notifications === 'boolean') setNotifications((data as any).receive_notifications);
               
               const allowFollowersPref = typeof (data as any).allow_followers_view === 'boolean' ? (data as any).allow_followers_view : false;
@@ -786,6 +790,7 @@ const Settings = () => {
               {renderToggle(t('settings.auto_approve_unclaims','Auto-approve unclaim requests'), autoApproveUnclaims, (v)=>{ setAutoApproveUnclaims(v); })}
               {renderToggle(t('settings.allow_likes','Allow likes on my wishlists'), allowLikes, (v)=>{ setAllowLikes(v); })}
               {renderToggle(t('settings.allow_comments','Allow comments on my wishlists'), allowComments, (v)=>{ setAllowComments(v); })}
+              {renderToggle(t('settings.allow_thank_you_posts','Show my thank-you posts in friend activity'), allowThankYouPosts, (v)=>{ setAllowThankYouPosts(v); })}
               {renderToggle(t('settings.show_countdown','Show countdown timer on shared page'), showCountdown, (v)=>{ setShowCountdown(v); })}
             </div>
             <div className="pt-2">

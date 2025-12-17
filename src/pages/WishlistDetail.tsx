@@ -18,6 +18,7 @@ import type { Database } from "@/integrations/supabase/types";
 import wishlyLogo from "@/assets/wishly-logo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { approveReservation, declineReservation } from "@/lib/reservations";
+import { openOrCreateDirectThread } from "@/lib/messages";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 
@@ -205,7 +206,7 @@ const WishlistDetail = () => {
       if (itemIds.length === 0) return [];
       const { data: rows, error } = await (supabase as any)
         .from("thank_you_posts")
-        .select("id,item_id,status,visibility,image_url,message,ai_tone")
+        .select("id,item_id,status,visibility,image_url,message,ai_tone,gifter_user_id")
         .in("item_id", itemIds);
       if (error) throw error;
       return (rows ?? []) as ThankYouPostRow[];
@@ -377,7 +378,10 @@ const WishlistDetail = () => {
 
       const receipt = giftReceiptByItem[thankYouItem.id] || null;
       const existingPost = thankYouPostByItem[thankYouItem.id] || null;
-      const gifterId = thankYouReservation?.claimer?.id || receipt?.gifter_user_id || null;
+      // Priority: reservation claimer > existing post gifter > receipt gifter
+      const gifterId = thankYouReservation?.claimer?.id || (existingPost as any)?.gifter_user_id || receipt?.gifter_user_id || null;
+      
+      console.log("[ThankYou] Publishing with gifterId:", gifterId, "reservation:", thankYouReservation?.claimer?.id, "existingPost:", (existingPost as any)?.gifter_user_id);
 
       const payload: any = {
         item_id: thankYouItem.id,
@@ -401,6 +405,57 @@ const WishlistDetail = () => {
           { onConflict: "item_id" },
         );
       if (error) throw error;
+
+      if (publish && gifterId && thankYouMessage) {
+        try {
+          const { id: threadId, error: threadErr } = await openOrCreateDirectThread(gifterId);
+          if (threadErr) {
+            console.error("Failed to open/create thread for thank-you card:", threadErr);
+          }
+          if (!threadErr && threadId) {
+            const { data: myProfile } = await supabase
+              .from('user_profiles' as any)
+              .select('id, username, full_name, avatar_url')
+              .eq('id', userId)
+              .maybeSingle();
+
+            const cardPayload = {
+              type: 'thank_you_card',
+              recipient: {
+                id: userId,
+                full_name: (myProfile as any)?.full_name || null,
+                username: (myProfile as any)?.username || null,
+                avatar_url: (myProfile as any)?.avatar_url || null,
+              },
+              gifter: {
+                id: gifterId,
+              },
+              item: {
+                id: thankYouItem.id,
+                title: thankYouItem.title,
+                image_url: thankYouItem.image_url || null,
+              },
+              message: thankYouMessage,
+              photo_url: thankYouImageUrl || null,
+              emojis: ['😄','😂','🥰','🙏','🎁','✨'],
+              created_at: new Date().toISOString(),
+            };
+
+            const { error: msgErr } = await supabase.from('messages' as any).insert({
+              thread_id: threadId,
+              user_id: userId,
+              content: JSON.stringify(cardPayload),
+              attachment_type: 'thank_you_card',
+              attachment_url: thankYouImageUrl || null,
+            });
+            if (msgErr) {
+              console.error("Failed to insert thank-you card message:", msgErr);
+            }
+          }
+        } catch (cardErr) {
+          console.error("Error sending thank-you card:", cardErr);
+        }
+      }
 
       toast.success(publish ? t("thank_you.published", "Published") : t("thank_you.saved", "Saved"));
       await queryClient.invalidateQueries({ queryKey: ["wishlist-detail", id, "thank-you-posts", addOnKeyDeps] });

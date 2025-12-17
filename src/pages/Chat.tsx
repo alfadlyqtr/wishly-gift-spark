@@ -704,6 +704,7 @@ const Chat = () => {
               const me = uid ? (m.user_id === uid) : (m.user_id === 'demo_me');
               const isImage = m.attachment_type === 'image' && m.attachment_url;
               const isAudio = m.attachment_type === 'audio' && m.attachment_url;
+              const isThankYouCard = m.attachment_type === 'thank_you_card';
               const isPinned = localPinned[m.id] ?? !!m.pinned;
               const timeLabel = (() => {
                 const d = new Date(m.created_at);
@@ -711,6 +712,16 @@ const Chat = () => {
                 return i18n.language === 'ar'
                   ? d.toLocaleTimeString('ar-EG', opts)
                   : d.toLocaleTimeString([], opts);
+              })();
+
+              const thankYou = (() => {
+                if (!isThankYouCard) return null;
+                try {
+                  const parsed = JSON.parse(String(m.content || ''));
+                  return parsed && typeof parsed === 'object' ? parsed : null;
+                } catch {
+                  return null;
+                }
               })();
 
               return (
@@ -726,6 +737,70 @@ const Chat = () => {
                           : 'bg-white text-foreground ring-1 ring-black/5'
                       }`}
                     >
+                      {isThankYouCard && thankYou && (
+                        <div className="relative w-[260px] rounded-2xl overflow-hidden shadow-xl">
+                          {/* Cream background */}
+                          <div className="absolute inset-0 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50" />
+                          
+                          {/* Corner decorations - smaller */}
+                          <div className="absolute top-1 left-1 text-lg opacity-60">🌸</div>
+                          <div className="absolute top-1 right-1 text-lg opacity-60">🌷</div>
+                          <div className="absolute bottom-1 left-1 text-sm opacity-50">✨</div>
+                          <div className="absolute bottom-1 right-1 text-sm opacity-50">💫</div>
+                          
+                          {/* Content */}
+                          <div className="relative z-10 p-4">
+                            {/* Header with avatar */}
+                            <div className="flex items-center gap-3 mb-3">
+                              <Avatar className="h-12 w-12 ring-2 ring-amber-200 shadow-md">
+                                <AvatarImage src={thankYou?.recipient?.avatar_url || ''} />
+                                <AvatarFallback className="bg-gradient-to-br from-pink-400 to-orange-400 text-white font-bold">
+                                  {String(thankYou?.recipient?.full_name || thankYou?.recipient?.username || 'U').charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="text-base font-bold text-amber-800">
+                                  {thankYou?.recipient?.full_name || thankYou?.recipient?.username || 'Friend'}
+                                </div>
+                                {thankYou?.recipient?.username && (
+                                  <div className="text-xs text-amber-600">@{thankYou.recipient.username}</div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Thank You title */}
+                            <div className="text-center mb-2">
+                              <span className="text-xl font-serif font-bold text-amber-700">Thank You! 💝</span>
+                            </div>
+                            
+                            {/* Gift item */}
+                            {thankYou?.item?.title && (
+                              <div className="text-xs text-amber-600 text-center mb-2">
+                                🎁 {thankYou.item.title}
+                              </div>
+                            )}
+                            
+                            {/* Message */}
+                            <div className="bg-white/60 rounded-xl p-3 border border-amber-100">
+                              <div className="text-sm text-amber-900 leading-relaxed">
+                                {thankYou?.message || t('thank_you.card_fallback', 'Thank you!')}
+                              </div>
+                            </div>
+                            
+                            {/* Photo */}
+                            {thankYou?.photo_url && (
+                              <div className="mt-2 overflow-hidden rounded-xl border-2 border-white">
+                                <img src={thankYou.photo_url} alt="" className="w-full max-h-32 object-cover" />
+                              </div>
+                            )}
+                            
+                            {/* Footer hearts */}
+                            <div className="text-center mt-3 text-lg">
+                              💖 💛 🧡
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       {isImage && (
                         <div className="mb-1">
                           <img
@@ -791,7 +866,7 @@ const Chat = () => {
                           </div>
                         </div>
                       )}
-                      {m.content && (
+                      {m.content && !isThankYouCard && (
                         <div>{m.content}</div>
                       )}
 
@@ -969,6 +1044,8 @@ const Chat = () => {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  aria-label={t('chat.attach_image', 'Attach image')}
+                  title={t('chat.attach_image', 'Attach image')}
                   className="hidden"
                   onChange={handleImageChange}
                 />
