@@ -787,6 +787,7 @@
     "title": "رسالة شكر",
     "default_prefix": "شكراً",
     "ribbon": "شكراً",
+    "ribbon_premium": "مميز",
     "card_title": "شكراً",
     "for_item": "على",
     "card_fallback": "شكراً!",

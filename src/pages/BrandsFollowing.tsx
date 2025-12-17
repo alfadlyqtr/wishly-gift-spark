@@ -7,7 +7,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Store } from "lucide-react";
-import { BrandProfileModal } from "@/components/BrandProfileModal";
 
 interface BrandFollowing {
   id: string;
@@ -27,8 +26,6 @@ const BrandsFollowing = () => {
   const navigate = useNavigate();
   const [following, setFollowing] = useState<BrandFollowing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
-  const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
 
   useEffect(() => {
     fetchFollowing();
@@ -87,8 +84,7 @@ const BrandsFollowing = () => {
   };
 
   const handleViewBrand = (brandId: string) => {
-    setSelectedBrandId(brandId);
-    setIsBrandModalOpen(true);
+    navigate(`/store/${brandId}`);
   };
 
   if (loading) {
@@ -172,17 +168,6 @@ const BrandsFollowing = () => {
         </div>
       </div>
 
-      {/* Brand Profile Modal */}
-      {selectedBrandId && (
-        <BrandProfileModal
-          brandId={selectedBrandId}
-          isOpen={isBrandModalOpen}
-          onClose={() => {
-            setIsBrandModalOpen(false);
-            setSelectedBrandId(null);
-          }}
-        />
-      )}
     </div>
   );
 };

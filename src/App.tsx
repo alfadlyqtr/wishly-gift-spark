@@ -40,6 +40,7 @@ const BrandFollowers = lazy(() => import("./pages/BrandFollowers"));
 const BrandFollowing = lazy(() => import("./pages/BrandFollowing"));
 const PublicBrandProfile = lazy(() => import("./pages/PublicBrandProfile"));
 const BrandsFollowing = lazy(() => import("./pages/BrandsFollowing"));
+const StoreProfile = lazy(() => import("./pages/StoreProfile"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Goodbye = lazy(() => import("./pages/Goodbye"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
@@ -144,6 +145,7 @@ const App = () => (
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/followers" element={<FollowersFollowing />} />
                 <Route path="/brands-following" element={<BrandsFollowing />} />
+                <Route path="/store/:id" element={<StoreProfile />} />
                 <Route path="/wishlists" element={<Wishlists />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/messages" element={<Messages />} />

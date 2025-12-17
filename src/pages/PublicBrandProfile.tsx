@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Store, Instagram, Twitter, Facebook, Linkedin, Globe, ArrowLeft, UserPlus, UserCheck, Mail, Phone, MapPin, Youtube, MessageCircle } from "lucide-react";
+import { Store, Instagram, Twitter, Facebook, Linkedin, Globe, UserPlus, UserCheck, Mail, Phone, MapPin, Youtube, MessageCircle, Plus, BadgeCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import BackButton from "@/components/BackButton";
+import WishAddDialog from "@/components/wishes/WishAddDialog";
+import { useWishlists } from "@/hooks/use-wishlists";
 import "@/styles/brand-profile-card.css";
 
 // Custom TikTok Icon since it's not in Lucide v1
@@ -76,14 +78,19 @@ interface BrandProfile {
   tagline?: string;
   description?: string;
   logo_url?: string;
+  email?: string;
+  phone?: string;
+  whatsapp?: string;
+  address?: string;
+  store_locations?: string[];
   instagram?: string;
   twitter?: string;
   facebook?: string;
   linkedin?: string;
   tiktok?: string;
   youtube?: string;
-  whatsapp?: string;
   brand_website?: string;
+  is_verified?: boolean;
   is_public: boolean;
 }
 
@@ -95,10 +102,40 @@ const PublicBrandProfile = () => {
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productForWishAdd, setProductForWishAdd] = useState<any | null>(null);
+
+  const wishlistsQuery = useWishlists();
+  const wishlistOptions = useMemo(
+    () => (wishlistsQuery.data || []).map((w) => ({ id: w.id, name: w.title })),
+    [wishlistsQuery.data],
+  );
+
+  const fetchBrandProducts = async () => {
+    try {
+      if (!id) return;
+      setProductsLoading(true);
+      const { data, error } = await (supabase as any)
+        .from("brand_products")
+        .select("id,name,description,image_url,is_findable,allow_add_as_item,product_url")
+        .eq("brand_id", id)
+        .eq("is_findable", true)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setProducts(data ?? []);
+    } catch (err) {
+      console.error("Error loading brand products", err);
+    } finally {
+      setProductsLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchBrandProfile();
     checkFollowStatus();
+    fetchBrandProducts();
   }, [id]);
 
   const fetchBrandProfile = async () => {
@@ -190,15 +227,19 @@ const PublicBrandProfile = () => {
 
   if (!brand) return null;
 
-  const socialLinks = [
-    { icon: Instagram, url: getSocialUrl("instagram", brand.instagram), id: "instagram", color: "#d62976", original: brand.instagram },
-    { icon: Twitter, url: getSocialUrl("twitter", brand.twitter), id: "twitter", color: "#00acee", original: brand.twitter },
-    { icon: Facebook, url: getSocialUrl("facebook", brand.facebook), id: "facebook", color: "#3b5998", original: brand.facebook },
-    { icon: Linkedin, url: getSocialUrl("linkedin", brand.linkedin), id: "linkedin", color: "#0077b5", original: brand.linkedin },
-    { icon: TikTokIcon, url: getSocialUrl("tiktok", brand.tiktok), id: "tiktok", color: "#000000", original: brand.tiktok },
-    { icon: Youtube, url: getSocialUrl("youtube", brand.youtube), id: "youtube", color: "#FF0000", original: brand.youtube },
-    { icon: MessageCircle, url: getSocialUrl("whatsapp", brand.whatsapp), id: "whatsapp", color: "#25D366", original: brand.whatsapp },
-  ].filter(link => link.original);
+  const socialLinks = brand ? [
+    { icon: Mail, url: brand.email ? `mailto:${brand.email}` : null, id: "email", original: brand.email },
+    { icon: Phone, url: brand.phone ? `tel:${brand.phone}` : null, id: "phone", original: brand.phone },
+    { icon: MessageCircle, url: getSocialUrl("whatsapp", brand.whatsapp), id: "whatsapp", original: brand.whatsapp },
+    { icon: MapPin, url: brand.store_locations?.[0] || null, id: "location", original: brand.store_locations?.[0] },
+    { icon: Instagram, url: getSocialUrl("instagram", brand.instagram), id: "instagram", original: brand.instagram },
+    { icon: Twitter, url: getSocialUrl("twitter", brand.twitter), id: "twitter", original: brand.twitter },
+    { icon: Facebook, url: getSocialUrl("facebook", brand.facebook), id: "facebook", original: brand.facebook },
+    { icon: Linkedin, url: getSocialUrl("linkedin", brand.linkedin), id: "linkedin", original: brand.linkedin },
+    { icon: TikTokIcon, url: getSocialUrl("tiktok", brand.tiktok), id: "tiktok", original: brand.tiktok },
+    { icon: Youtube, url: getSocialUrl("youtube", brand.youtube), id: "youtube", original: brand.youtube },
+    { icon: Globe, url: getSocialUrl("website", brand.brand_website), id: "website", original: brand.brand_website },
+  ].filter(link => link.original) : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 py-8 px-4">
@@ -207,31 +248,48 @@ const PublicBrandProfile = () => {
           <BackButton onClick={() => navigate(-1)}>{t("common.back", "Back")}</BackButton>
         </div>
 
-        {/* Neumorphic Dark Card */}
         <div className="flex justify-center">
           <div className="brand-profile-card">
-            {/* Logo */}
-            <div className="brand-profile-image">
-              {brand.logo_url ? (
-                <img src={brand.logo_url} alt={brand.brand_name} className="brand-pfp" />
-              ) : (
-                <div className="brand-pfp-placeholder">
-                  <Store className="h-12 w-12 text-white" />
-                </div>
-              )}
+            <div className="wave"></div>
+            <div className="wave"></div>
+            <div className="wave"></div>
+
+            {brand.is_verified === true && (
+              <div className="verified-badge">
+                <BadgeCheck />
+                <span>{t("brand.verified", "Verified")}</span>
+              </div>
+            )}
+
+            <div className={brand.is_verified ? "verified-avatar" : ""}>
+              <div className="brand-profile-image">
+                {brand.logo_url ? (
+                  <img src={brand.logo_url} alt={brand.brand_name} className="brand-pfp" />
+                ) : (
+                  <div className="brand-pfp-placeholder">
+                    <Store className="h-12 w-12 text-gray-600" />
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Brand Name */}
             <div className="brand-name">{brand.brand_name}</div>
 
-            {/* Social Bar */}
+            {brand.tagline && (
+              <div className="brand-tagline">{brand.tagline}</div>
+            )}
+
+            {brand.description && (
+              <div className="brand-description">{brand.description}</div>
+            )}
+
             <div className="brand-socialbar">
               {socialLinks.map((link) => {
                 const Icon = link.icon;
                 return (
                   <a
                     key={link.id}
-                    href={link.url}
+                    href={link.url || '#'}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="brand-social-link"
@@ -242,21 +300,8 @@ const PublicBrandProfile = () => {
                   </a>
                 );
               })}
-              {brand.brand_website && (
-                <a
-                  href={getSocialUrl("website", brand.brand_website)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="brand-social-link"
-                  data-social="website"
-                  title="website"
-                >
-                  <Globe className="h-5 w-5" />
-                </a>
-              )}
             </div>
 
-            {/* Follow Button */}
             <button
               onClick={handleFollow}
               disabled={followLoading}
@@ -274,8 +319,126 @@ const PublicBrandProfile = () => {
                 </>
               )}
             </button>
+
+            <div className="mt-4 w-full rounded-2xl bg-black/20 border border-white/15 px-3 pt-3 pb-2 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-white/95">
+                  {t("brand.products", "Products")}
+                </span>
+                {products.length > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[18px] h-4 rounded-full bg-white/20 text-[10px] text-white/90 px-1">
+                    {products.length}
+                  </span>
+                )}
+              </div>
+              <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
+                {productsLoading ? (
+                  <div className="flex items-center justify-center py-3 text-xs text-white/80">
+                    {t("brand.loading_products", "Loading products...")}
+                  </div>
+                ) : products.length === 0 ? (
+                  <div className="rounded-full bg-white/10 px-3 py-1.5 text-[11px] text-white/90">
+                    {t("brand.no_products", "This brand has no public products yet.")}
+                  </div>
+                ) : (
+                  products.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-2 rounded-full bg-white/95 px-2.5 py-1 border border-white/80 shadow-sm hover:bg-white"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {p.image_url ? (
+                          <div className="h-9 w-9 rounded-full overflow-hidden flex-shrink-0 ring-1 ring-slate-200">
+                            <img
+                              src={p.image_url}
+                              alt={p.name || "product"}
+                              className="h-full w-full object-cover"
+                              onError={(e: any) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-purple-500 to-sky-400 flex items-center justify-center text-white text-xs flex-shrink-0">
+                            <Store className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[11px] font-semibold text-slate-900 truncate">
+                            {p.name || t("brand.untitled_product", "Untitled product")}
+                          </div>
+                          {p.description && (
+                            <div className="text-[10px] text-slate-600 truncate">
+                              {p.description}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center transition-all ${
+                          p.allow_add_as_item === false
+                            ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                            : "bg-gradient-to-br from-purple-500 to-violet-600 text-white hover:shadow-md"
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (p.allow_add_as_item !== false) {
+                            setProductForWishAdd(p);
+                          }
+                        }}
+                        disabled={p.allow_add_as_item === false}
+                        aria-label={t("explore.add_as_item", "Add as item")}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </div>
+
+        {productForWishAdd && wishlistOptions.length > 0 && (
+          <WishAddDialog
+            open={!!productForWishAdd}
+            onOpenChange={(open) => {
+              if (!open) setProductForWishAdd(null);
+            }}
+            wishlists={wishlistOptions}
+            initialTitle={productForWishAdd.name || ""}
+            initialBrand={brand?.brand_name || ""}
+            initialDescription={productForWishAdd.description || ""}
+            initialImageUrl={productForWishAdd.image_url || null}
+            onSubmit={async ({ wishlistId, title, brand: brandName, description, desire, imagePreviewUrl }) => {
+              try {
+                const effectiveTitle = title || productForWishAdd.name || "";
+                const effectiveBrand = brandName || brand?.brand_name || "";
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                  toast.error(t("common.login_required", "Please login to add items"));
+                  return;
+                }
+                const { error } = await supabase.from("wishlist_items").insert({
+                  wishlist_id: wishlistId,
+                  title: effectiveTitle,
+                  brand: effectiveBrand,
+                  description: description || "",
+                  desire: desire,
+                  image_url: imagePreviewUrl || productForWishAdd.image_url || null,
+                  item_url: productForWishAdd.product_url || null,
+                  brand_product_id: productForWishAdd.id || null,
+                });
+                if (error) throw error;
+                toast.success(t("explore.item_added", "Item added to wishlist"));
+                setProductForWishAdd(null);
+              } catch (err: any) {
+                toast.error(err.message || t("common.error", "Something went wrong"));
+              }
+            }}
+          />
+        )}
       </div>
     </div>
   );

@@ -6,7 +6,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { requestFollow } from "@/lib/follow";
-import { BrandProfileModal } from "@/components/BrandProfileModal";
 import WishAddDialog from "@/components/wishes/WishAddDialog";
 import { useWishlists } from "@/hooks/use-wishlists";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -21,8 +20,6 @@ const Explore = () => {
   const [q, setQ] = useState("");
   const debouncedQ = useMemo(() => q.trim(), [q]);
   const [requestedIds, setRequestedIds] = useState<string[]>([]);
-  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
-  const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
   const [productForAdd, setProductForAdd] = useState<any | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [productsView, setProductsView] = useState<"card" | "list">("list");
@@ -528,10 +525,7 @@ const Explore = () => {
                   <button
                     type="button"
                     className="explore-follow-btn shrink-0"
-                    onClick={() => {
-                      setSelectedBrandId(brand.id);
-                      setIsBrandModalOpen(true);
-                    }}
+                    onClick={() => navigate(`/store/${brand.id}`)}
                   >
                     <span className="explore-follow-btn-fold" aria-hidden="true" />
                     <span className="explore-follow-btn-points" aria-hidden="true">
@@ -655,8 +649,7 @@ const Explore = () => {
                                   className="explore-product-card__button-text flex items-center gap-1"
                                   onClick={() => {
                                     if (!p.brands?.id) return;
-                                    setSelectedBrandId(p.brands.id);
-                                    setIsBrandModalOpen(true);
+                                    navigate(`/store/${p.brands.id}`);
                                   }}
                                 >
                                   <Store className="h-3.5 w-3.5" />
@@ -815,8 +808,7 @@ const Explore = () => {
                               } catch (viewErr) {
                                 console.warn("Failed to record product view (view store row)", viewErr);
                               }
-                              setSelectedBrandId(p.brands.id);
-                              setIsBrandModalOpen(true);
+                              navigate(`/store/${p.brands.id}`);
                             }}
                             aria-label={t('explore.view_brand', 'View store')}
                           >
@@ -924,18 +916,6 @@ const Explore = () => {
         )}
       </div>
 
-      {/* Brand Profile Modal */}
-      {selectedBrandId && (
-        <BrandProfileModal
-          brandId={selectedBrandId}
-          isOpen={isBrandModalOpen}
-          onClose={() => {
-            setIsBrandModalOpen(false);
-            setSelectedBrandId(null);
-          }}
-        />
-      )}
-
       {/* Product detail modal for list view - reuses premium card */}
       {selectedProductForModal && (
         <Dialog
@@ -1034,8 +1014,7 @@ const Explore = () => {
                             } catch (viewErr) {
                               console.warn("Failed to record product view (view store modal)", viewErr);
                             }
-                            setSelectedBrandId(selectedProductForModal.brands.id);
-                            setIsBrandModalOpen(true);
+                            navigate(`/store/${selectedProductForModal.brands.id}`);
                           }}
                           aria-label={t('explore.view_brand', 'View store')}
                         >

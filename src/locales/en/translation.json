@@ -548,6 +548,7 @@
     "title": "Thank you post",
     "default_prefix": "Thanks",
     "ribbon": "THANKS",
+    "ribbon_premium": "PREMIUM",
     "card_title": "Thank you",
     "for_item": "For",
     "card_fallback": "Thank you!",

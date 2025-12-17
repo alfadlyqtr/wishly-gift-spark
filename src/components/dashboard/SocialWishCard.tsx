@@ -67,8 +67,53 @@ export const SocialWishCard = () => {
         .order('created_at', { ascending: false })
         .limit(20);
 
+      // Expire thank-you cards once the related wishlist/event ends
+      const thankYouItemIds = Array.from(
+        new Set((thankYouPosts || []).map((p: any) => p?.item_id).filter(Boolean)),
+      ) as string[];
+      let thankYouPostsFiltered = (thankYouPosts || []) as any[];
+      if (thankYouItemIds.length > 0) {
+        const { data: tyItems } = await supabase
+          .from('wishlist_items' as any)
+          .select('id, wishlist_id')
+          .in('id', thankYouItemIds as any);
+
+        const wishlistIdsForTy = Array.from(
+          new Set((tyItems || []).map((r: any) => r?.wishlist_id).filter(Boolean)),
+        ) as string[];
+
+        const eventDateByWishlistId = new Map<string, string | null>();
+        if (wishlistIdsForTy.length > 0) {
+          const { data: tyWishlists } = await supabase
+            .from('wishlists' as any)
+            .select('id, event_date')
+            .in('id', wishlistIdsForTy as any);
+          (tyWishlists || []).forEach((w: any) => {
+            if (w?.id) eventDateByWishlistId.set(w.id, w.event_date ?? null);
+          });
+        }
+
+        const wishlistIdByItemId = new Map<string, string>();
+        (tyItems || []).forEach((it: any) => {
+          if (it?.id && it?.wishlist_id) wishlistIdByItemId.set(it.id, it.wishlist_id);
+        });
+
+        const now = Date.now();
+        thankYouPostsFiltered = (thankYouPosts || []).filter((p: any) => {
+          const itemId = p?.item_id as string | undefined;
+          if (!itemId) return true;
+          const wid = wishlistIdByItemId.get(itemId);
+          if (!wid) return true;
+          const eventDate = eventDateByWishlistId.get(wid);
+          if (!eventDate) return true;
+          const ts = new Date(eventDate).getTime();
+          if (Number.isNaN(ts)) return true;
+          return ts >= now;
+        });
+      }
+
       const thankYouByRecipient: Record<string, any> = {};
-      (thankYouPosts || []).forEach((p: any) => {
+      (thankYouPostsFiltered || []).forEach((p: any) => {
         if (!p?.recipient_user_id) return;
         if (!thankYouByRecipient[p.recipient_user_id]) {
           thankYouByRecipient[p.recipient_user_id] = p;
@@ -122,20 +167,40 @@ export const SocialWishCard = () => {
         if (!ownerProfile) {
           const { data: prof } = await supabase
             .from("user_profiles")
-            .select("id, username, full_name, avatar_url, allow_wishlist_sharing, allow_likes, allow_comments")
+            .select("id, username, full_name, avatar_url, allow_wishlist_sharing, allow_likes, allow_comments, allow_thank_you_posts")
             .eq("id", ownerId)
             .maybeSingle();
           ownerProfile = prof || { id: ownerId, username: null, full_name: null, avatar_url: null };
         }
 
-        friends.push({
-          owner: ownerProfile,
-          ownerWishlists,
-          items: ownerItems,
-          likesByWishlist,
-          primaryWishlistId,
-          thankYouPost: thankYouByRecipient[ownerId] || null,
-        });
+        // Add wishlist items card (if any items exist)
+        if (ownerItems.length > 0 || ownerWishlists.length > 0) {
+          friends.push({
+            owner: ownerProfile,
+            ownerWishlists,
+            items: ownerItems,
+            likesByWishlist,
+            primaryWishlistId,
+            thankYouPost: null, // No thank-you on wishlist cards
+            cardType: 'wishlist',
+          });
+        }
+
+        // Add thank-you post as SEPARATE card (if exists)
+        const tyPost = thankYouByRecipient[ownerId];
+        // Default to true if allow_thank_you_posts is not explicitly false
+        const allowThankYou = (ownerProfile as any)?.allow_thank_you_posts !== false;
+        if (tyPost && allowThankYou) {
+          friends.push({
+            owner: ownerProfile,
+            ownerWishlists: [],
+            items: [],
+            likesByWishlist: {},
+            primaryWishlistId: null,
+            thankYouPost: tyPost,
+            cardType: 'thank_you',
+          });
+        }
       }
 
       if (friends.length === 0) return null as any;
@@ -200,7 +265,9 @@ export const SocialWishCard = () => {
 
   const owner = activeFriend?.owner;
   const thankYouPost = (activeFriend as any)?.thankYouPost as any | null | undefined;
-  const showThankYou = (owner as any)?.allow_thank_you_posts !== false && !!thankYouPost;
+  const cardType = (activeFriend as any)?.cardType as string | undefined;
+  // Show thank-you content if this is a thank_you card type
+  const showThankYou = cardType === 'thank_you' && !!thankYouPost;
 
   const likesByWishlist = activeFriend?.likesByWishlist as Record<string, { count: number; likedByMe: boolean }> | undefined;
   const wishlistId = activeWishlist?.id as string | undefined;
@@ -569,7 +636,11 @@ export const SocialWishCard = () => {
                         {owner?.full_name || owner?.username || 'User'}
                       </span>
                     </p>
-                    {ownerWishlists && ownerWishlists.length > 0 && (
+                    {showThankYou ? (
+                      <div className="mt-1 inline-flex items-center rounded-full bg-gradient-to-r from-rose-400 via-orange-300 to-amber-200 px-3 py-0.5 shadow-sm">
+                        <span className="text-[11px] font-semibold text-white drop-shadow">💝 {t('dashboard.thank_you_feed_title', 'Shared a thank-you')}</span>
+                      </div>
+                    ) : ownerWishlists && ownerWishlists.length > 0 && (
                       <div className="mt-1 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-[hsl(var(--brand-cool-end))]/60 bg-background/10 px-1 py-0.5 -mx-1 px-1 shadow-[0_0_0_1px_rgba(15,23,42,0.35)]">
                         {ownerWishlists.map((w: any) => {
                           const isActive = w.id === activeWishlistId;
@@ -581,7 +652,7 @@ export const SocialWishCard = () => {
                               className={`relative whitespace-nowrap rounded-full px-3 py-0.5 text-[11px] font-semibold transition-colors ${
                                 isActive
                                   ? 'bg-white text-[hsl(var(--brand-cool-end))] border border-[hsl(var(--brand-cool-end))]/80 shadow-sm'
-                                  : 'bg-transparent text-[hsl(var(--brand-cool-end))]/80 hover:text-[hsl(var(--brand-cool-end))]'
+                                  : 'bg-white/20 text-white/95 ring-1 ring-white/30 hover:bg-white/30'
                               }`}
                             >
                               {w.title === 'My Birthday Wishlist' 
@@ -598,26 +669,21 @@ export const SocialWishCard = () => {
               </CardHeader>
               <CardContent className="pb-2 px-4 sm:px-5">
                 {showThankYou ? (
-                  <div className="space-y-3">
-                    <div className="text-sm font-semibold text-foreground">
-                      {t('dashboard.thank_you_feed_title', 'Shared a thank-you')}
-                    </div>
-                    <div className="rounded-2xl bg-white/70 ring-1 ring-white/70 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.08)]">
-                      <div className="text-sm text-foreground whitespace-pre-wrap break-words">
-                        {thankYouPost?.message || t('thank_you.card_fallback', 'Thank you!')}
-                      </div>
-                      {thankYouPost?.image_url && (
-                        <img src={thankYouPost.image_url} alt={t('thank_you.photo', 'Photo')} className="mt-3 w-full max-h-56 rounded-2xl object-cover" />
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl bg-gradient-to-br from-rose-400 via-orange-300 to-amber-200 flex items-center justify-center overflow-hidden ring-1 ring-white/60 shadow-[0_8px_18px_rgba(15,23,42,0.35)]">
+                      {thankYouPost?.image_url ? (
+                        <img src={thankYouPost.image_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-xl" aria-hidden>💝</span>
                       )}
-                      <div className="mt-3 rounded-2xl bg-white/40 ring-1 ring-white/60 px-3 py-2 overflow-hidden">
-                        <div className="flex items-center gap-3 whitespace-nowrap overflow-x-auto">
-                          {['😄','😂','🥰','🙏','🎁','✨'].map((e) => (
-                            <button key={e} type="button" className="text-2xl leading-none hover:scale-110 transition" aria-label={t('thank_you.emoji', 'Emoji')}>
-                              {e}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        {t('dashboard.thank_you_feed_title', 'Shared a thank-you')}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+                        {thankYouPost?.message || t('thank_you.card_fallback', 'Thank you!')}
+                      </p>
                     </div>
                   </div>
                 ) : (items && items.length > 0 ? (

@@ -738,65 +738,90 @@ const Chat = () => {
                       }`}
                     >
                       {isThankYouCard && thankYou && (
-                        <div className="relative w-[260px] rounded-2xl overflow-hidden shadow-xl">
-                          {/* Cream background */}
-                          <div className="absolute inset-0 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50" />
-                          
-                          {/* Corner decorations - smaller */}
-                          <div className="absolute top-1 left-1 text-lg opacity-60">🌸</div>
-                          <div className="absolute top-1 right-1 text-lg opacity-60">🌷</div>
-                          <div className="absolute bottom-1 left-1 text-sm opacity-50">✨</div>
-                          <div className="absolute bottom-1 right-1 text-sm opacity-50">💫</div>
-                          
-                          {/* Content */}
-                          <div className="relative z-10 p-4">
-                            {/* Header with avatar */}
-                            <div className="flex items-center gap-3 mb-3">
-                              <Avatar className="h-12 w-12 ring-2 ring-amber-200 shadow-md">
+                        <div className="w-[220px] rounded-[20px] overflow-hidden shadow-[12px_12px_0px_rgba(0,0,0,0.1)] bg-white">
+                          {/* Landscape section - 70% height */}
+                          <div className="relative h-[180px] overflow-hidden">
+                            {/* Sky gradient */}
+                            <div className="absolute inset-0 bg-gradient-to-b from-[#e96594] to-[#f7e157]" />
+                            
+                            {/* Sun with glow - smaller dusk style */}
+                            <div className="absolute bottom-[50%] left-[20%] w-[28px] h-[28px] rounded-full bg-white/90 flex items-center justify-center drop-shadow-[0_0_8px_rgba(255,200,150,0.8)]">
+                              <div className="absolute w-[130%] h-[130%] rounded-full bg-orange-200/30" />
+                            </div>
+                            
+                            {/* Ocean/sand area */}
+                            <div className="absolute bottom-0 w-full h-[28%] bg-gradient-to-b from-[#f7da96] to-[#f1c07d]">
+                              {/* Reflections */}
+                              <div className="absolute top-[5%] left-[32%] w-10 h-2.5 bg-white/50" style={{clipPath:'polygon(0% 0%, 100% 0%, 50% 100%)'}} />
+                              <div className="absolute top-[15%] left-[39%] w-20 h-4 bg-white/50" style={{clipPath:'polygon(0% 0%, 100% 0%, 60% 100%, 40% 100%)'}} />
+                            </div>
+                            
+                            {/* Hills */}
+                            <div className="absolute right-[-25%] bottom-[20%] w-[150px] h-[40px] rounded-full bg-[#e6b29d]" />
+                            <div className="absolute right-[-36%] bottom-[10%] w-[150px] h-[80px] rounded-full bg-[#c29182]" />
+                            <div className="absolute left-[-45%] bottom-[-15%] w-[200px] h-[80px] rounded-full bg-[#b77873] z-[3]" />
+                            <div className="absolute right-[-45%] bottom-[-20%] w-[200px] h-[80px] rounded-full bg-[#a16773] z-[3]" />
+                            
+                            {/* Trees - smaller, fewer */}
+                            <svg className="absolute bottom-[18%] left-[8%] w-[30px] h-[45px] z-[3]" viewBox="0 0 50 70">
+                              <ellipse cx="25" cy="20" rx="18" ry="20" fill="#a16773" />
+                              <rect x="22" y="35" width="6" height="35" fill="#8b5a5a" />
+                            </svg>
+                            <svg className="absolute bottom-[12%] right-[8%] w-[35px] h-[50px] z-[3]" viewBox="0 0 65 80">
+                              <ellipse cx="32" cy="22" rx="22" ry="22" fill="#a16773" />
+                              <rect x="28" y="40" width="8" height="40" fill="#8b5a5a" />
+                            </svg>
+                            
+                            {/* Avatar + Name + Gift - top left */}
+                            <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
+                              <Avatar className="h-10 w-10 ring-2 ring-white/60 shadow-lg">
                                 <AvatarImage src={thankYou?.recipient?.avatar_url || ''} />
-                                <AvatarFallback className="bg-gradient-to-br from-pink-400 to-orange-400 text-white font-bold">
+                                <AvatarFallback className="bg-white/30 text-white font-semibold">
                                   {String(thankYou?.recipient?.full_name || thankYou?.recipient?.username || 'U').charAt(0)}
                                 </AvatarFallback>
                               </Avatar>
-                              <div>
-                                <div className="text-base font-bold text-amber-800">
-                                  {thankYou?.recipient?.full_name || thankYou?.recipient?.username || 'Friend'}
-                                </div>
-                                {thankYou?.recipient?.username && (
-                                  <div className="text-xs text-amber-600">@{thankYou.recipient.username}</div>
+                              <div className="text-white drop-shadow">
+                                <div className="text-sm font-bold">{thankYou?.recipient?.full_name?.split(' ')[0] || thankYou?.recipient?.username || 'Friend'}</div>
+                                {thankYou?.item?.title && (
+                                  <div className="text-[10px] opacity-90">🎁 {thankYou.item.title}</div>
                                 )}
                               </div>
                             </div>
                             
-                            {/* Thank You title */}
-                            <div className="text-center mb-2">
-                              <span className="text-xl font-serif font-bold text-amber-700">Thank You! 💝</span>
+                            {/* THANK YOU - lower so sun is visible */}
+                            <div className="absolute bottom-[25%] left-1/2 -translate-x-1/2 z-10">
+                              <div className="bg-white/20 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-lg">
+                                <div className="flex items-center justify-center gap-2 text-xl font-bold text-white drop-shadow-md whitespace-nowrap">
+                                  <span>Thank</span>
+                                  <span>You</span>
+                                  <span aria-hidden>💝</span>
+                                </div>
+                              </div>
                             </div>
                             
-                            {/* Gift item */}
-                            {thankYou?.item?.title && (
-                              <div className="text-xs text-amber-600 text-center mb-2">
-                                🎁 {thankYou.item.title}
-                              </div>
-                            )}
-                            
+                            {/* Fade filter */}
+                            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white/20 z-[5]" />
+                          </div>
+                          
+                          {/* Content section */}
+                          <div className="p-4 flex flex-col gap-2">
                             {/* Message */}
-                            <div className="bg-white/60 rounded-xl p-3 border border-amber-100">
-                              <div className="text-sm text-amber-900 leading-relaxed">
-                                {thankYou?.message || t('thank_you.card_fallback', 'Thank you!')}
-                              </div>
+                            <div className="text-sm text-gray-600 leading-relaxed">
+                              {thankYou?.message || t('thank_you.card_fallback', 'Thank you!')}
                             </div>
                             
-                            {/* Photo */}
                             {thankYou?.photo_url && (
-                              <div className="mt-2 overflow-hidden rounded-xl border-2 border-white">
-                                <img src={thankYou.photo_url} alt="" className="w-full max-h-32 object-cover" />
+                              <div className="overflow-hidden rounded-lg">
+                                <img src={thankYou.photo_url} alt="" className="w-full max-h-20 object-cover" />
                               </div>
                             )}
                             
-                            {/* Footer hearts */}
-                            <div className="text-center mt-3 text-lg">
-                              💖 💛 🧡
+                            <div className="w-full h-[2px] bg-gray-200 rounded-full" />
+                            
+                            <div className="flex justify-center gap-3 text-sm">
+                              <span>🧡</span>
+                              <span>💗</span>
+                              <span>💛</span>
                             </div>
                           </div>
                         </div>

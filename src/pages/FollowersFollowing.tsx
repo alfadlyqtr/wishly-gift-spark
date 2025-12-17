@@ -9,7 +9,6 @@ import { useTranslation } from "react-i18next";
 import { cancelFollow, removeFollower, requestFollow, FollowStatus, brandFollowUser, brandUnfollowUser } from "@/lib/follow";
 import { toast } from "sonner";
 import { Store } from "lucide-react";
-import { BrandProfileModal } from "@/components/BrandProfileModal";
 
 interface ProfilePreview {
   id: string;
@@ -41,8 +40,6 @@ const FollowersFollowing = () => {
   const [searchParams] = useSearchParams();
   const initialTab = (searchParams.get("tab") as "followers" | "following" | "brands" | null) ?? "followers";
   const [tab, setTab] = useState<"followers" | "following" | "brands">(initialTab);
-  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
-  const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
   
   // Detect if we're on a brand page
   const isBrandPage = window.location.pathname.startsWith("/brand/");
@@ -418,8 +415,7 @@ const FollowersFollowing = () => {
                                     type="button"
                                     className="connections-action-btn connections-action-btn--secondary text-xs px-3 py-1.5"
                                     onClick={() => {
-                                      setSelectedBrandId(row.fallbackId);
-                                      setIsBrandModalOpen(true);
+                                      navigate(`/store/${row.fallbackId}`);
                                     }}
                                   >
                                     <span className="connections-fold" aria-hidden="true" />
@@ -576,8 +572,7 @@ const FollowersFollowing = () => {
                                   type="button"
                                   className="connections-action-btn connections-action-btn--secondary text-xs px-3 py-1.5"
                                   onClick={() => {
-                                    setSelectedBrandId(row.fallbackId);
-                                    setIsBrandModalOpen(true);
+                                    navigate(`/store/${row.fallbackId}`);
                                   }}
                                 >
                                   <span className="connections-fold" aria-hidden="true" />
@@ -655,17 +650,6 @@ const FollowersFollowing = () => {
         </div>
       </div>
 
-      {/* Brand Profile Modal */}
-      {selectedBrandId && (
-        <BrandProfileModal
-          brandId={selectedBrandId}
-          isOpen={isBrandModalOpen}
-          onClose={() => {
-            setIsBrandModalOpen(false);
-            setSelectedBrandId(null);
-          }}
-        />
-      )}
     </div>
   );
 };
