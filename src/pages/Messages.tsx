@@ -7,6 +7,32 @@ import { MessageSquare, Search, Trash } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+ const formatThreadPreview = (raw: unknown) => {
+   const text = (raw == null ? "" : String(raw)).trim();
+   if (!text) return "";
+
+   // Avoid dumping JSON blobs into the conversation list; show a compact summary.
+   if (text.startsWith("{") && text.endsWith("}")) {
+     try {
+       const parsed = JSON.parse(text);
+       if (parsed && typeof parsed === "object") {
+         const type = (parsed as any).type;
+         if (type === "thank_you_card") {
+           const message = typeof (parsed as any).message === "string" ? (parsed as any).message.trim() : "";
+           const itemTitle = (parsed as any)?.item?.title;
+           const itemLabel = typeof itemTitle === "string" && itemTitle.trim() ? itemTitle.trim() : "";
+           const prefix = itemLabel ? `Thank you card: ${itemLabel}` : "Thank you card";
+           return message ? `${prefix} — ${message}` : prefix;
+         }
+       }
+     } catch {
+       // If it looks like JSON but isn't valid, fall back to plain text.
+     }
+   }
+
+   return text;
+ };
+
 const Messages = () => {
   const [q, setQ] = useState("");
   const { t } = useTranslation();
@@ -131,7 +157,7 @@ const Messages = () => {
           id: row.id,
           name: name || row.title || "Conversation",
           avatar_url,
-          last: last?.content || "",
+          last: formatThreadPreview(last?.content || ""),
           time: last?.created_at
             ? new Date(last.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
             : "",
