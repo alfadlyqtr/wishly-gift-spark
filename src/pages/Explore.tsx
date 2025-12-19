@@ -27,6 +27,8 @@ const Explore = () => {
   const [cardGroupIndex, setCardGroupIndex] = useState<Record<string, number>>({});
   const [likedProductIds, setLikedProductIds] = useState<Set<string>>(new Set());
   const [messagingBrand, setMessagingBrand] = useState(false);
+  const [productWishlistIds, setProductWishlistIds] = useState<Record<string, string[]>>({});
+  const [wishlistTitlesById, setWishlistTitlesById] = useState<Record<string, string>>({});
 
   const queryClient = useQueryClient();
 
@@ -259,6 +261,79 @@ const Explore = () => {
     loadLikedProducts();
   }, [productIdList]);
 
+  useEffect(() => {
+    const refreshAddedFlags = async () => {
+      try {
+        if (mode !== "products") {
+          setProductWishlistIds({});
+          setWishlistTitlesById({});
+          return;
+        }
+
+        const ids = productIdList.split(",").filter(Boolean);
+        if (!ids.length) {
+          setProductWishlistIds({});
+          setWishlistTitlesById({});
+          return;
+        }
+
+        const { data: auth } = await supabase.auth.getUser();
+        const uid = auth.user?.id;
+        if (!uid) {
+          setProductWishlistIds({});
+          setWishlistTitlesById({});
+          return;
+        }
+
+        const { data: userWishlists, error: wlError } = await (supabase as any)
+          .from("wishlists")
+          .select("id,title")
+          .eq("user_id", uid);
+
+        if (wlError) throw wlError;
+
+        const wishlistIds = (userWishlists || []).map((w: any) => w.id);
+        const titlesById: Record<string, string> = {};
+        for (const w of (userWishlists || []) as any[]) {
+          if (w?.id) titlesById[String(w.id)] = String(w.title || "");
+        }
+        setWishlistTitlesById(titlesById);
+
+        if (!wishlistIds.length) {
+          setProductWishlistIds({});
+          return;
+        }
+
+        const { data: items, error } = await (supabase as any)
+          .from("wishlist_items")
+          .select("wishlist_id, brand_product_id")
+          .in("wishlist_id", wishlistIds)
+          .in("brand_product_id", ids);
+
+        if (error) throw error;
+
+        const map: Record<string, Set<string>> = {};
+        for (const row of (items || []) as any[]) {
+          if (!row?.brand_product_id || !row?.wishlist_id) continue;
+          const pid = String(row.brand_product_id);
+          const wid = String(row.wishlist_id);
+          if (!map[pid]) map[pid] = new Set();
+          map[pid].add(wid);
+        }
+
+        const normalized: Record<string, string[]> = {};
+        for (const [pid, set] of Object.entries(map)) {
+          normalized[pid] = Array.from(set);
+        }
+        setProductWishlistIds(normalized);
+      } catch (e) {
+        console.warn("Explore: failed to refresh added flags", e);
+      }
+    };
+
+    refreshAddedFlags();
+  }, [mode, productIdList]);
+
   const productGroups = useMemo(() => {
     const groups: Record<string, { key: string; brand: any; items: any[] }> = {};
     for (const p of products) {
@@ -456,7 +531,7 @@ const Explore = () => {
             className={`relative z-10 flex-1 rounded-full px-3 py-2 text-[11px] font-semibold transition-colors duration-200 flex items-center justify-center gap-1 ${
               mode === 'brands' ? 'text-foreground' : 'text-muted-foreground'
             }`}
-            aria-pressed={mode === 'brands' ? 'true' : 'false'}
+            aria-pressed={mode === 'brands'}
           >
             <Store className="h-4 w-4" />
             <span>{t('explore.segment_brands', 'Brands/Stores')}</span>
@@ -467,7 +542,7 @@ const Explore = () => {
             className={`relative z-10 flex-1 rounded-full px-3 py-2 text-[11px] font-semibold transition-colors duration-200 flex items-center justify-center gap-1 ${
               mode === 'products' ? 'text-foreground' : 'text-muted-foreground'
             }`}
-            aria-pressed={mode === 'products' ? 'true' : 'false'}
+            aria-pressed={mode === 'products'}
           >
             <Store className="h-4 w-4" />
             <span>{t('explore.segment_products', 'Products')}</span>
@@ -478,7 +553,7 @@ const Explore = () => {
             className={`relative z-10 flex-1 rounded-full px-3 py-2 text-[11px] font-semibold transition-colors duration-200 flex items-center justify-center gap-1 ${
               mode === 'users' ? 'text-foreground' : 'text-muted-foreground'
             }`}
-            aria-pressed={mode === 'users' ? 'true' : 'false'}
+            aria-pressed={mode === 'users'}
           >
             <Users className="h-4 w-4" />
             <span>{t('explore.segment_users', 'Users')}</span>
@@ -663,7 +738,7 @@ const Explore = () => {
                                     isLiked ? 'is-liked' : ''
                                   }`}
                                   onClick={() => handleToggleLike(p)}
-                                  aria-pressed={isLiked ? 'true' : 'false'}
+                                  aria-pressed={isLiked}
                                   aria-label={
                                     isLiked
                                       ? t('explore.unlike_product', 'Unlike product')
@@ -678,21 +753,45 @@ const Explore = () => {
                               {(() => {
                                 const canAdd = getEffectiveCanAddForExploreProduct(p);
                                 return (
-                              <button
-                                type="button"
-                                className={`explore-product-card__button-icon ${
-                                  !canAdd ? 'disabled' : ''
-                                }`}
-                                onClick={() => handleAddAsItemClick(p)}
-                                disabled={!canAdd}
-                                aria-label={t('explore.add_as_item', 'Add as item')}
-                              >
-                                <Plus className="h-4 w-4" />
-                              </button>
+                                  <button
+                                    type="button"
+                                    className={`explore-product-card__button-icon ${
+                                      !canAdd ? 'disabled' : ''
+                                    }`}
+                                    onClick={() => handleAddAsItemClick(p)}
+                                    disabled={!canAdd}
+                                    aria-label={t('explore.add_as_item', 'Add as item')}
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </button>
                                 );
                               })()}
                             </div>
                           </div>
+                          {/* Added-to badge on its own row for cleaner layout */}
+                          {(() => {
+                            const wishlistIds = productWishlistIds[String(p.id)] || [];
+                            if (wishlistIds.length === 0) return null;
+                            if (wishlistIds.length === 1) {
+                              const name = wishlistTitlesById[wishlistIds[0]] || "";
+                              return (
+                                <div className="px-3 pb-2 flex justify-end">
+                                  <span className="inline-flex items-center rounded-full bg-emerald-50/80 text-emerald-900 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
+                                    {t("explore.added_to_name", {
+                                      name: name || t("wish_item.wishlist_label", "Wishlist"),
+                                    })}
+                                  </span>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="px-3 pb-2 flex justify-end">
+                                <span className="inline-flex items-center rounded-full bg-emerald-50/80 text-emerald-900 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
+                                  {t("explore.added_to_count", { count: wishlistIds.length })}
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                       </div>
@@ -762,73 +861,87 @@ const Explore = () => {
                           )}
                         </div>
                       </div>
-                      <div className="explore-product-row__actions" onClick={(e) => e.stopPropagation()}>
-                        {p.brands?.allow_likes !== false && (() => {
-                          const isLiked = likedProductIds.has(p.id);
-                          return (
-                            <button
-                              type="button"
-                              className={`explore-product-row__icon-btn ${
-                                isLiked ? 'is-liked' : ''
-                              }`}
-                              onClick={() => handleToggleLike(p)}
-                              aria-pressed={isLiked ? 'true' : 'false'}
-                              aria-label={
-                                isLiked
-                                  ? t('explore.unlike_product', 'Unlike product')
-                                  : t('explore.like_product', 'Like product')
-                              }
-                            >
-                              <Heart
-                                className={`h-3.5 w-3.5 ${
-                                  isLiked ? 'fill-current' : ''
+                      <div className="explore-product-row__actions flex-col items-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          {p.brands?.allow_likes !== false && (() => {
+                            const isLiked = likedProductIds.has(p.id);
+                            return (
+                              <button
+                                type="button"
+                                className={`explore-product-row__icon-btn ${
+                                  isLiked ? 'is-liked' : ''
                                 }`}
-                              />
-                            </button>
-                          );
-                        })()}
-                        {p.brands?.show_store_link !== false && (
-                          <button
-                            type="button"
-                            className="explore-product-row__icon-btn"
-                            onClick={async () => {
-                              if (!p.brands?.id) return;
-                              try {
-                                const { data: auth } = await supabase.auth.getUser();
-                                const me = auth.user?.id;
-                                if (me) {
-                                  await (supabase as any)
-                                    .from("brand_product_views")
-                                    .insert({
-                                      product_id: p.id,
-                                      viewer_id: me,
-                                      source: "explore_view_store_row",
-                                    });
+                                onClick={() => handleToggleLike(p)}
+                                aria-pressed={isLiked}
+                                aria-label={
+                                  isLiked
+                                    ? t('explore.unlike_product', 'Unlike product')
+                                    : t('explore.like_product', 'Like product')
                                 }
-                              } catch (viewErr) {
-                                console.warn("Failed to record product view (view store row)", viewErr);
-                              }
-                              navigate(`/store/${p.brands.id}`);
-                            }}
-                            aria-label={t('explore.view_brand', 'View store')}
-                          >
-                            <Store className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                        {(() => {
-                          const canAdd = getEffectiveCanAddForExploreProduct(p);
-                          return (
+                              >
+                                <Heart
+                                  className={`h-3.5 w-3.5 ${
+                                    isLiked ? 'fill-current' : ''
+                                  }`}
+                                />
+                              </button>
+                            );
+                          })()}
+                          {p.brands?.show_store_link !== false && (
                             <button
                               type="button"
-                              className={`explore-product-row__icon-btn ${
-                                !canAdd ? 'is-disabled' : ''
-                              }`}
-                              onClick={() => (canAdd ? handleAddAsItemClick(p) : undefined)}
-                              disabled={!canAdd}
-                              aria-label={t('explore.add_as_item', 'Add as item')}
+                              className="explore-product-row__icon-btn"
+                              onClick={async () => {
+                                if (!p.brands?.id) return;
+                                try {
+                                  const { data: auth } = await supabase.auth.getUser();
+                                  const me = auth.user?.id;
+                                  if (me) {
+                                    await (supabase as any)
+                                      .from("brand_product_views")
+                                      .insert({
+                                        product_id: p.id,
+                                        viewer_id: me,
+                                        source: "explore_view_store_row",
+                                      });
+                                  }
+                                } catch (viewErr) {
+                                  console.warn("Failed to record product view (view store row)", viewErr);
+                                }
+                                navigate(`/store/${p.brands.id}`);
+                              }}
+                              aria-label={t('explore.view_brand', 'View store')}
                             >
-                              <Plus className="h-3.5 w-3.5" />
+                              <Store className="h-3.5 w-3.5" />
                             </button>
+                          )}
+                          {(() => {
+                            const canAdd = getEffectiveCanAddForExploreProduct(p);
+                            return (
+                              <button
+                                type="button"
+                                className={`explore-product-row__icon-btn ${
+                                  !canAdd ? 'is-disabled' : ''
+                                }`}
+                                onClick={() => (canAdd ? handleAddAsItemClick(p) : undefined)}
+                                disabled={!canAdd}
+                                aria-label={t('explore.add_as_item', 'Add as item')}
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </button>
+                            );
+                          })()}
+                        </div>
+                        {/* Added-to badge - below icons, inside same card */}
+                        {(() => {
+                          const wishlistIds = productWishlistIds[String(p.id)] || [];
+                          if (wishlistIds.length === 0) return null;
+                          return (
+                            <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-800 text-[8px] px-1.5 py-0.5 font-medium ring-1 ring-emerald-200/60 whitespace-nowrap">
+                              {wishlistIds.length === 1
+                                ? t("explore.added_to_name", { name: wishlistTitlesById[wishlistIds[0]] || t("wish_item.wishlist_label", "Wishlist") })
+                                : t("explore.added_to_count", { count: wishlistIds.length })}
+                            </span>
                           );
                         })()}
                       </div>
@@ -1044,7 +1157,7 @@ const Explore = () => {
                               isLiked ? 'is-liked' : ''
                             }`}
                             onClick={() => handleToggleLike(selectedProductForModal)}
-                            aria-pressed={isLiked ? 'true' : 'false'}
+                            aria-pressed={isLiked}
                             aria-label={
                               isLiked
                                 ? t('explore.unlike_product', 'Unlike product')
@@ -1097,6 +1210,7 @@ const Explore = () => {
             }
           }}
           wishlists={wishlistOptions}
+          disabledWishlistIds={productWishlistIds[String(productForAdd?.id)] || []}
           initialTitle={productForAdd.name || ""}
           initialBrand={productForAdd.brands?.brand_name || ""}
           initialDescription={productForAdd.description || ""}
@@ -1188,6 +1302,15 @@ const Explore = () => {
                 .insert(itemData);
 
               if (error) {
+                if ((error as any).code === "23505") {
+                  const wlName = wishlistOptions.find((w) => String(w.id) === String(wishlistId))?.name;
+                  toast.info(
+                    wlName
+                      ? `${t("explore.already_in", "Already in")} ${wlName}`
+                      : t("explore.already_in_wishlist", "Already in this wishlist"),
+                  );
+                  return;
+                }
                 console.error("❌ Error saving wishlist item:", error);
                 throw error;
               }
@@ -1195,6 +1318,15 @@ const Explore = () => {
               toast.success(
                 t("explore.added_product_to_wishlist", "Added to your wishlist"),
               );
+              setProductWishlistIds((prev) => {
+                const pid = String(productForAdd?.id || "");
+                if (!pid) return prev;
+                const next = { ...prev };
+                const existing = new Set(next[pid] || []);
+                existing.add(String(wishlistId));
+                next[pid] = Array.from(existing);
+                return next;
+              });
             } catch (e: any) {
               toast.error(
                 e?.message ||

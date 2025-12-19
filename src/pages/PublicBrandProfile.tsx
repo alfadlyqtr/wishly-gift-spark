@@ -105,7 +105,8 @@ const PublicBrandProfile = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productForWishAdd, setProductForWishAdd] = useState<any | null>(null);
-  const [addedBrandProductIds, setAddedBrandProductIds] = useState<Set<string>>(() => new Set());
+  const [productWishlistIds, setProductWishlistIds] = useState<Record<string, string[]>>({});
+  const [wishlistTitlesById, setWishlistTitlesById] = useState<Record<string, string>>({});
 
   const wishlistsQuery = useWishlists();
   const wishlistOptions = useMemo(
@@ -137,51 +138,67 @@ const PublicBrandProfile = () => {
     try {
       const list = nextProducts ?? products;
       if (!list || list.length === 0) {
-        setAddedBrandProductIds(new Set());
+        setProductWishlistIds({});
+        setWishlistTitlesById({});
         return;
       }
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id;
       if (!uid) {
-        setAddedBrandProductIds(new Set());
+        setProductWishlistIds({});
+        setWishlistTitlesById({});
         return;
       }
 
       // Step 1: Get user's wishlist IDs
       const { data: userWishlists, error: wlError } = await (supabase as any)
         .from("wishlists")
-        .select("id")
+        .select("id,title")
         .eq("user_id", uid);
 
       if (wlError) throw wlError;
 
       const wishlistIds = (userWishlists || []).map((w: any) => w.id);
       if (wishlistIds.length === 0) {
-        setAddedBrandProductIds(new Set());
+        setProductWishlistIds({});
+        setWishlistTitlesById({});
         return;
       }
+
+      const titlesById: Record<string, string> = {};
+      for (const w of (userWishlists || []) as any[]) {
+        if (w?.id) titlesById[String(w.id)] = String(w.title || "");
+      }
+      setWishlistTitlesById(titlesById);
 
       // Step 2: Get ALL wishlist_items in user's wishlists
       const { data: allItems, error } = await (supabase as any)
         .from("wishlist_items")
-        .select("brand_product_id, title")
+        .select("wishlist_id, brand_product_id, title")
         .in("wishlist_id", wishlistIds);
 
       if (error) throw error;
 
-      // Build set of added product IDs - match by brand_product_id OR by title
-      const set = new Set<string>();
+      const map: Record<string, Set<string>> = {};
       const productTitles = new Map<string, string>(); // title -> product id
       for (const p of list) {
         if (p?.name) productTitles.set(p.name.toLowerCase().trim(), p.id);
       }
 
+      const push = (productId: string, wishlistId: string) => {
+        const pid = String(productId);
+        const wid = String(wishlistId);
+        if (!map[pid]) map[pid] = new Set();
+        map[pid].add(wid);
+      };
+
       for (const row of (allItems || []) as any[]) {
+        if (!row?.wishlist_id) continue;
         // Match by brand_product_id if set
         if (row?.brand_product_id) {
           const matchedProduct = list.find((p: any) => p.id === row.brand_product_id);
           if (matchedProduct) {
-            set.add(String(row.brand_product_id));
+            push(String(row.brand_product_id), String(row.wishlist_id));
           }
         }
         // Also match by title (for items added before brand_product_id linking)
@@ -189,11 +206,16 @@ const PublicBrandProfile = () => {
           const titleKey = row.title.toLowerCase().trim();
           const matchedProductId = productTitles.get(titleKey);
           if (matchedProductId) {
-            set.add(String(matchedProductId));
+            push(String(matchedProductId), String(row.wishlist_id));
           }
         }
       }
-      setAddedBrandProductIds(set);
+
+      const normalized: Record<string, string[]> = {};
+      for (const [pid, set] of Object.entries(map)) {
+        normalized[pid] = Array.from(set);
+      }
+      setProductWishlistIds(normalized);
     } catch (e) {
       console.warn("PublicBrandProfile: failed to refresh added flags", e);
     }
@@ -487,32 +509,39 @@ const PublicBrandProfile = () => {
                       </div>
                       <button
                         type="button"
-                        className={`flex-shrink-0 h-6 ${addedBrandProductIds.has(String(p.id)) ? "w-auto px-2" : "w-6"} rounded-full flex items-center justify-center transition-all ${
+                        className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center transition-all ${
                           p.allow_add_as_item === false
                             ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                            : addedBrandProductIds.has(String(p.id))
-                            ? "bg-emerald-100 text-emerald-800 cursor-not-allowed"
                             : "bg-gradient-to-br from-purple-500 to-violet-600 text-white hover:shadow-md"
                         }`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (p.allow_add_as_item !== false && !addedBrandProductIds.has(String(p.id))) {
+                          if (p.allow_add_as_item !== false) {
                             setProductForWishAdd(p);
                           }
                         }}
-                        disabled={p.allow_add_as_item === false || addedBrandProductIds.has(String(p.id))}
-                        aria-label={
-                          addedBrandProductIds.has(String(p.id))
-                            ? t("explore.item_added", "Item added to wishlist")
-                            : t("explore.add_as_item", "Add as item")
-                        }
+                        disabled={p.allow_add_as_item === false}
+                        aria-label={t("explore.add_as_item", "Add as item")}
                       >
-                        {addedBrandProductIds.has(String(p.id)) ? (
-                          <span className="text-[10px] font-semibold">{t("explore.added", "Added")}</span>
-                        ) : (
-                          <Plus className="h-3.5 w-3.5" />
-                        )}
+                        <Plus className="h-3.5 w-3.5" />
                       </button>
+                      {(() => {
+                        const wishlistIds = productWishlistIds[String(p.id)] || [];
+                        if (wishlistIds.length === 0) return null;
+                        if (wishlistIds.length === 1) {
+                          const name = wishlistTitlesById[wishlistIds[0]] || "";
+                          return (
+                            <span className="ml-2 inline-flex items-center rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
+                              {t("explore.added_to_name", { name: name || t("wish_item.wishlist_label", "Wishlist") })}
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="ml-2 inline-flex items-center rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
+                            {t("explore.added_to_count", { count: wishlistIds.length })}
+                          </span>
+                        );
+                      })()}
                     </div>
                   ))
                 )}
@@ -528,6 +557,7 @@ const PublicBrandProfile = () => {
               if (!open) setProductForWishAdd(null);
             }}
             wishlists={wishlistOptions}
+            disabledWishlistIds={productWishlistIds[String(productForWishAdd?.id)] || []}
             initialTitle={productForWishAdd.name || ""}
             initialBrand={brand?.brand_name || ""}
             initialDescription={productForWishAdd.description || ""}
@@ -551,15 +581,21 @@ const PublicBrandProfile = () => {
                   item_url: productForWishAdd.product_url || null,
                   brand_product_id: productForWishAdd.id || null,
                 });
-                if (error) throw error;
-                toast.success(t("explore.item_added", "Item added to wishlist"));
-                if (productForWishAdd?.id) {
-                  setAddedBrandProductIds((prev) => {
-                    const next = new Set(prev);
-                    next.add(String(productForWishAdd.id));
-                    return next;
-                  });
+                if (error) {
+                  if ((error as any).code === "23505") {
+                    const wlName = wishlistOptions.find((w) => String(w.id) === String(wishlistId))?.name;
+                    toast.info(
+                      wlName
+                        ? `${t("explore.already_in", "Already in")} ${wlName}`
+                        : t("explore.already_in_wishlist", "Already in this wishlist"),
+                    );
+                    setProductForWishAdd(null);
+                    return;
+                  }
+                  throw error;
                 }
+                toast.success(t("explore.item_added", "Item added to wishlist"));
+                refreshAddedFlags();
                 setProductForWishAdd(null);
               } catch (err: any) {
                 toast.error(err.message || t("common.error", "Something went wrong"));

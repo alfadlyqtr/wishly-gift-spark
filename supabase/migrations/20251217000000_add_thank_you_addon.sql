@@ -12,23 +12,18 @@ CREATE TABLE IF NOT EXISTS public.gift_receipts (
 
   UNIQUE(item_id)
 );
-
 ALTER TABLE public.gift_receipts ENABLE ROW LEVEL SECURITY;
-
 -- Recipient can manage their receipts
 CREATE POLICY "Recipients can manage their gift receipts"
   ON public.gift_receipts
   FOR ALL
   USING (auth.uid() = recipient_user_id)
   WITH CHECK (auth.uid() = recipient_user_id);
-
 -- Gifter can view receipts related to them
 CREATE POLICY "Gifters can view gift receipts"
   ON public.gift_receipts
   FOR SELECT
   USING (auth.uid() = gifter_user_id);
-
-
 -- 2) Thank you post
 CREATE TABLE IF NOT EXISTS public.thank_you_posts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -50,16 +45,13 @@ CREATE TABLE IF NOT EXISTS public.thank_you_posts (
 
   UNIQUE(item_id)
 );
-
 ALTER TABLE public.thank_you_posts ENABLE ROW LEVEL SECURITY;
-
 -- Recipient can manage their thank you posts
 CREATE POLICY "Recipients can manage their thank you posts"
   ON public.thank_you_posts
   FOR ALL
   USING (auth.uid() = recipient_user_id)
   WITH CHECK (auth.uid() = recipient_user_id);
-
 -- Gifter can view posts that are shared with them
 CREATE POLICY "Gifters can view shared thank you posts"
   ON public.thank_you_posts
@@ -69,7 +61,6 @@ CREATE POLICY "Gifters can view shared thank you posts"
     AND visibility IN ('public', 'only_gifter')
     AND status = 'published'
   );
-
 -- Public can view published posts when the wishlist is public
 CREATE POLICY "Public can view published thank you posts on public wishlists"
   ON public.thank_you_posts
@@ -84,7 +75,6 @@ CREATE POLICY "Public can view published thank you posts on public wishlists"
       WHERE wi.id = item_id
     ) = 'public'
   );
-
 -- keep updated_at fresh
 CREATE OR REPLACE FUNCTION public.set_thank_you_posts_updated_at()
 RETURNS TRIGGER AS $$
@@ -93,7 +83,6 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
 DROP TRIGGER IF EXISTS thank_you_posts_set_updated_at ON public.thank_you_posts;
 CREATE TRIGGER thank_you_posts_set_updated_at
   BEFORE UPDATE ON public.thank_you_posts

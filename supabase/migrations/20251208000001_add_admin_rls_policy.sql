@@ -7,7 +7,6 @@ USING (
 WITH CHECK (
   auth.jwt() ->> 'email' = 'admin@tmw.qa'
 );
-
 -- Allow admin to read all user profiles
 CREATE POLICY "Admins can read all user profiles" ON public.user_profiles
 FOR SELECT

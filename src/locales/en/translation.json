@@ -238,7 +238,10 @@
     "follow_already_requested": "You already requested to follow this user.",
     "already_following": "You are already following this user.",
     "follow_request_sent": "Follow request sent. You'll be notified when they approve.",
-    "follow_started": "You are now following this user."
+    "follow_started": "You are now following this user.",
+    "added_to_name": "Added to: {{name}}",
+    "added_to_count_one": "Added to {{count}} wishlist",
+    "added_to_count_other": "Added to {{count}} wishlists"
   }
   ,
   "dashboard": {

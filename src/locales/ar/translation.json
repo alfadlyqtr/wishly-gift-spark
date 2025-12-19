@@ -341,7 +341,14 @@
     "follow_already_requested": "لقد طلبت متابعته بالفعل.",
     "already_following": "أنت تتابِع هذا المستخدم بالفعل.",
     "follow_request_sent": "تم إرسال طلب المتابعة. سيتم إعلامك عند الموافقة.",
-    "follow_started": "أصبحت تتابِع هذا المستخدم."
+    "follow_started": "أصبحت تتابِع هذا المستخدم.",
+    "added_to_name": "مُضاف إلى: {{name}}",
+    "added_to_count_zero": "مُضاف إلى {{count}} قائمة أمنيات",
+    "added_to_count_one": "مُضاف إلى {{count}} قائمة أمنيات",
+    "added_to_count_two": "مُضاف إلى قائمتين",
+    "added_to_count_few": "مُضاف إلى {{count}} قوائم أمنيات",
+    "added_to_count_many": "مُضاف إلى {{count}} قائمة أمنيات",
+    "added_to_count_other": "مُضاف إلى {{count}} قائمة أمنيات"
   }
   ,
   "dashboard": {

@@ -30,6 +30,8 @@ export const AIRecommendationCard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<BrandProduct | null>(null);
   const [productForWishAdd, setProductForWishAdd] = useState<BrandProduct | null>(null);
+  const [productWishlistIds, setProductWishlistIds] = useState<Record<string, string[]>>({});
+  const [wishlistTitlesById, setWishlistTitlesById] = useState<Record<string, string>>({});
   const stripRef = useRef<HTMLDivElement | null>(null);
   const wishlistsQuery = useWishlists();
   const wishlistOptions = (wishlistsQuery.data || []).map((w) => ({ id: w.id, name: w.title }));
@@ -56,6 +58,78 @@ export const AIRecommendationCard = () => {
 
     fetchProducts();
   }, []);
+
+  useEffect(() => {
+    const refreshAddedFlags = async () => {
+      try {
+        if (!products.length) {
+          setProductWishlistIds({});
+          setWishlistTitlesById({});
+          return;
+        }
+
+        const { data: auth } = await supabase.auth.getUser();
+        const uid = auth.user?.id;
+        if (!uid) {
+          setProductWishlistIds({});
+          setWishlistTitlesById({});
+          return;
+        }
+
+        const { data: userWishlists, error: wlError } = await (supabase as any)
+          .from("wishlists")
+          .select("id,title")
+          .eq("user_id", uid);
+
+        if (wlError) throw wlError;
+
+        const wishlistIds = (userWishlists || []).map((w: any) => w.id);
+        const titlesById: Record<string, string> = {};
+        for (const w of (userWishlists || []) as any[]) {
+          if (w?.id) titlesById[String(w.id)] = String(w.title || "");
+        }
+        setWishlistTitlesById(titlesById);
+
+        if (!wishlistIds.length) {
+          setProductWishlistIds({});
+          return;
+        }
+
+        const productIds = products.map((p) => p.id).filter(Boolean);
+        if (!productIds.length) {
+          setProductWishlistIds({});
+          return;
+        }
+
+        const { data: items, error } = await (supabase as any)
+          .from("wishlist_items")
+          .select("wishlist_id, brand_product_id")
+          .in("wishlist_id", wishlistIds)
+          .in("brand_product_id", productIds);
+
+        if (error) throw error;
+
+        const map: Record<string, Set<string>> = {};
+        for (const row of (items || []) as any[]) {
+          if (!row?.brand_product_id || !row?.wishlist_id) continue;
+          const pid = String(row.brand_product_id);
+          const wid = String(row.wishlist_id);
+          if (!map[pid]) map[pid] = new Set();
+          map[pid].add(wid);
+        }
+
+        const normalized: Record<string, string[]> = {};
+        for (const [pid, set] of Object.entries(map)) {
+          normalized[pid] = Array.from(set);
+        }
+        setProductWishlistIds(normalized);
+      } catch (e) {
+        console.warn("AIRecommendationCard: failed to refresh added flags", e);
+      }
+    };
+
+    refreshAddedFlags();
+  }, [products]);
 
   return (
     <>
@@ -138,6 +212,23 @@ export const AIRecommendationCard = () => {
                         {product.brands?.brand_name && (
                           <p className="text-xs text-muted-foreground truncate">{product.brands.brand_name}</p>
                         )}
+                        {(() => {
+                          const wishlistIds = productWishlistIds[String(product.id)] || [];
+                          if (wishlistIds.length === 0) return null;
+                          if (wishlistIds.length === 1) {
+                            const name = wishlistTitlesById[wishlistIds[0]] || "";
+                            return (
+                              <p className="mt-1 inline-flex items-center rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
+                                {t("explore.added_to_name", { name: name || t("wish_item.wishlist_label", "Wishlist") })}
+                              </p>
+                            );
+                          }
+                          return (
+                            <p className="mt-1 inline-flex items-center rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
+                              {t("explore.added_to_count", { count: wishlistIds.length })}
+                            </p>
+                          );
+                        })()}
                       </div>
                     </div>
                   ))
@@ -194,6 +285,27 @@ export const AIRecommendationCard = () => {
                     <p className="explore-product-card__description line-clamp-2">
                       {selectedProduct.description || t("explore.no_description", "No description provided")}
                     </p>
+                    {(() => {
+                      const wishlistIds = productWishlistIds[String(selectedProduct.id)] || [];
+                      if (wishlistIds.length === 0) return null;
+                      if (wishlistIds.length === 1) {
+                        const name = wishlistTitlesById[wishlistIds[0]] || "";
+                        return (
+                          <div className="mt-2">
+                            <span className="inline-flex items-center rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
+                              {t("explore.added_to_name", { name: name || t("wish_item.wishlist_label", "Wishlist") })}
+                            </span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="mt-2">
+                          <span className="inline-flex items-center rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
+                            {t("explore.added_to_count", { count: wishlistIds.length })}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="explore-product-card__footer">
@@ -244,6 +356,7 @@ export const AIRecommendationCard = () => {
             if (!open) setProductForWishAdd(null);
           }}
           wishlists={wishlistOptions}
+          disabledWishlistIds={productWishlistIds[String(productForWishAdd?.id)] || []}
           initialTitle={productForWishAdd.name || ""}
           initialBrand={productForWishAdd.brands?.brand_name || ""}
           initialDescription={productForWishAdd.description || ""}
@@ -263,9 +376,30 @@ export const AIRecommendationCard = () => {
                 item_url: productForWishAdd.product_url || null,
                 brand_product_id: productForWishAdd.id || null, // Link to brand product for analytics
               });
-              if (error) throw error;
+              if (error) {
+                if ((error as any).code === "23505") {
+                  const wlName = wishlistOptions.find((w) => String(w.id) === String(wishlistId))?.name;
+                  toast.info(
+                    wlName
+                      ? `${t("explore.already_in", "Already in")} ${wlName}`
+                      : t("explore.already_in_wishlist", "Already in this wishlist"),
+                  );
+                  setProductForWishAdd(null);
+                  return;
+                }
+                throw error;
+              }
 
               toast.success(t("explore.item_added", "Item added to wishlist"));
+              setProductWishlistIds((prev) => {
+                const pid = String(productForWishAdd?.id || "");
+                if (!pid) return prev;
+                const next = { ...prev };
+                const existing = new Set(next[pid] || []);
+                existing.add(String(wishlistId));
+                next[pid] = Array.from(existing);
+                return next;
+              });
               setProductForWishAdd(null);
             } catch (err: any) {
               toast.error(err.message || t("common.error", "Something went wrong"));

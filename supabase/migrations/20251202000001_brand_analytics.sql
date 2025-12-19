@@ -12,17 +12,14 @@ CREATE TABLE IF NOT EXISTS public.brand_product_views (
   -- Indexes for performance
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_brand_product_views_product_id ON public.brand_product_views(product_id);
 CREATE INDEX IF NOT EXISTS idx_brand_product_views_viewed_at ON public.brand_product_views(viewed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_brand_product_views_viewer_id ON public.brand_product_views(viewer_id);
-
 -- 2. Wishlist Adds Tracking (link to existing wishlist_items)
 -- We'll use the existing wishlist_items table but add a view to track brand products
 
 -- 3. Enable RLS
 ALTER TABLE public.brand_product_views ENABLE ROW LEVEL SECURITY;
-
 -- Brand owners can see their own product views
 CREATE POLICY "Brand owners can view their product analytics"
   ON public.brand_product_views
@@ -35,13 +32,11 @@ CREATE POLICY "Brand owners can view their product analytics"
       WHERE b.user_id = auth.uid()
     )
   );
-
 -- Anyone can insert views (for tracking)
 CREATE POLICY "Anyone can track product views"
   ON public.brand_product_views
   FOR INSERT
   WITH CHECK (true);
-
 -- Add comments
 COMMENT ON TABLE public.brand_product_views IS 'Tracks when users view brand products in Explore or elsewhere';
 COMMENT ON COLUMN public.brand_product_views.source IS 'Where the view came from: explore, wishlist, direct, etc.';

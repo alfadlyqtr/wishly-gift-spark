@@ -8,17 +8,13 @@
 CREATE INDEX IF NOT EXISTS idx_wishlist_items_brand_product_id 
   ON public.wishlist_items(brand_product_id) 
   WHERE brand_product_id IS NOT NULL;
-
 CREATE INDEX IF NOT EXISTS idx_brand_products_brand_id 
   ON public.brand_products(brand_id);
-
 CREATE INDEX IF NOT EXISTS idx_brand_product_views_product_created 
   ON public.brand_product_views(product_id, created_at DESC);
-
 CREATE INDEX IF NOT EXISTS idx_brand_product_likes_product_id 
   ON public.brand_product_likes(product_id) 
   WHERE product_id IS NOT NULL;
-
 -- 2. Create or replace the optimized analytics function
 CREATE OR REPLACE FUNCTION public.brand_dashboard_analytics(brand_uuid UUID)
 RETURNS TABLE (
@@ -88,16 +84,13 @@ BEGIN
   LEFT JOIN product_likes pl ON pl.product_id = bp.id;
 END;
 $$;
-
 -- 3. Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION public.brand_dashboard_analytics(UUID) TO authenticated;
-
 -- 4. Add comment for documentation
 COMMENT ON FUNCTION public.brand_dashboard_analytics IS 
   'Optimized aggregation function for brand dashboard analytics. 
    Uses CTEs and proper indexing to avoid N+1 queries.
    Returns per-product metrics: wishlist adds, views, and likes with user IDs.';
-
 -- 5. Create a simpler summary function for notifications page (lighter query)
 CREATE OR REPLACE FUNCTION public.brand_analytics_summary(brand_uuid UUID)
 RETURNS TABLE (
@@ -133,10 +126,8 @@ BEGIN
   FROM stats;
 END;
 $$;
-
 -- 6. Grant execute permission
 GRANT EXECUTE ON FUNCTION public.brand_analytics_summary(UUID) TO authenticated;
-
 COMMENT ON FUNCTION public.brand_analytics_summary IS 
   'Lightweight summary function for brand notifications page.
    Returns only aggregate totals without per-product breakdown.';

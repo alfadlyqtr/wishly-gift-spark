@@ -6,19 +6,15 @@ create table if not exists public.wishlist_likes (
   created_at timestamptz not null default now(),
   unique (wishlist_id, user_id)
 );
-
 alter table public.wishlist_likes enable row level security;
-
 create policy "Anyone can read wishlist_likes"
   on public.wishlist_likes
   for select
   using (true);
-
 create policy "Users can insert own wishlist likes"
   on public.wishlist_likes
   for insert
   with check (auth.uid() = user_id);
-
 create policy "Users can delete own wishlist likes"
   on public.wishlist_likes
   for delete

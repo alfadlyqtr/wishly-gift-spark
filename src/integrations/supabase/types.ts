@@ -1493,6 +1493,7 @@ export type Database = {
         Row: {
           added_at: string | null
           brand: string | null
+          brand_product_id: string | null
           description: string | null
           desire: number | null
           id: string
@@ -1501,11 +1502,13 @@ export type Database = {
           price: number | null
           status: string | null
           title: string
+          url: string | null
           wishlist_id: string
         }
         Insert: {
           added_at?: string | null
           brand?: string | null
+          brand_product_id?: string | null
           description?: string | null
           desire?: number | null
           id?: string
@@ -1514,11 +1517,13 @@ export type Database = {
           price?: number | null
           status?: string | null
           title: string
+          url?: string | null
           wishlist_id: string
         }
         Update: {
           added_at?: string | null
           brand?: string | null
+          brand_product_id?: string | null
           description?: string | null
           desire?: number | null
           id?: string
@@ -1527,6 +1532,7 @@ export type Database = {
           price?: number | null
           status?: string | null
           title?: string
+          url?: string | null
           wishlist_id?: string
         }
         Relationships: [

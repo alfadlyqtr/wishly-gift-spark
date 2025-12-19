@@ -2,11 +2,9 @@
 ALTER TABLE public.user_profiles
   ADD COLUMN IF NOT EXISTS auto_approve_claims boolean DEFAULT false,
   ADD COLUMN IF NOT EXISTS auto_approve_unclaims boolean DEFAULT false;
-
 -- Add unclaim request tracking to wishlist_reservations
 ALTER TABLE public.wishlist_reservations
   ADD COLUMN IF NOT EXISTS unclaim_requested_at timestamptz;
-
 -- Update the status check constraint to include 'unclaim_requested'
 DO $$ 
 BEGIN

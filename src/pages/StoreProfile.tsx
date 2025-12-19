@@ -104,6 +104,8 @@ const StoreProfile = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productForWishAdd, setProductForWishAdd] = useState<any | null>(null);
+  const [productWishlistIds, setProductWishlistIds] = useState<Record<string, string[]>>({});
+  const [wishlistTitlesById, setWishlistTitlesById] = useState<Record<string, string>>({});
 
   const wishlistsQuery = useWishlists();
   const wishlistOptions = useMemo(
@@ -128,6 +130,87 @@ const StoreProfile = () => {
       console.error("Error loading brand products", err);
     } finally {
       setProductsLoading(false);
+    }
+  };
+
+  const refreshAddedFlags = async (nextProducts?: any[]) => {
+    try {
+      const list = nextProducts ?? products;
+      if (!list || list.length === 0) {
+        setProductWishlistIds({});
+        setWishlistTitlesById({});
+        return;
+      }
+
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) {
+        setProductWishlistIds({});
+        setWishlistTitlesById({});
+        return;
+      }
+
+      const { data: userWishlists, error: wlError } = await (supabase as any)
+        .from("wishlists")
+        .select("id,title")
+        .eq("user_id", uid);
+
+      if (wlError) throw wlError;
+
+      const wishlistIds = (userWishlists || []).map((w: any) => w.id);
+      if (wishlistIds.length === 0) {
+        setProductWishlistIds({});
+        setWishlistTitlesById({});
+        return;
+      }
+
+      const titlesById: Record<string, string> = {};
+      for (const w of (userWishlists || []) as any[]) {
+        if (w?.id) titlesById[String(w.id)] = String(w.title || "");
+      }
+      setWishlistTitlesById(titlesById);
+
+      const { data: allItems, error } = await (supabase as any)
+        .from("wishlist_items")
+        .select("wishlist_id, brand_product_id, title")
+        .in("wishlist_id", wishlistIds);
+
+      if (error) throw error;
+
+      const map: Record<string, Set<string>> = {};
+      const productTitles = new Map<string, string>();
+      for (const p of list) {
+        if (p?.name) productTitles.set(p.name.toLowerCase().trim(), p.id);
+      }
+
+      const push = (productId: string, wishlistId: string) => {
+        const pid = String(productId);
+        const wid = String(wishlistId);
+        if (!map[pid]) map[pid] = new Set();
+        map[pid].add(wid);
+      };
+
+      for (const row of (allItems || []) as any[]) {
+        if (!row?.wishlist_id) continue;
+
+        if (row?.brand_product_id) {
+          const matchedProduct = list.find((p: any) => p.id === row.brand_product_id);
+          if (matchedProduct) push(String(row.brand_product_id), String(row.wishlist_id));
+        }
+        if (row?.title) {
+          const titleKey = row.title.toLowerCase().trim();
+          const matchedProductId = productTitles.get(titleKey);
+          if (matchedProductId) push(String(matchedProductId), String(row.wishlist_id));
+        }
+      }
+
+      const normalized: Record<string, string[]> = {};
+      for (const [pid, set] of Object.entries(map)) {
+        normalized[pid] = Array.from(set);
+      }
+      setProductWishlistIds(normalized);
+    } catch (e) {
+      console.warn("StoreProfile: failed to refresh added flags", e);
     }
   };
 
@@ -213,6 +296,11 @@ const StoreProfile = () => {
     checkFollowStatus();
     fetchBrandProducts();
   }, [id]);
+
+  useEffect(() => {
+    refreshAddedFlags();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products]);
 
   if (loading) {
     return (
@@ -362,23 +450,45 @@ const StoreProfile = () => {
                     <div className="text-xs text-slate-600 truncate">{p.description}</div>
                   )}
                 </div>
-                <button
-                  type="button"
-                  className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center transition-all ${
-                    p.allow_add_as_item === false
-                      ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                      : "bg-gradient-to-br from-purple-500 to-violet-600 text-white hover:shadow-md"
-                  }`}
-                  onClick={() => {
-                    if (p.allow_add_as_item !== false) {
-                      setProductForWishAdd(p);
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const wishlistIds = productWishlistIds[String(p.id)] || [];
+                    if (wishlistIds.length === 0) return null;
+                    if (wishlistIds.length === 1) {
+                      const name = wishlistTitlesById[wishlistIds[0]] || "";
+                      return (
+                        <span className="inline-flex items-center rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-1 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
+                          {t("explore.added_to_name", "Added to: {{name}}", {
+                            name: name || t("wish_item.wishlist_label", "Wishlist"),
+                          })}
+                        </span>
+                      );
                     }
-                  }}
-                  disabled={p.allow_add_as_item === false}
-                  aria-label={t("explore.add_as_item", "Add as item")}
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
+                    return (
+                      <span className="inline-flex items-center rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-1 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
+                        {t("explore.added_to_count", { count: wishlistIds.length })}
+                      </span>
+                    );
+                  })()}
+
+                  <button
+                    type="button"
+                    className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center transition-all ${
+                      p.allow_add_as_item === false
+                        ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                        : "bg-gradient-to-br from-purple-500 to-violet-600 text-white hover:shadow-md"
+                    }`}
+                    onClick={() => {
+                      if (p.allow_add_as_item !== false) {
+                        setProductForWishAdd(p);
+                      }
+                    }}
+                    disabled={p.allow_add_as_item === false}
+                    aria-label={t("explore.add_as_item", "Add as item")}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             ))
           )}
@@ -392,6 +502,7 @@ const StoreProfile = () => {
             if (!open) setProductForWishAdd(null);
           }}
           wishlists={wishlistOptions}
+          disabledWishlistIds={productWishlistIds[String(productForWishAdd?.id)] || []}
           initialTitle={productForWishAdd.name || ""}
           initialBrand={brand?.brand_name || ""}
           initialDescription={productForWishAdd.description || ""}
@@ -415,8 +526,22 @@ const StoreProfile = () => {
                 item_url: productForWishAdd.product_url || null,
                 brand_product_id: productForWishAdd.id || null,
               });
-              if (error) throw error;
+              if (error) {
+                if ((error as any).code === "23505") {
+                  const wlName = wishlistOptions.find((w) => String(w.id) === String(wishlistId))?.name;
+                  toast.info(
+                    wlName
+                      ? `${t("explore.already_in", "Already in")} ${wlName}`
+                      : t("explore.already_in_wishlist", "Already in this wishlist"),
+                  );
+                  setProductForWishAdd(null);
+                  return;
+                }
+                throw error;
+              }
+
               toast.success(t("explore.item_added", "Item added to wishlist"));
+              refreshAddedFlags();
               setProductForWishAdd(null);
             } catch (err: any) {
               toast.error(err.message || t("common.error", "Something went wrong"));

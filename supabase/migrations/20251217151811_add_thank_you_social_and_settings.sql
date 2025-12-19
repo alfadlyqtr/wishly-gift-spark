@@ -28,4 +28,4 @@ CREATE POLICY "Users can insert own thank_you_comments"
 CREATE POLICY "Users can delete own thank_you_comments"
   ON public.thank_you_comments
   FOR DELETE
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id);;

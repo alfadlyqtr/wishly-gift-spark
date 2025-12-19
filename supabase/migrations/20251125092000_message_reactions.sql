@@ -8,11 +8,9 @@ create table if not exists public.message_reactions (
 
   constraint message_reactions_message_user_unique unique (message_id, user_id)
 );
-
 -- Basic RLS: users can see reactions on any message they can see,
 -- and can only insert/update/delete their own reaction rows.
 alter table public.message_reactions enable row level security;
-
 create policy "Select reactions for visible messages" on public.message_reactions
   for select
   using (
@@ -24,16 +22,13 @@ create policy "Select reactions for visible messages" on public.message_reaction
         and tp.user_id = auth.uid()
     )
   );
-
 create policy "Insert own reactions" on public.message_reactions
   for insert
   with check (user_id = auth.uid());
-
 create policy "Update own reactions" on public.message_reactions
   for update
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
-
 create policy "Delete own reactions" on public.message_reactions
   for delete
   using (user_id = auth.uid());

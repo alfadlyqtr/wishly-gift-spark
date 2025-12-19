@@ -22,6 +22,7 @@ type Props = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   wishlists: WishlistOption[];
+  disabledWishlistIds?: string[]; // wishlists where the item already exists
   fixedWishlistId?: string; // if provided, preselect and disable dropdown
   // Edit mode support
   itemId?: string;
@@ -46,7 +47,7 @@ type Props = {
   trigger?: React.ReactNode;
 };
 
-export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWishlistId, itemId, initialWishlistId, initialTitle, initialBrand, initialDescription, initialDesire, initialImageUrl, initialUrl, onSubmit, trigger }: Props) {
+export default function WishAddDialog({ open, onOpenChange, wishlists, disabledWishlistIds, fixedWishlistId, itemId, initialWishlistId, initialTitle, initialBrand, initialDescription, initialDesire, initialImageUrl, initialUrl, onSubmit, trigger }: Props) {
   const [wishlistId, setWishlistId] = useState(() => fixedWishlistId ?? initialWishlistId ?? "");
   const [title, setTitle] = useState("");
   const [brand, setBrand] = useState("");
@@ -62,6 +63,11 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedColors, setExtractedColors] = useState<{hex: string; score: number}[]>([]);
   const [stylePreset, setStylePreset] = useState<"Auto" | "Professional" | "Natural" | "GenZ">(() => (typeof window !== 'undefined' && (localStorage.getItem('wish_style_preset') as any)) || 'Auto');
+
+  const disabledWishlistIdSet = useMemo(
+    () => new Set((disabledWishlistIds || []).map(String)),
+    [disabledWishlistIds],
+  );
 
   useEffect(() => {
     if (fixedWishlistId) setWishlistId(fixedWishlistId);
@@ -521,6 +527,10 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
       toast.error(t("wish_item.error_no_wishlist", "Please select a wishlist first"));
       return;
     }
+    if (disabledWishlistIdSet.has(String(wishlistId))) {
+      toast.info(t("explore.already_in_wishlist", "Already in this wishlist"));
+      return;
+    }
     if (!title) {
       toast.error(t("wish_item.error_no_title", "Please enter an item name"));
       return;
@@ -569,7 +579,12 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                 </SelectTrigger>
                 <SelectContent>
                   {wishlists.map((w) => (
-                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                    <SelectItem key={w.id} value={w.id} disabled={disabledWishlistIdSet.has(String(w.id))}>
+                      {w.name}
+                      {disabledWishlistIdSet.has(String(w.id)) ? (
+                        <span className="ml-2 text-xs opacity-70">({t("explore.added", "Added")})</span>
+                      ) : null}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -674,7 +689,14 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, fixedWish
                 >
                   {t("wish_item.upload_button", "Upload a File")}
                 </button>
-                <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  aria-label={t("wish_item.upload_file_input", "Upload image file")}
+                />
               </div>
               {/* Tone slider placed above extract button */}
               <div className="mt-3">

@@ -56,7 +56,6 @@ CREATE TABLE IF NOT EXISTS public.brands (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- 2. CREATE BRAND_FOLLOWERS TABLE (separate from user followers)
 CREATE TABLE IF NOT EXISTS public.brand_followers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -67,7 +66,6 @@ CREATE TABLE IF NOT EXISTS public.brand_followers (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(brand_id, follower_id)
 );
-
 -- 3. CREATE BRAND_FOLLOWING TABLE (brands following users/other brands)
 CREATE TABLE IF NOT EXISTS public.brand_following (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -78,7 +76,6 @@ CREATE TABLE IF NOT EXISTS public.brand_following (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(brand_id, following_id)
 );
-
 -- 4. CREATE BRAND_SETTINGS_HISTORY (audit trail)
 CREATE TABLE IF NOT EXISTS public.brand_settings_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -89,13 +86,11 @@ CREATE TABLE IF NOT EXISTS public.brand_settings_history (
   new_value TEXT,
   changed_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- 5. ENABLE RLS
 ALTER TABLE public.brands ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.brand_followers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.brand_following ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.brand_settings_history ENABLE ROW LEVEL SECURITY;
-
 -- 6. CREATE RLS POLICIES FOR BRANDS
 -- Public brands visible to all
 DO $$
@@ -111,7 +106,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- Brand owners can view their own brand
 DO $$
 BEGIN
@@ -126,7 +120,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- Brand owners can insert their brand
 DO $$
 BEGIN
@@ -141,7 +134,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- Brand owners can update their brand
 DO $$
 BEGIN
@@ -156,7 +148,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- Brand owners can delete their brand
 DO $$
 BEGIN
@@ -171,7 +162,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- 7. CREATE RLS POLICIES FOR BRAND_FOLLOWERS
 -- Anyone can view accepted followers of public brands
 DO $$
@@ -187,7 +177,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- Brand owners can view all their followers
 DO $$
 BEGIN
@@ -202,7 +191,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- Users can view their own follow status
 DO $$
 BEGIN
@@ -217,7 +205,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- Users can follow brands
 DO $$
 BEGIN
@@ -232,7 +219,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- Users can unfollow brands
 DO $$
 BEGIN
@@ -247,7 +233,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- Brand owners can manage followers (accept/block)
 DO $$
 BEGIN
@@ -262,7 +247,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- 8. CREATE RLS POLICIES FOR BRAND_FOLLOWING
 -- Anyone can view accepted following of public brands
 DO $$
@@ -278,7 +262,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- Brand owners can view all their following
 DO $$
 BEGIN
@@ -293,7 +276,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- Users can view if a brand is following them
 DO $$
 BEGIN
@@ -308,7 +290,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- Brands can follow users/other brands
 DO $$
 BEGIN
@@ -323,7 +304,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- Brands can unfollow
 DO $$
 BEGIN
@@ -338,7 +318,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- 9. CREATE RLS POLICIES FOR BRAND_SETTINGS_HISTORY
 -- Brand owners can view their settings history
 DO $$
@@ -354,7 +333,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- 10. CREATE INDEXES FOR PERFORMANCE
 CREATE INDEX IF NOT EXISTS idx_brands_user_id ON public.brands(user_id);
 CREATE INDEX IF NOT EXISTS idx_brands_is_public ON public.brands(is_public) WHERE is_public = TRUE;
@@ -364,7 +342,6 @@ CREATE INDEX IF NOT EXISTS idx_brand_followers_brand_id ON public.brand_follower
 CREATE INDEX IF NOT EXISTS idx_brand_followers_follower_id ON public.brand_followers(follower_id);
 CREATE INDEX IF NOT EXISTS idx_brand_following_brand_id ON public.brand_following(brand_id);
 CREATE INDEX IF NOT EXISTS idx_brand_following_following_id ON public.brand_following(following_id);
-
 -- 11. CREATE FUNCTION TO UPDATE updated_at
 CREATE OR REPLACE FUNCTION public.update_brands_updated_at()
 RETURNS TRIGGER AS $$
@@ -373,14 +350,12 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
 -- 12. CREATE TRIGGER FOR updated_at
 DROP TRIGGER IF EXISTS update_brands_updated_at_trigger ON public.brands;
 CREATE TRIGGER update_brands_updated_at_trigger
   BEFORE UPDATE ON public.brands
   FOR EACH ROW
   EXECUTE FUNCTION public.update_brands_updated_at();
-
 -- 13. CREATE FUNCTION TO LOG SETTINGS CHANGES
 CREATE OR REPLACE FUNCTION public.log_brand_settings_change()
 RETURNS TRIGGER AS $$
@@ -404,14 +379,12 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- 14. CREATE TRIGGER FOR SETTINGS LOGGING
 DROP TRIGGER IF EXISTS log_brand_settings_change_trigger ON public.brands;
 CREATE TRIGGER log_brand_settings_change_trigger
   AFTER UPDATE ON public.brands
   FOR EACH ROW
   EXECUTE FUNCTION public.log_brand_settings_change();
-
 -- 15. ENABLE REALTIME FOR BRAND FOLLOWERS
 ALTER TABLE public.brand_followers REPLICA IDENTITY FULL;
 ALTER TABLE public.brand_following REPLICA IDENTITY FULL;
