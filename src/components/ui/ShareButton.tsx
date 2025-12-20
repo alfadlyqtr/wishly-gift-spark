@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Share2, X, Copy, MessageCircle, Check } from 'lucide-react';
+import { Share2, X, MessageCircle, Mail, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
+import './ShareButton.css';
 
 // Social platform icons as SVG components
 const WhatsAppIcon = () => (
@@ -49,7 +50,6 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const shareUrl = url || (typeof window !== 'undefined' ? window.location.href : '');
@@ -81,19 +81,20 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
     lg: 'w-12 h-12',
   };
 
-  const expandRadius = {
-    sm: 50,
-    md: 60,
-    lg: 70,
-  };
-
   const handleShare = (platform: string) => {
     const encodedUrl = encodeURIComponent(shareUrl);
     const encodedText = encodeURIComponent(shareText);
 
     switch (platform) {
+      case 'email':
+        window.open(`mailto:?subject=${encodedText}&body=${encodedUrl}`, '_self');
+        break;
       case 'whatsapp':
         window.open(`https://wa.me/?text=${encodedText}%20${encodedUrl}`, '_blank');
+        break;
+      case 'link':
+        navigator.clipboard.writeText(shareUrl);
+        toast.success(t('share.copied', 'Link copied to clipboard!'));
         break;
       case 'instagram':
         // Instagram doesn't have direct share URL, copy link instead
@@ -114,64 +115,71 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
           window.open(`sms:?body=${encodedText}%20${encodedUrl}`, '_blank');
         }
         break;
-      case 'copy':
-        navigator.clipboard.writeText(shareUrl);
-        setCopied(true);
-        toast.success(t('share.copied', 'Link copied to clipboard!'));
-        setTimeout(() => setCopied(false), 2000);
-        break;
     }
     setIsOpen(false);
   };
 
-  // Social buttons configuration with positions (in degrees, starting from right, going counter-clockwise)
+  // Social buttons configuration
   const socialButtons = [
-    { id: 'whatsapp', icon: WhatsAppIcon, color: 'hover:bg-[#25D366]', angle: 0 },
-    { id: 'instagram', icon: InstagramIcon, color: 'hover:bg-[#E4405F]', angle: 60 },
-    { id: 'snapchat', icon: SnapchatIcon, color: 'hover:bg-[#FFFC00] hover:text-black', angle: 120 },
-    { id: 'facebook', icon: FacebookIcon, color: 'hover:bg-[#1877F2]', angle: 180 },
-    { id: 'messages', icon: MessagesIcon, color: 'hover:bg-[#0B93F6]', angle: 240 },
-    { id: 'copy', icon: copied ? Check : Copy, color: 'hover:bg-purple-500', angle: 300 },
+    { id: 'email', icon: Mail, color: 'bg-[#ff4d4f] hover:brightness-110', textClass: 'text-white' },
+    { id: 'whatsapp', icon: WhatsAppIcon, color: 'bg-[#25D366] hover:brightness-110', textClass: 'text-white' },
+    { id: 'link', icon: Link2, color: 'bg-[#7c3aed] hover:brightness-110', textClass: 'text-white' },
+    { id: 'messages', icon: MessagesIcon, color: 'bg-[#0B93F6] hover:brightness-110', textClass: 'text-white' },
+    { id: 'facebook', icon: FacebookIcon, color: 'bg-[#1877F2] hover:brightness-110', textClass: 'text-white' },
+    { id: 'snapchat', icon: SnapchatIcon, color: 'bg-[#FFFC00] hover:brightness-110', textClass: 'text-black' },
+    { id: 'instagram', icon: InstagramIcon, color: 'bg-[#E4405F] hover:brightness-110', textClass: 'text-white' },
   ];
 
-  const radius = expandRadius[size];
+  // Fixed radial positions to mirror the provided overlay layout
+  const radialPositions = [
+    'share-pos-0',
+    'share-pos-1',
+    'share-pos-2',
+    'share-pos-3',
+    'share-pos-4',
+    'share-pos-5',
+    'share-pos-6',
+  ];
 
   return (
     <div 
       ref={containerRef}
       className={`relative inline-flex items-center justify-center ${className}`}
-      style={{ 
-        width: isOpen ? `${radius * 2 + 60}px` : 'auto',
-        height: isOpen ? `${radius * 2 + 60}px` : 'auto',
-        transition: 'all 0.3s ease'
-      }}
     >
-      {/* Social buttons - positioned in a circle */}
-      {socialButtons.map((social) => {
-        const Icon = social.icon;
-        const angleRad = (social.angle * Math.PI) / 180;
-        const x = isOpen ? Math.cos(angleRad) * radius : 0;
-        const y = isOpen ? Math.sin(angleRad) * radius : 0;
-
-        return (
-          <button
-            key={social.id}
-            onClick={() => handleShare(social.id)}
-            className={`absolute ${socialSizeClasses[size]} rounded-full bg-slate-800 border border-slate-700 
-              flex items-center justify-center text-white transition-all duration-300 
-              ${social.color} active:scale-95 shadow-lg`}
-            style={{
-              transform: `translate(${x}px, ${y}px)`,
-              opacity: isOpen ? 1 : 0,
-              pointerEvents: isOpen ? 'auto' : 'none',
-              zIndex: 10,
-            }}
-            aria-label={`Share on ${social.id}`}
+      {/* Overlay share menu */}
+      {isOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 backdrop-blur-sm" onClick={() => setIsOpen(false)}>
+          <div
+            className="relative w-[260px] h-[260px] max-w-[90vw] max-h-[90vh] select-none"
+            onClick={(e) => e.stopPropagation()}
           >
-            <Icon />
-          </button>
-        );
-      })}
+            {socialButtons.map((social, idx) => {
+              const Icon = social.icon;
+              const posClass = radialPositions[idx % radialPositions.length];
+              return (
+                <button
+                  key={social.id}
+                  type="button"
+                  onClick={() => handleShare(social.id)}
+                  className={`absolute left-1/2 top-1/2 share-orb ${posClass} ${socialSizeClasses[size]} rounded-full text-sm font-semibold shadow-xl transition active:scale-95 ${social.color} ${social.textClass || 'text-white'} flex items-center justify-center`}
+                  aria-label={`Share on ${social.id}`}
+                >
+                  <Icon className="w-5 h-5" />
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${sizeClasses[size]} rounded-full bg-gradient-to-br from-purple-600 to-purple-800 text-white shadow-2xl border border-white/40 flex items-center justify-center transition hover:from-purple-500 hover:to-purple-700 active:scale-95`}
+              aria-label={t('common.close', 'Close')}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main share button */}
       <button

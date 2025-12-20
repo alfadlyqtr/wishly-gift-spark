@@ -218,13 +218,13 @@ export const AIRecommendationCard = () => {
                           if (wishlistIds.length === 1) {
                             const name = wishlistTitlesById[wishlistIds[0]] || "";
                             return (
-                              <p className="mt-1 inline-flex items-center rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
+                              <p className="mt-1 inline-flex max-w-full items-center overflow-hidden text-ellipsis rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
                                 {t("explore.added_to_name", { name: name || t("wish_item.wishlist_label", "Wishlist") })}
                               </p>
                             );
                           }
                           return (
-                            <p className="mt-1 inline-flex items-center rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
+                            <p className="mt-1 inline-flex max-w-full items-center overflow-hidden text-ellipsis rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
                               {t("explore.added_to_count", { count: wishlistIds.length })}
                             </p>
                           );
@@ -292,7 +292,7 @@ export const AIRecommendationCard = () => {
                         const name = wishlistTitlesById[wishlistIds[0]] || "";
                         return (
                           <div className="mt-2">
-                            <span className="inline-flex items-center rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
+                            <span className="inline-flex max-w-full items-center overflow-hidden text-ellipsis rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
                               {t("explore.added_to_name", { name: name || t("wish_item.wishlist_label", "Wishlist") })}
                             </span>
                           </div>
@@ -300,7 +300,7 @@ export const AIRecommendationCard = () => {
                       }
                       return (
                         <div className="mt-2">
-                          <span className="inline-flex items-center rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
+                          <span className="inline-flex max-w-full items-center overflow-hidden text-ellipsis rounded-full bg-emerald-50/80 text-emerald-800 text-[10px] px-2 py-0.5 font-semibold ring-1 ring-emerald-200/70 whitespace-nowrap">
                             {t("explore.added_to_count", { count: wishlistIds.length })}
                           </span>
                         </div>

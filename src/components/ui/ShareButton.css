@@ -1,0 +1,43 @@
+.share-orb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  --x: 0px;
+  --y: 0px;
+  transform: translate(-50%, -50%) translate(var(--x), var(--y)) scale(0.7);
+  opacity: 0;
+  animation: share-pop 220ms ease-out forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes share-pop {
+  0% {
+    transform: translate(-50%, -50%) translate(var(--x), var(--y)) scale(0.7);
+    opacity: 0;
+  }
+  60% {
+    transform: translate(-50%, -50%) translate(var(--x), var(--y)) scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(var(--x), var(--y)) scale(1);
+    opacity: 1;
+  }
+}
+
+.share-pos-0 { --x: 0px; --y: -88px; }
+.share-pos-1 { --x: 62px; --y: -54px; }
+.share-pos-2 { --x: 88px; --y: 6px; }
+.share-pos-3 { --x: 62px; --y: 68px; }
+.share-pos-4 { --x: 0px; --y: 96px; }
+.share-pos-5 { --x: -62px; --y: 68px; }
+.share-pos-6 { --x: -88px; --y: 6px; }
+
+@media (max-width: 480px) {
+  .share-pos-0 { --y: -78px; }
+  .share-pos-4 { --y: 86px; }
+  .share-pos-1 { --x: 56px; --y: -50px; }
+  .share-pos-5 { --x: -56px; --y: 64px; }
+  .share-pos-2 { --x: 82px; }
+  .share-pos-6 { --x: -82px; }
+}

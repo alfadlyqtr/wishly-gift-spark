@@ -107,8 +107,8 @@ export const UpcomingEventsStack = () => {
   }
 
   return (
-    <Card className="border-none bg-transparent shadow-none">
-      <CardContent className="p-0 flex justify-center">
+    <Card className="border-none bg-transparent shadow-none overflow-visible">
+      <CardContent className="p-0 flex justify-center overflow-visible">
         <WishlistStack
           viewerMode
           sensitivity={220}

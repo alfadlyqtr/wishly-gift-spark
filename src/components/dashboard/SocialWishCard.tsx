@@ -22,6 +22,10 @@ export const SocialWishCard = () => {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentText, setCommentText] = useState("");
 
+  const STACK_ROTATE_STEP = 3;
+  const STACK_TOP_OFFSET_MOBILE = 16;
+  const STACK_TOP_OFFSET_DESKTOP = 24;
+
   const { data } = useQuery({
     queryKey: ["dashboard", "social", "v2"],
     queryFn: async () => {
@@ -71,6 +75,7 @@ export const SocialWishCard = () => {
       const thankYouItemIds = Array.from(
         new Set((thankYouPosts || []).map((p: any) => p?.item_id).filter(Boolean)),
       ) as string[];
+      const wishlistIdByItemId = new Map<string, string>();
       let thankYouPostsFiltered = (thankYouPosts || []) as any[];
       if (thankYouItemIds.length > 0) {
         const { data: tyItems } = await supabase
@@ -93,7 +98,6 @@ export const SocialWishCard = () => {
           });
         }
 
-        const wishlistIdByItemId = new Map<string, string>();
         (tyItems || []).forEach((it: any) => {
           if (it?.id && it?.wishlist_id) wishlistIdByItemId.set(it.id, it.wishlist_id);
         });
@@ -116,7 +120,14 @@ export const SocialWishCard = () => {
       (thankYouPostsFiltered || []).forEach((p: any) => {
         if (!p?.recipient_user_id) return;
         if (!thankYouByRecipient[p.recipient_user_id]) {
-          thankYouByRecipient[p.recipient_user_id] = p;
+          const linkedWishlistId =
+            p?.item_id && wishlistIdByItemId.has(p.item_id)
+              ? wishlistIdByItemId.get(p.item_id) || null
+              : null;
+          thankYouByRecipient[p.recipient_user_id] = {
+            ...p,
+            linked_wishlist_id: linkedWishlistId,
+          };
         }
       });
 
@@ -195,7 +206,7 @@ export const SocialWishCard = () => {
             owner: ownerProfile,
             ownerWishlists: [],
             items: [],
-            likesByWishlist: {},
+            likesByWishlist,
             primaryWishlistId: null,
             thankYouPost: tyPost,
             cardType: 'thank_you',
@@ -264,19 +275,25 @@ export const SocialWishCard = () => {
     : [];
 
   const owner = activeFriend?.owner;
-  const thankYouPost = (activeFriend as any)?.thankYouPost as any | null | undefined;
+  const thankYouPost = (activeFriend as any)?.thankYouPost as (any & { linked_wishlist_id?: string | null }) | null | undefined;
   const cardType = (activeFriend as any)?.cardType as string | undefined;
   // Show thank-you content if this is a thank_you card type
   const showThankYou = cardType === 'thank_you' && !!thankYouPost;
 
   const likesByWishlist = activeFriend?.likesByWishlist as Record<string, { count: number; likedByMe: boolean }> | undefined;
-  const wishlistId = activeWishlist?.id as string | undefined;
+  const linkedWishlistId = thankYouPost?.linked_wishlist_id as string | null | undefined;
+  const wishlistId = (showThankYou ? linkedWishlistId : activeWishlist?.id) as string | undefined;
   const likesInfo = wishlistId && likesByWishlist ? likesByWishlist[wishlistId] : undefined;
   const likesCount = likesInfo?.count ?? 0;
   const likedByMe = likesInfo?.likedByMe ?? false;
 
   const allowLikesPref = owner?.allow_likes !== false;
   const allowCommentsPref = owner?.allow_comments !== false;
+  const allowSharingPref = owner?.allow_wishlist_sharing !== false;
+  const hasInteractableWishlist = !!wishlistId;
+  const allowLikes = allowLikesPref && hasInteractableWishlist;
+  const allowComments = allowCommentsPref && hasInteractableWishlist;
+  const allowSharing = allowSharingPref && hasInteractableWishlist;
   const wishlistTitle = activeWishlist?.title as string | undefined;
   const wishlistEventDate = activeWishlist?.event_date as string | undefined;
 
@@ -321,63 +338,70 @@ export const SocialWishCard = () => {
     },
   });
 
-  const { data: comments = [] } = useQuery({
-    queryKey: ["wishlist-comments", wishlistId],
-    enabled: !!supabase && !!wishlistId && commentsOpen,
-    queryFn: async () => {
-      if (!supabase || !wishlistId) return [] as any[];
-      const { data, error } = await supabase
-        .from("wishlist_comments" as any)
-        .select("id, content, created_at, user_id")
-        .eq("wishlist_id", wishlistId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      const rows = data || [];
-
-      // Attach basic profile data for each unique commenter so we can show their name
-      const userIds = Array.from(new Set(rows.map((r: any) => r.user_id).filter(Boolean)));
-      if (userIds.length === 0) return rows as any[];
-
-      const { data: profiles, error: profErr } = await supabase
-        .from("user_profiles" as any)
-        .select("id, username, full_name, avatar_url")
-        .in("id", userIds as any);
-      if (profErr) {
-        // If profile lookup fails, still return raw comments
-        return rows as any[];
-      }
-
-      const byId = new Map<string, any>();
-      for (const p of profiles || []) {
-        if (p && (p as any).id) byId.set((p as any).id, p);
-      }
-
-      return rows.map((r: any) => ({
-        ...r,
-        profile: byId.get(r.user_id) || null,
-      }));
-    },
-  });
+  const getCommentsQuery = () => {
+    if (showThankYou) {
+      return useQuery({
+        queryKey: ["thank-you-comments", thankYouPost?.id],
+        enabled: !!supabase && !!thankYouPost?.id && commentsOpen,
+        queryFn: async () => {
+          if (!supabase || !thankYouPost?.id) return [] as any[];
+          const { data, error } = await (supabase as any)
+            .from("thank_you_comments")
+            .select("id, content, created_at, user_id")
+            .eq("post_id", thankYouPost.id)
+            .order("created_at", { ascending: true });
+          if (error) throw error;
+          return data || [];
+        },
+      });
+    }
+    return useQuery({
+      queryKey: ["wishlist-comments", wishlistId],
+      enabled: !!supabase && !!wishlistId && commentsOpen,
+      queryFn: async () => {
+        if (!supabase || !wishlistId) return [] as any[];
+        const { data, error } = await supabase
+          .from("wishlist_comments" as any)
+          .select("id, content, created_at, user_id")
+          .eq("wishlist_id", wishlistId)
+          .order("created_at", { ascending: true });
+        if (error) throw error;
+        return data || [];
+      },
+    });
+  };
+  const { data: comments = [] } = getCommentsQuery();
 
   const addCommentMutation = useMutation({
     mutationFn: async () => {
       const text = commentText.trim();
       if (!text) return;
-      if (!supabase || !wishlistId) return;
+      if (!supabase) return;
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id;
       if (!uid) {
         toast.error(t("common.not_authenticated", "You need to sign in"));
         return;
       }
-      const { error } = await supabase
-        .from("wishlist_comments" as any)
-        .insert({ wishlist_id: wishlistId, user_id: uid, content: text });
-      if (error) throw error;
+      if (showThankYou) {
+        if (!thankYouPost?.id) return;
+        const { error } = await (supabase as any)
+          .from("thank_you_comments")
+          .insert({ post_id: thankYouPost.id, user_id: uid, content: text });
+        if (error) throw error;
+      } else {
+        if (!wishlistId) return;
+        const { error } = await supabase
+          .from("wishlist_comments" as any)
+          .insert({ wishlist_id: wishlistId, user_id: uid, content: text });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       setCommentText("");
-      if (wishlistId) {
+      if (showThankYou && thankYouPost?.id) {
+        queryClient.invalidateQueries({ queryKey: ["thank-you-comments", thankYouPost.id] });
+      } else if (wishlistId) {
         queryClient.invalidateQueries({ queryKey: ["wishlist-comments", wishlistId] });
       }
     },
@@ -496,19 +520,18 @@ export const SocialWishCard = () => {
       ? friendItems.filter((it: any) => it.wishlist_id === cardWishlist?.id)
       : [];
 
-    // Use the same rotation math as WishlistStack: rotateZ with origin at bottom-right
-    // Increased rotation (12 degrees per card) so stacked cards are clearly visible
-    const rotateZ = (maxStack - stackPosition - 1) * 12;
-    const scale = 1 + stackPosition * 0.06 - maxStack * 0.06;
-    const yOffset = stackPosition * 10;
+    // Keep rotation subtle so the stack looks straight on mobile
+    // Alternate rotation direction based on stack position to prevent "leaning" stack
+    const rotateZ = stackPosition * STACK_ROTATE_STEP * (stackPosition % 2 === 0 ? 1 : -1);
+    const scale = 1 - stackPosition * 0.05; // Scale down slightly as we go back
+    const yOffset = stackPosition * 3; // Tighter vertical stack
 
     return (
       <motion.div
         key={`stack-${friendIdx}-${stackPosition}`}
-        className="absolute"
+        className="absolute inset-x-0 top-4 md:top-6 w-full"
         style={{ 
-          width: '100%',
-          transformOrigin: '90% 90%',
+          transformOrigin: '50% 100%',
         }}
         animate={{
           rotateZ,
@@ -518,12 +541,12 @@ export const SocialWishCard = () => {
         transition={{ type: 'spring', stiffness: 260, damping: 20 }}
       >
         <Card
-          className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_24px_40px_rgba(0,0,0,0.35)] max-w-sm mx-auto"
+          className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_24px_40px_rgba(0,0,0,0.35)] max-w-[75vw] sm:max-w-sm mx-auto"
         >
           <div className="rounded-[24px] bg-background/88 backdrop-blur-md">
-            <CardHeader className="pb-4 px-5 pt-4">
+            <CardHeader className="pb-3 px-4 pt-3 sm:pb-4 sm:px-5 sm:pt-4">
               <div className="flex items-start gap-3">
-                <Avatar className="h-11 w-11 shadow-[0_6px_14px_rgba(15,23,42,0.35)] ring-2 ring-white/70">
+                <Avatar className="h-9 w-9 sm:h-11 sm:w-11 shadow-[0_6px_14px_rgba(15,23,42,0.35)] ring-2 ring-white/70">
                   <AvatarImage src={friendOwner?.avatar_url || ""} />
                   <AvatarFallback className="bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-primary-foreground font-semibold">
                     {(friendOwner?.full_name || friendOwner?.username || 'U').charAt(0)}
@@ -548,7 +571,7 @@ export const SocialWishCard = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pb-2 px-5">
+            <CardContent className="pb-2 px-4 sm:px-5">
               {cardItems && cardItems.length > 0 ? (
                 <div className="flex items-center gap-3">
                   <div className="h-14 w-14 rounded-xl bg-muted/60 flex items-center justify-center overflow-hidden ring-1 ring-white/60 shadow-[0_8px_18px_rgba(15,23,42,0.35)]">
@@ -570,7 +593,7 @@ export const SocialWishCard = () => {
                 </p>
               )}
             </CardContent>
-            <CardFooter className="flex justify-between items-center border-t border-border/60 bg-muted/30 px-4 py-3">
+            <CardFooter className="flex justify-between items-center border-t border-border/60 bg-muted/30 px-3 py-2.5 sm:px-4 sm:py-3">
               <span className="text-xs text-muted-foreground">&nbsp;</span>
             </CardFooter>
           </div>
@@ -584,9 +607,15 @@ export const SocialWishCard = () => {
     <Dialog open={commentsOpen} onOpenChange={setCommentsOpen}>
       {/* Container for the stacked cards - static back cards + draggable top card */}
       <div
-        className="relative max-w-sm mx-auto mt-10 md:mt-6"
-        style={{ minHeight: 340, perspective: 600 }}
+        className="relative max-w-[75vw] sm:max-w-sm mx-auto mt-8 md:mt-6"
+        style={{ minHeight: 300, perspective: 600 }}
       >
+        {friends.length > 1 && (
+          <div className="absolute -top-5 right-3 z-20 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200">
+            <span aria-hidden="true">⟵⟶</span>
+            <span>{t("dashboard.swipe_hint", "Swipe")}</span>
+          </div>
+        )}
         {/* Render back cards first (static, not draggable) */}
         {stackIndices.slice(1).reverse().map((friendIdx, reversePos) => {
           const stackPosition = maxStack - 1 - reversePos;
@@ -595,12 +624,12 @@ export const SocialWishCard = () => {
         
         {/* Top card - this one is draggable */}
         <motion.div
-          className="absolute inset-x-0 top-8 md:top-6 w-full cursor-grab active:cursor-grabbing"
+          className="absolute inset-x-0 top-4 md:top-6 w-full cursor-grab active:cursor-grabbing"
           style={{ 
             x: dragX, 
             rotateY, 
             transformPerspective: 800,
-            transformOrigin: '90% 90%',
+            transformOrigin: '50% 100%',
             zIndex: maxStack + 1,
           }}
           drag="x"
@@ -609,14 +638,14 @@ export const SocialWishCard = () => {
           onDragEnd={handleDragEnd}
           whileDrag={{ scale: 1.02 }}
           animate={{
-            rotateZ: (maxStack - 1) * 12,
+            rotateZ: 0,
             scale: 1,
             y: 0,
           }}
           transition={{ type: 'spring', stiffness: 260, damping: 20 }}
         >
           <Card
-            className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_24px_40px_rgba(0,0,0,0.35)] max-w-sm mx-auto"
+            className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_24px_40px_rgba(0,0,0,0.35)] max-w-[75vw] sm:max-w-sm mx-auto"
           >
             <div className="rounded-[24px] bg-background/88 backdrop-blur-md">
               <CardHeader className="pb-3 px-4 pt-3 sm:pb-4 sm:px-5 sm:pt-4">
@@ -760,7 +789,7 @@ export const SocialWishCard = () => {
                 </div>
               )}
               <CardFooter className="flex justify-between items-center border-t border-border/60 bg-muted/30 px-3 py-2.5 sm:px-4 sm:py-3">
-                {allowLikesPref && (
+                {allowLikes && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -775,14 +804,14 @@ export const SocialWishCard = () => {
                     </span>
                   </Button>
                 )}
-                {owner?.allow_wishlist_sharing && wishlistId && (
+                {allowSharing && (
                   <ShareButton
                     url={`${window.location.origin}/w/${wishlistId}`}
                     title={(data as any)?.wishlist?.title || 'Wishlist'}
                     size="sm"
                   />
                 )}
-                {allowCommentsPref && (
+                {allowComments && (
                   <Button
                     variant="ghost"
                     size="sm"

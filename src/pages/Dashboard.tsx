@@ -77,7 +77,7 @@ const Dashboard = () => {
       </div>
 
       <section className="mt-4 mb-4 md:mb-6">
-        <div className="rounded-3xl border border-border/40 bg-background/80 backdrop-blur-sm px-4 py-6 sm:px-6 sm:py-7 shadow-sm overflow-hidden">
+        <div className="rounded-3xl border border-border/40 bg-background/80 backdrop-blur-sm px-4 py-6 sm:px-6 sm:py-7 shadow-sm overflow-visible">
           <h2 className="text-sm font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
             {t('dashboard.section_upcoming_events', 'Upcoming events')}
           </h2>
