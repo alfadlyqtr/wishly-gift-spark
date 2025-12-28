@@ -280,13 +280,8 @@ export const MainLayout = () => {
       {/* Main Content */}
       <main
         className={`flex-1 overflow-y-auto ${
-          isGifterShared ? '' : 'pb-32'
+          isGifterShared ? '' : 'pb-[calc(env(safe-area-inset-bottom,0px)+6rem)]'
         }`}
-        style={{
-          paddingBottom: isGifterShared
-            ? undefined
-            : 'calc(env(safe-area-inset-bottom, 0px) + 6rem)',
-        }}
       >
         <Suspense
           fallback={
@@ -307,141 +302,124 @@ export const MainLayout = () => {
       {!isGifterShared && (
       <nav
         dir="ltr"
-        className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-white/95 via-white/90 to-transparent pt-4 pb-2"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
+        className="fixed bottom-0 left-0 right-0 z-50 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]"
       >
-        <div className="mx-auto w-[min(720px,95%)] p-[2px] rounded-3xl bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
-          <div dir="ltr" className="flex flex-row items-end justify-between gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-3xl bg-white/85 backdrop-blur shadow-[0_12px_32px_rgba(0,0,0,0.12)] touch-manipulation">
+        <div className="mx-auto w-[min(720px,95%)] px-2">
+          <div
+            dir="ltr"
+            className="relative flex flex-row items-center justify-between gap-1 sm:gap-2 px-3 py-2 h-[72px] touch-manipulation"
+          >
+            <svg
+              className="pointer-events-none absolute inset-0 h-full w-full drop-shadow-[0_16px_40px_rgba(0,0,0,0.25)]"
+              viewBox="0 0 400 80"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <defs>
+                <linearGradient id="navGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="hsl(240, 50%, 30%)" />
+                  <stop offset="50%" stopColor="hsl(260, 60%, 40%)" />
+                  <stop offset="100%" stopColor="hsl(35, 90%, 50%)" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M0,28 Q0,8 20,8 L150,8 Q165,8 172,20 Q185,44 200,44 Q215,44 228,20 Q235,8 250,8 L380,8 Q400,8 400,28 L400,60 Q400,80 380,80 L20,80 Q0,80 0,60 Z"
+                fill="url(#navGradient)"
+              />
+            </svg>
+            <div className="relative z-10 flex w-full items-center justify-between gap-1 sm:gap-2">
           <Link
             to="/dashboard"
-            className="flex flex-1 justify-center min-w-0"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
+            className="flex flex-1 justify-center min-w-0 [-webkit-tap-highlight-color:transparent]"
             onMouseEnter={() => prefetchRoute('/dashboard')}
             onTouchStart={() => prefetchRoute('/dashboard')}
           >
             <Button
               variant="ghost"
               size="sm"
-              className={`w-full max-w-[64px] sm:max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-2 touch-manipulation select-none ${
-                isActive("/dashboard") ? "text-primary" : "text-muted-foreground"
+              className={`w-full max-w-[64px] sm:max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 touch-manipulation select-none hover:bg-white/10 ${
+                isActive("/dashboard") ? "text-white" : "text-white/70"
               }`}
             >
-              <img src={wishlyLogo} alt="Dash" className="h-8 w-8 rounded-full ring-1 ring-white/70 object-cover" />
-              <span
-                className="min-w-0 w-full whitespace-nowrap text-[10px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
-              >
-                {t('nav.dash', 'Dash')}
+              <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white">
+                <img src={wishlyLogo} alt="Dash" className="h-10 w-10 rounded-full object-cover" />
               </span>
             </Button>
           </Link>
 
           <Link
             to="/explore"
-            className="flex flex-1 justify-center min-w-0"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
+            className="flex flex-1 justify-center min-w-0 [-webkit-tap-highlight-color:transparent]"
             onMouseEnter={() => prefetchRoute('/explore')}
             onTouchStart={() => prefetchRoute('/explore')}
           >
             <Button
               variant="ghost"
               size="sm"
-              className={`w-full max-w-[64px] sm:max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 touch-manipulation select-none ${
-                isActive("/explore") ? "text-primary" : "text-muted-foreground"
+              className={`w-full max-w-[64px] sm:max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 touch-manipulation select-none hover:bg-white/10 ${
+                isActive("/explore") ? "text-white" : "text-white/70"
               }`}
             >
-              <Store className="h-9 w-9 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" strokeWidth={2.4} />
-              <span
-                className="min-w-0 w-full whitespace-nowrap text-[10px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
-              >
-                <span className="sm:hidden">{t('nav.find', 'Find')}</span>
-                <span className="hidden sm:inline">{t('nav.explore', 'Explore')}</span>
-              </span>
+              <Store className="h-9 w-9" strokeWidth={2.5} />
             </Button>
           </Link>
 
           <div className="flex flex-1 justify-center min-w-0">
             <Button
               onClick={() => setAddOpen(true)}
-              size="lg"
-              className="relative w-full max-w-[92px] sm:max-w-none -mt-9 px-3 py-2 bg-transparent shadow-none ring-0 transition-all touch-manipulation select-none"
-              style={{ WebkitTapHighlightColor: 'transparent' }}
+              size="icon"
+              className="relative -mt-14 h-[68px] w-[68px] rounded-full bg-transparent shadow-none ring-0 transition-all touch-manipulation select-none [-webkit-tap-highlight-color:transparent]"
+              aria-label={t('nav.add_wish', 'Add Wish')}
             >
-              <div className="flex flex-col items-center">
-                <span
-                  className="text-[30px] font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                  style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
-                >
-                  +
-                </span>
-                <span
-                  className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                  style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
-                >
-                  <span className="sm:hidden">{t('nav.add', 'Add')}</span>
-                  <span className="hidden sm:inline">{t('nav.add_wish', 'Add Wish')}</span>
-                </span>
-              </div>
+              <span className="absolute inset-0 rounded-full bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]" />
+              <span className="absolute inset-[3px] rounded-full bg-black" />
+              <Plus className="relative h-10 w-10 text-white" strokeWidth={3} />
             </Button>
           </div>
 
           <Link
             to="/events"
-            className="flex flex-1 justify-center min-w-0"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
+            className="flex flex-1 justify-center min-w-0 [-webkit-tap-highlight-color:transparent]"
             onMouseEnter={() => prefetchRoute('/events')}
             onTouchStart={() => prefetchRoute('/events')}
           >
             <Button
               variant="ghost"
               size="sm"
-              className={`w-full max-w-[64px] sm:max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 touch-manipulation select-none ${
-                isActive("/events") ? "text-primary" : "text-muted-foreground"
+              className={`w-full max-w-[64px] sm:max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 touch-manipulation select-none hover:bg-white/10 ${
+                isActive("/events") ? "text-white" : "text-white/70"
               }`}
             >
-              <Calendar className="h-9 w-9 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" strokeWidth={2.4} />
-              <span
-                className="min-w-0 w-full whitespace-nowrap text-[10px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
-              >
-                {t('nav.events', 'Events')}
-              </span>
+              <Calendar className="h-9 w-9" strokeWidth={2.5} />
             </Button>
           </Link>
 
           <Link
             to="/profile"
-            className="flex flex-1 justify-center min-w-0"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
+            className="flex flex-1 justify-center min-w-0 [-webkit-tap-highlight-color:transparent]"
             onMouseEnter={() => prefetchRoute('/profile')}
             onTouchStart={() => prefetchRoute('/profile')}
           >
             <Button
               variant="ghost"
               size="sm"
-              className={`w-full max-w-[64px] sm:max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-2 touch-manipulation select-none ${
-                isActive("/profile") ? "text-primary" : "text-muted-foreground"
+              className={`w-full max-w-[64px] sm:max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 touch-manipulation select-none hover:bg-white/10 ${
+                isActive("/profile") ? "text-white" : "text-white/70"
               }`}
             >
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
                   alt="Profile"
-                  className="h-9 w-9 rounded-full object-cover ring-2 ring-white/80"
+                  className="h-11 w-11 rounded-full object-cover ring-2 ring-white/25"
                   onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
                 />
               ) : (
-                <User className="h-8 w-8" />
+                <User className="h-9 w-9" strokeWidth={2.5} />
               )}
-              <span
-                className="min-w-0 w-full whitespace-nowrap text-[10px] sm:text-base font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
-              >
-                {t('nav.profile', 'Profile')}
-              </span>
             </Button>
           </Link>
+            </div>
           </div>
         </div>
       </nav>

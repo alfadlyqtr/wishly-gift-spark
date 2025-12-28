@@ -159,44 +159,50 @@ export const BrandLayout = () => {
 
       {/* Bottom navigation - Brand specific */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-white/95 via-white/90 to-transparent pt-4 pb-2"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
+        className="fixed bottom-0 left-0 right-0 z-50 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]"
       >
-        <div className="mx-auto w-[min(720px,95%)] p-[2px] rounded-3xl bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]">
-          <div className="flex items-end justify-between gap-2 px-3 py-2 rounded-3xl bg-white/85 backdrop-blur shadow-[0_12px_32px_rgba(0,0,0,0.12)] touch-manipulation">
-            <Link to="/brand/dashboard" className="flex flex-1 justify-center min-w-0" style={{ WebkitTapHighlightColor: 'transparent' }}>
+        <div className="mx-auto w-[min(720px,95%)] px-2">
+          <div className="relative flex items-center justify-between gap-2 px-3 py-2 h-[72px] touch-manipulation">
+            <svg
+              className="pointer-events-none absolute inset-0 h-full w-full drop-shadow-[0_16px_40px_rgba(0,0,0,0.25)]"
+              viewBox="0 0 400 80"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <defs>
+                <linearGradient id="brandNavGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="hsl(240, 50%, 30%)" />
+                  <stop offset="50%" stopColor="hsl(260, 60%, 40%)" />
+                  <stop offset="100%" stopColor="hsl(35, 90%, 50%)" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M0,28 Q0,8 20,8 L150,8 Q165,8 172,20 Q185,44 200,44 Q215,44 228,20 Q235,8 250,8 L380,8 Q400,8 400,28 L400,60 Q400,80 380,80 L20,80 Q0,80 0,60 Z"
+                fill="url(#brandNavGradient)"
+              />
+            </svg>
+            <div className="relative z-10 flex w-full items-center justify-between gap-2">
+            <Link to="/brand/dashboard" className="flex flex-1 justify-center min-w-0 [-webkit-tap-highlight-color:transparent]">
               <Button
                 variant="ghost"
                 size="sm"
-                className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 touch-manipulation select-none ${
-                  isActive("/brand/dashboard") ? "text-primary" : "text-muted-foreground"
+                className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 touch-manipulation select-none hover:bg-white/10 ${
+                  isActive("/brand/dashboard") ? "text-white" : "text-white/70"
                 }`}
               >
-                <LayoutDashboard className="h-9 w-9 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" strokeWidth={2.4} />
-                <span
-                  className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                  style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
-                >
-                  {t("brand.nav_dashboard", "الرئيسية")}
-                </span>
+                <LayoutDashboard className="h-9 w-9" strokeWidth={2.5} />
               </Button>
             </Link>
 
-            <Link to="/brand/products" className="flex flex-1 justify-center min-w-0" style={{ WebkitTapHighlightColor: 'transparent' }}>
+            <Link to="/brand/products" className="flex flex-1 justify-center min-w-0 [-webkit-tap-highlight-color:transparent]">
               <Button
                 variant="ghost"
                 size="sm"
-                className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 touch-manipulation select-none ${
-                  isActivePrefix("/brand/products") ? "text-primary" : "text-muted-foreground"
+                className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 touch-manipulation select-none hover:bg-white/10 ${
+                  isActivePrefix("/brand/products") ? "text-white" : "text-white/70"
                 }`}
               >
-                <Package className="h-9 w-9 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" strokeWidth={2.4} />
-                <span
-                  className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                  style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
-                >
-                  {t("brand.nav_products", "المنتجات")}
-                </span>
+                <Package className="h-9 w-9" strokeWidth={2.5} />
               </Button>
             </Link>
 
@@ -204,53 +210,41 @@ export const BrandLayout = () => {
               <AddProductModal>
                 <Button
                   type="button"
-                  size="lg"
-                  className="relative w-full max-w-[92px] sm:max-w-none -mt-9 px-3 py-2 bg-transparent shadow-none ring-0 transition-all touch-manipulation select-none"
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                  size="icon"
+                  className="relative -mt-14 h-[68px] w-[68px] rounded-full bg-transparent shadow-none ring-0 transition-all touch-manipulation select-none [-webkit-tap-highlight-color:transparent]"
                   aria-label={t("brand.product.add_title", "Add Product")}
                 >
-                  <div className="flex flex-col items-center">
-                    <span
-                      className="text-[30px] font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                      style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
-                    >
-                      +
-                    </span>
-                    <span
-                      className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                      style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
-                    >
-                      {t("brand.product.add_title", "Add Product")}
-                    </span>
-                  </div>
+                  <span className="absolute inset-0 rounded-full bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))]" />
+                  <span className="absolute inset-[3px] rounded-full bg-black" />
+                  <span
+                    className="relative text-white text-[38px] leading-none font-extrabold"
+                    style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+                    aria-hidden="true"
+                  >
+                    +
+                  </span>
                 </Button>
               </AddProductModal>
             </div>
 
-            <Link to="/brand/explore" className="flex flex-1 justify-center min-w-0" style={{ WebkitTapHighlightColor: 'transparent' }}>
+            <Link to="/brand/explore" className="flex flex-1 justify-center min-w-0 [-webkit-tap-highlight-color:transparent]">
               <Button
                 variant="ghost"
                 size="sm"
-                className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 touch-manipulation select-none ${
-                  isActive("/brand/explore") ? "text-primary" : "text-muted-foreground"
+                className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 touch-manipulation select-none hover:bg-white/10 ${
+                  isActive("/brand/explore") ? "text-white" : "text-white/70"
                 }`}
               >
-                <Store className="h-9 w-9 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" strokeWidth={2.4} />
-                <span
-                  className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                  style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
-                >
-                  {t("brand.nav_explore", "Explore")}
-                </span>
+                <Store className="h-9 w-9" strokeWidth={2.5} />
               </Button>
             </Link>
 
-            <Link to="/brand/profile" className="flex flex-1 justify-center min-w-0" style={{ WebkitTapHighlightColor: 'transparent' }}>
+            <Link to="/brand/profile" className="flex flex-1 justify-center min-w-0 [-webkit-tap-highlight-color:transparent]">
               <Button
                 variant="ghost"
                 size="sm"
-                className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 -mt-3 touch-manipulation select-none ${
-                  isActive("/brand/profile") ? "text-primary" : "text-muted-foreground"
+                className={`w-full max-w-[82px] flex flex-col items-center gap-1 h-auto py-2 touch-manipulation select-none hover:bg-white/10 ${
+                  isActive("/brand/profile") ? "text-white" : "text-white/70"
                 }`}
               >
                 {logoUrl ? (
@@ -258,20 +252,15 @@ export const BrandLayout = () => {
                     <img 
                       src={logoUrl} 
                       alt={brandName} 
-                      className="h-9 w-9 rounded-full object-cover drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" 
+                      className="h-11 w-11 rounded-full object-cover ring-2 ring-white/25" 
                     />
                   </div>
                 ) : (
-                  <Building2 className="h-9 w-9 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" strokeWidth={2.4} />
+                  <Building2 className="h-9 w-9" strokeWidth={2.5} />
                 )}
-                <span
-                  className="text-[11px] sm:text-sm font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                  style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
-                >
-                  {t("brand.nav_profile", "العلامة")}
-                </span>
               </Button>
             </Link>
+            </div>
           </div>
         </div>
       </nav>
