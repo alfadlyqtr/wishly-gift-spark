@@ -28,7 +28,7 @@ export default async function handler(req: any, res: any) {
 
     // Step 2: read public profile fields by id
     const profResp = await fetch(
-      `${base}/rest/v1/user_profiles?id=eq.${encodeURIComponent(userId)}&select=full_name,username,avatar_url,allow_friends_claim,show_countdown_timer`,
+      `${base}/rest/v1/user_profiles?id=eq.${encodeURIComponent(userId)}&select=full_name,username,avatar_url,allow_friends_claim,show_countdown_timer,allow_likes,allow_comments`,
       {
         headers: {
           apikey: key,

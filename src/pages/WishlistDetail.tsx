@@ -77,7 +77,7 @@ const WishlistDetail = () => {
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const [claimed, setClaimed] = useState<Record<string, boolean>>({});
   const [reservationAction, setReservationAction] = useState<{ id: string; type: "approve" | "decline" } | null>(null);
-  const [owner, setOwner] = useState<{ full_name?: string | null; username?: string | null; avatar_url?: string | null; allow_friends_claim?: boolean | null; show_countdown_timer?: boolean | null } | null>(null);
+  const [owner, setOwner] = useState<{ full_name?: string | null; username?: string | null; avatar_url?: string | null; allow_friends_claim?: boolean | null; show_countdown_timer?: boolean | null; auto_approve_claims?: boolean | null; allow_likes?: boolean | null; allow_comments?: boolean | null } | null>(null);
   const [countdown, setCountdown] = useState<string | null>(null);
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
@@ -98,6 +98,7 @@ const WishlistDetail = () => {
   const [thankYouUploading, setThankYouUploading] = useState(false);
   const [thankYouGenerating, setThankYouGenerating] = useState(false);
   const [thankYouSaving, setThankYouSaving] = useState(false);
+  const [wishlistCommentDraft, setWishlistCommentDraft] = useState("");
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["wishlist-detail", id],
@@ -108,7 +109,7 @@ const WishlistDetail = () => {
         // Try to join owner profile for gifter header (user_profiles is the correct table)
         (supabase as any)
           .from("wishlists")
-          .select("*, owner:user_profiles(full_name,username,avatar_url,allow_friends_claim,show_countdown_timer)")
+          .select("*, owner:user_profiles(full_name,username,avatar_url,allow_friends_claim,show_countdown_timer,auto_approve_claims,allow_likes,allow_comments)")
           .eq("id", id)
           .maybeSingle(),
         supabase.from("wishlist_items").select("*").eq("wishlist_id", id).order("added_at", { ascending: false }),
@@ -125,6 +126,25 @@ const WishlistDetail = () => {
   const isGifterMode = (searchParams.get('mode') || '').toLowerCase() === 'gifter';
   const fromFriendsTab = Boolean((location as any)?.state?.from === 'friends');
   const isAr = i18n.language?.startsWith('ar');
+
+  const eventDateText = useMemo(() => {
+    const raw = data?.wishlist?.event_date as string | null | undefined;
+    if (!raw) return null;
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return null;
+    if (isAr) {
+      return d.toLocaleDateString('ar-EG', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+    }
+    const weekday = d.toLocaleDateString('en-GB', { weekday: 'long' });
+    const day = d.getDate();
+    const month = d.toLocaleDateString('en-GB', { month: 'long' });
+    return `${weekday}, ${day} ${month} ${d.getFullYear()}`;
+  }, [data?.wishlist?.event_date, isAr]);
 
   const carouselOpts = useMemo(() => ({
     align: "start" as const,
@@ -498,6 +518,83 @@ const WishlistDetail = () => {
     },
   });
 
+  const allowWishlistLikes = (owner as any)?.allow_likes !== false;
+  const allowWishlistComments = (owner as any)?.allow_comments !== false;
+  const likedByMe = Boolean(viewerId && wishlistLikes.some((l: any) => l?.user_id === viewerId));
+
+  const handleToggleWishlistLike = async () => {
+    if (!id) return;
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) {
+        toast.message(t('giftr.cta_title','Want to send a message or claim an item?'), {
+          description: t('giftr.cta_sub','See your friends\' wishlists too.'),
+          action: { label: t('giftr.cta_signup','Sign up'), onClick: () => navigate('/signup') },
+          cancel: { label: t('giftr.cta_login','Log in'), onClick: () => navigate('/login') },
+        } as any);
+        return;
+      }
+
+      if (!allowWishlistLikes) {
+        toast.error(t('wishlist_detail.likes_disabled', 'This user has disabled likes.'));
+        return;
+      }
+
+      if (likedByMe) {
+        const { error } = await supabase
+          .from('wishlist_likes' as any)
+          .delete()
+          .eq('wishlist_id', id)
+          .eq('user_id', uid);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('wishlist_likes' as any)
+          .insert({ wishlist_id: id, user_id: uid });
+        if (error && (error as any).code !== '23505') throw error;
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ['wishlist-detail', id, 'likes'] });
+    } catch (e: any) {
+      toast.error(e?.message || t('giftr.error','Something went wrong'));
+    }
+  };
+
+  const handleAddWishlistComment = async () => {
+    if (!id) return;
+    const text = wishlistCommentDraft.trim();
+    if (!text) return;
+
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) {
+        toast.message(t('giftr.cta_title','Want to send a message or claim an item?'), {
+          description: t('giftr.cta_sub','See your friends\' wishlists too.'),
+          action: { label: t('giftr.cta_signup','Sign up'), onClick: () => navigate('/signup') },
+          cancel: { label: t('giftr.cta_login','Log in'), onClick: () => navigate('/login') },
+        } as any);
+        return;
+      }
+
+      if (!allowWishlistComments) {
+        toast.error(t('wishlist_detail.comments_disabled', 'This user has disabled comments.'));
+        return;
+      }
+
+      const { error } = await supabase
+        .from('wishlist_comments' as any)
+        .insert({ wishlist_id: id, user_id: uid, content: text });
+      if (error) throw error;
+
+      setWishlistCommentDraft('');
+      await queryClient.invalidateQueries({ queryKey: ['wishlist-detail', id, 'comments'] });
+    } catch (e: any) {
+      toast.error(e?.message || t('giftr.error','Something went wrong'));
+    }
+  };
+
   // Item-level likes and comments counts
   const { data: itemSocialCounts = {} } = useQuery({
     queryKey: ["wishlist-detail", id, "item-social-counts", reservationKeyDeps],
@@ -707,85 +804,125 @@ const WishlistDetail = () => {
   // Load owner profile for gifter landing (prefer joined owner, otherwise fetch from user_profiles)
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
       try {
         const joined = (data?.wishlist as any)?.owner;
-        if (joined) { if (!cancelled) setOwner(joined as any); return; }
-        const ownerId = (data?.wishlist as any)?.user_id;
-        if (!ownerId) return;
-        const { data: prof, error: profErr } = await supabase
+        if (joined) {
+          if (!cancelled) setOwner(joined as any);
+          return;
+        }
+
+        const ownerId = (data?.wishlist as any)?.user_id as string | undefined;
+        if (!ownerId) {
+          if (!cancelled) setOwner(null);
+          return;
+        }
+
+        const { data: prof } = await supabase
           .from('user_profiles' as any)
-          .select('full_name, username, avatar_url, allow_friends_claim, show_countdown_timer')
+          .select('full_name, username, avatar_url, allow_friends_claim, show_countdown_timer, auto_approve_claims, allow_likes, allow_comments')
           .eq('id', ownerId)
           .maybeSingle();
-        if (!cancelled && prof) { setOwner((prof as any) || null); return; }
-        // If RLS blocked or no row returned, try direct REST with public env keys
-        try {
-          const supabaseUrl = (import.meta as any)?.env?.VITE_SUPABASE_URL as string | undefined;
-          const supabaseKey = ((import.meta as any)?.env?.VITE_SUPABASE_PUBLISHABLE_KEY || (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY) as string | undefined;
-          if (!supabaseUrl || !supabaseKey) return;
-          const resp = await fetch(`${supabaseUrl.replace(/\/$/, '')}/rest/v1/user_profiles?id=eq.${encodeURIComponent(ownerId)}&select=full_name,username,avatar_url,allow_friends_claim,show_countdown_timer`, {
-            headers: {
-              apikey: supabaseKey,
-              Authorization: `Bearer ${supabaseKey}`,
-              Accept: 'application/json',
-            },
-          });
-          if (!resp.ok) return;
-          const arr = (await resp.json()) as any[];
-          const row = Array.isArray(arr) && arr[0] ? arr[0] : null;
-          if (!cancelled && row) setOwner(row);
-        } catch {}
+
+        if (!cancelled && prof) {
+          setOwner((prof as any) || null);
+          return;
+        }
+
+        // Fallback to API (service role / public key) when RLS blocks direct profile read
+        if (!id) return;
+        const resp = await fetch(`/api/public-wishlist/${encodeURIComponent(id)}`);
+        if (!resp.ok) return;
+        const json = (await resp.json()) as any;
+        const apiOwner = json?.owner ?? null;
+        if (!cancelled) setOwner(apiOwner || null);
       } catch {
         if (!cancelled) setOwner(null);
       }
     })();
-    return () => { cancelled = true; };
-  }, [data?.wishlist?.id]);
 
-  // Fallback fetch for public (gifter) mode when Supabase client can't access user_profiles due to RLS
-  useEffect(() => {
-    if (!isGifterMode) return;
-    if (!id) return;
-    const uid = (data?.wishlist as any)?.user_id as string | undefined;
-    const looksPlaceholder = owner?.username ? /^user-[a-z0-9]{4,}$/i.test(owner.username) : false;
-    const hasName = Boolean(owner?.full_name || owner?.username);
-    const hasAvatar = Boolean(owner?.avatar_url);
-    // Trigger fallback if missing name OR looks like placeholder OR missing avatar
-    if (hasName && !looksPlaceholder && hasAvatar) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const resp = await fetch(`/api/public-wishlist/${id}`);
-        if (!resp.ok) return;
-        const payload = await resp.json();
-        if (cancelled) return;
-        const apiOwner = payload?.owner || {};
-        setOwner((prev) => ({
-          full_name: apiOwner.full_name ?? prev?.full_name,
-          username: apiOwner.username ?? prev?.username,
-          avatar_url: apiOwner.avatar_url ?? prev?.avatar_url,
-          allow_friends_claim: typeof apiOwner.allow_friends_claim === 'boolean' ? apiOwner.allow_friends_claim : prev?.allow_friends_claim,
-          show_countdown_timer: typeof apiOwner.show_countdown_timer === 'boolean' ? apiOwner.show_countdown_timer : prev?.show_countdown_timer,
-        }));
-      } catch {}
-    })();
     return () => {
       cancelled = true;
     };
-  }, [id, isGifterMode, data?.wishlist?.user_id, owner?.username, owner?.full_name, owner?.avatar_url]);
+  }, [id, data?.wishlist, data?.wishlist?.user_id]);
 
-  const eventDateText = (() => {
-    const d = data?.wishlist?.event_date ? new Date(data.wishlist.event_date) : null;
-    if (!d || isNaN(d.getTime())) return null;
-    if (i18n.language === 'ar') {
-      return d.toLocaleDateString('ar-EG', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+  const handleClaimItem = async (itemId: string) => {
+    if (!itemId) return;
+
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth.user;
+      if (!user) {
+        toast.message(t('giftr.cta_title','Want to send a message or claim an item?'), {
+          description: t('giftr.cta_sub','See your friends\' wishlists too.'),
+          action: { label: t('giftr.cta_signup','Sign up'), onClick: () => navigate('/signup') },
+          cancel: { label: t('giftr.cta_login','Log in'), onClick: () => navigate('/login') },
+        } as any);
+        return;
+      }
+
+      if (data?.wishlist?.user_id && data.wishlist.user_id === user.id) {
+        toast.error(t('giftr.claim_own_error','You cannot claim your own wish.'));
+        return;
+      }
+
+      if (!(owner?.allow_friends_claim ?? true)) {
+        toast.error(t('giftr.claim_disabled','This friend has disabled claiming.'));
+        return;
+      }
+
+      const itemReservations = reservationsByItem[itemId] ?? [];
+      const hasPending = itemReservations.some((r) => r.status === 'pending');
+      const hasApproved = itemReservations.some((r) => r.status === 'approved');
+      if (hasPending || hasApproved) return;
+
+      const autoApprove = owner?.auto_approve_claims === true;
+      const nextStatus = autoApprove ? 'approved' : 'pending';
+      const approvedAt = autoApprove ? new Date().toISOString() : null;
+
+      const { error } = await (supabase as any)
+        .from('wishlist_reservations')
+        .insert({
+          item_id: itemId,
+          reserved_by_id: user.id,
+          is_anonymous: false,
+          status: nextStatus,
+          approved_at: approvedAt,
+        });
+
+      if (error) {
+        if ((error as any)?.code === '23505') {
+          toast.info(t('giftr.claim_already','Looks like someone already claimed this item.'));
+          return;
+        }
+        throw error;
+      }
+
+      if (data?.wishlist?.user_id) {
+        await supabase.from('activities').insert({
+          user_id: data.wishlist.user_id,
+          activity_type: 'wish_claimed',
+          target_id: user.id,
+        } as any);
+      }
+
+      if (autoApprove) {
+        await supabase.from('activities').insert({
+          user_id: user.id,
+          activity_type: 'wish_claim_approved',
+          target_id: itemId,
+        } as any);
+        toast.success(t('giftr.claim_approved_toast','Claim approved'));
+      } else {
+        toast.success(t('giftr.claim_success','Claim request sent — waiting for approval'));
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ['wishlist-detail', id, 'reservations', reservationKeyDeps] });
+    } catch (err: any) {
+      toast.error(err?.message || t('giftr.error','Something went wrong'));
     }
-    const weekday = d.toLocaleDateString('en-GB', { weekday: 'long' });
-    const day = d.getDate();
-    const month = d.toLocaleDateString('en-GB', { month: 'long' });
-    return `${weekday}, ${day} ${month} ${d.getFullYear()}`;
-  })();
+  };
 
   // Live countdown for event date (updates every minute)
   useEffect(() => {
@@ -835,7 +972,7 @@ const WishlistDetail = () => {
   return (
     <div className={`container max-w-2xl mx-auto px-4 py-6 space-y-4 ${isGifterMode ? 'relative' : ''}`}>
       {isGifterMode && !isMobile && (
-        <div className="fixed inset-0 z-0">
+        <div className="fixed inset-0 z-0 pointer-events-none">
           <Suspense fallback={null}>
             <FloatingLines
               enabledWaves={["top", "middle", "bottom"]}
@@ -853,7 +990,7 @@ const WishlistDetail = () => {
           </Suspense>
         </div>
       )}
-      <div className={`${isGifterMode ? 'relative z-10' : ''}`}>
+      <div className={`${isGifterMode ? 'relative z-10 pointer-events-auto' : ''}`}>
       {!isGifterMode && (
         <div className="flex items-center gap-2">
           <BackButton onClick={() => navigate(-1)}>{t("wishlist_detail_back", "Back")}</BackButton>
@@ -1250,13 +1387,7 @@ const WishlistDetail = () => {
                                       size="sm"
                                       className="h-8 px-3"
                                       disabled={isClaimedItem || hasPending}
-                                      onClick={() => {
-                                        toast.message(t('giftr.cta_title','Want to send a message or claim an item?'), {
-                                          description: t('giftr.cta_sub','See your friends\' wishlists too.'),
-                                          action: { label: t('giftr.cta_signup','Sign up'), onClick: () => navigate('/signup') },
-                                          cancel: { label: t('giftr.cta_login','Log in'), onClick: () => navigate('/login') },
-                                        } as any);
-                                      }}
+                                      onClick={() => handleClaimItem(it.id)}
                                     >
                                       {isClaimedItem
                                         ? (isAr ? 'تم الحجز' : t('giftr.claimed_btn', 'Claimed'))
@@ -1271,15 +1402,7 @@ const WishlistDetail = () => {
                                       size="sm"
                                       className="h-8 px-3"
                                       disabled={isClaimedItem || hasPending}
-                                      onClick={async () => {
-                                        try {
-                                          const { data: { user } } = await supabase.auth.getUser();
-                                          if (!user) { navigate('/login'); return; }
-                                          toast.success(t('giftr.claim_soon','Claim reserved — coming soon'));
-                                        } catch {
-                                          toast.error(t('giftr.error','Something went wrong'));
-                                        }
-                                      }}
+                                      onClick={() => handleClaimItem(it.id)}
                                     >
                                       {isClaimedItem
                                         ? (isAr ? 'تم الحجز' : t('giftr.claimed_btn', 'Claimed'))
@@ -1397,21 +1520,57 @@ const WishlistDetail = () => {
                 )}
 
                 {activeTab === 'activity' && (
-                  <div className="mt-2 space-y-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Heart className="h-4 w-4 text-[#be123c] fill-[#be123c]" />
-                      <span className="font-semibold text-white">{wishlistLikes.length}</span>
-                      <span className="text-white/80 text-xs">
-                        {t('wishlist_detail.activity_likes_count', 'likes')}
-                      </span>
+                  <div className="mt-3 space-y-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 border transition ${likedByMe ? 'bg-white text-slate-900 border-white/70' : 'bg-black/20 text-white border-white/30 hover:bg-black/30'} ${!allowWishlistLikes ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        onClick={handleToggleWishlistLike}
+                        disabled={!allowWishlistLikes}
+                      >
+                        <Heart className={`h-4 w-4 ${likedByMe ? 'fill-[#be123c] text-[#be123c]' : 'text-[#be123c]'}`} />
+                        <span className="font-semibold">{wishlistLikes.length}</span>
+                        <span className="text-xs opacity-80">{t('wishlist_detail.activity_likes_count', 'likes')}</span>
+                      </button>
+
+                      <div className="flex items-center gap-2 text-white/90">
+                        <MessageCircle className="h-4 w-4 text-blue-300" />
+                        <span className="font-semibold">{wishlistComments.length}</span>
+                        <span className="text-xs text-white/70">{t('wishlist_detail.activity_comments_count', 'comments')}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <MessageCircle className="h-4 w-4 text-blue-400" />
-                      <span className="font-semibold text-white">{wishlistComments.length}</span>
-                      <span className="text-white/80 text-xs">
-                        {t('wishlist_detail.activity_comments_count', 'comments')}
-                      </span>
+
+                    <div className="space-y-2">
+                      {(wishlistComments || []).slice(-5).map((c: any) => (
+                        <div key={c.id} className="rounded-lg bg-black/20 border border-white/20 px-3 py-2">
+                          <div className="text-white/95 text-sm" dir="auto">{c.content}</div>
+                          <div className="mt-1 text-[10px] text-white/60">
+                            {c.created_at ? new Date(c.created_at).toLocaleString() : ''}
+                          </div>
+                        </div>
+                      ))}
                     </div>
+
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={wishlistCommentDraft}
+                        onChange={(e) => setWishlistCommentDraft(e.target.value)}
+                        placeholder={t('wishlist_detail.comment_placeholder', 'Write a comment...')}
+                        className="h-9 bg-white/90 text-slate-900 placeholder:text-slate-500"
+                        disabled={!allowWishlistComments}
+                      />
+                      <Button
+                        size="sm"
+                        className="h-9"
+                        onClick={handleAddWishlistComment}
+                        disabled={!allowWishlistComments || !wishlistCommentDraft.trim()}
+                      >
+                        {t('wishlist_detail.comment_send', 'Send')}
+                      </Button>
+                    </div>
+                    {!allowWishlistComments && (
+                      <div className="text-xs text-white/70">{t('wishlist_detail.comments_disabled', 'Comments are disabled by the owner.')}</div>
+                    )}
                   </div>
                 )}
               </div>

@@ -35,23 +35,40 @@ export const SocialWishCard = () => {
       if (!uid) return null as any;
       const { data: follows } = await supabase
         .from("followers")
-        .select("following_id")
-        .eq("user_id", uid);
+        .select("following_id, status")
+        .eq("user_id", uid)
+        .eq("status", "accepted");
       const followedIds = (follows || [])
         .map((f: any) => f.following_id)
         .filter((id: string | null | undefined) => !!id && id !== uid);
       const ids = Array.from(new Set(followedIds));
       if (ids.length === 0) return null as any;
+
+      const { data: reciprocalRows } = await supabase
+        .from("followers")
+        .select("user_id")
+        .eq("status", "accepted")
+        .eq("following_id", uid)
+        .in("user_id", ids as any);
+
+      const mutualIds = new Set<string>((reciprocalRows ?? []).map((row: any) => row.user_id as string));
       
       // First get wishlists from followed users, including owner preferences
       const { data: wishlists } = await supabase
         .from("wishlists")
-        .select("id, title, event_date, user_id, user_profiles(id, username, full_name, avatar_url, allow_wishlist_sharing, allow_likes, allow_comments, allow_thank_you_posts)")
+        .select("id, title, event_date, user_id, privacy_level, user_profiles(id, username, full_name, avatar_url, allow_wishlist_sharing, allow_likes, allow_comments, allow_thank_you_posts)")
         .in("user_id", ids as any);
 
-      if (!wishlists || wishlists.length === 0) return null as any;
+      const visibleWishlists = (wishlists || []).filter((w: any) => {
+        const level = (w as any)?.privacy_level as string | null | undefined;
+        if (level === 'private') return false;
+        if (level === 'friends_only') return mutualIds.has((w as any).user_id);
+        return true;
+      });
 
-      const wishlistIds = wishlists.map((w: any) => w.id);
+      if (!visibleWishlists || visibleWishlists.length === 0) return null as any;
+
+      const wishlistIds = visibleWishlists.map((w: any) => w.id);
 
       // Then get recent items from those wishlists
       const { data: items } = await supabase
@@ -134,7 +151,7 @@ export const SocialWishCard = () => {
       // Group wishlists by owner
       const wishlistsByOwner: Record<string, any[]> = {};
       const ownerById: Record<string, any> = {};
-      for (const w of wishlists as any[]) {
+      for (const w of visibleWishlists as any[]) {
         const ownerId = (w as any).user_id as string;
         if (!wishlistsByOwner[ownerId]) wishlistsByOwner[ownerId] = [];
         wishlistsByOwner[ownerId].push(w);

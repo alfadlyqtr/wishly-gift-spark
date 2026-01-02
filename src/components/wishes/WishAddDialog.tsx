@@ -43,7 +43,7 @@ type Props = {
     imagePreviewUrl?: string | null;
     itemId?: string;
     url?: string;
-  }) => void | Promise<void>;
+  }) => boolean | void | Promise<boolean | void>;
   trigger?: React.ReactNode;
 };
 
@@ -58,6 +58,7 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, disabledW
   const [itemUrl, setItemUrl] = useState("");
   const [urlInput, setUrlInput] = useState("");
   const [isFetchingUrl, setIsFetchingUrl] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const { t, i18n } = useTranslation();
   const [isExtracting, setIsExtracting] = useState(false);
@@ -522,6 +523,7 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, disabledW
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
     // Validation with helpful error messages
     if (!wishlistId) {
       toast.error(t("wish_item.error_no_wishlist", "Please select a wishlist first"));
@@ -535,28 +537,37 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, disabledW
       toast.error(t("wish_item.error_no_title", "Please enter an item name"));
       return;
     }
-    
-    await onSubmit?.({
-      wishlistId,
-      title,
-      brand,
-      description,
-      desire,
-      imageFile,
-      imagePreviewUrl: imageUrl ?? null,
-      itemId,
-      url: itemUrl || urlInput || undefined,
-    });
-    // reset on success
-    setTitle("");
-    setBrand("");
-    setDescription("");
-    setDesire(3);
-    handleClearImage();
-    setWishlistId("");
-    setItemUrl("");
-    setUrlInput("");
-    onOpenChange?.(false);
+
+    try {
+      setIsSubmitting(true);
+      const res = await onSubmit?.({
+        wishlistId,
+        title,
+        brand,
+        description,
+        desire,
+        imageFile,
+        imagePreviewUrl: imageUrl ?? null,
+        itemId,
+        url: itemUrl || urlInput || undefined,
+      });
+
+      const success = res !== false;
+      if (!success) return;
+
+      // reset on success
+      setTitle("");
+      setBrand("");
+      setDescription("");
+      setDesire(3);
+      handleClearImage();
+      setWishlistId("");
+      setItemUrl("");
+      setUrlInput("");
+      onOpenChange?.(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -774,8 +785,10 @@ export default function WishAddDialog({ open, onOpenChange, wishlists, disabledW
             {/* Actions */}
             <div className="button-div flex flex-col items-center justify-center gap-2 pt-2 pb-[max(env(safe-area-inset-bottom),0px)]">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 w-full">
-                <Button type="button" variant="secondary" onClick={() => onOpenChange?.(false)} className="w-full sm:w-auto px-6">{t("common.cancel", "Cancel")}</Button>
-                <Button type="button" disabled={!canSubmit} onClick={handleSubmit} className="w-full sm:w-auto px-8 py-2 bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white rounded-xl">{itemId ? t("wish_item.update_button", "Update Wish") : t("wish_item.save_button", "Save to Wishlist")}</Button>
+                <Button type="button" variant="secondary" onClick={() => onOpenChange?.(false)} disabled={isSubmitting} className="w-full sm:w-auto px-6">{t("common.cancel", "Cancel")}</Button>
+                <Button type="button" disabled={!canSubmit || isSubmitting} onClick={handleSubmit} className="w-full sm:w-auto px-8 py-2 bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] text-white rounded-xl">
+                  {isSubmitting ? t("common.saving", "Saving...") : (itemId ? t("wish_item.update_button", "Update Wish") : t("wish_item.save_button", "Save to Wishlist"))}
+                </Button>
               </div>
               <p className="text-[11px] text-muted-foreground/70 text-center italic mt-1">
                 {t("wish_item.double_check_hint", "✨ Quick check! Make sure everything looks good before saving")}

@@ -391,13 +391,11 @@ function useFriendsEvents() {
 
       for (const wl of (data ?? []) as MyEvent[]) {
         if (!wl.event_date) continue;
-        const prefs = visibilityPrefs.get(wl.user_id) ?? { allowFollowersView: false, respectPerWishlist: true };
-        const shouldRespectPrivacy = prefs.respectPerWishlist || !prefs.allowFollowersView;
-
-        if (shouldRespectPrivacy) {
-          const requiresMutual = wl.privacy_level === "private" || wl.privacy_level === "friends_only";
-          if (requiresMutual && !mutualIds.has(wl.user_id)) continue;
-        }
+        // Option B privacy enforcement:
+        // - private: never visible to others
+        // - friends_only: only visible when relationship is mutual (accepted both ways)
+        if (wl.privacy_level === "private") continue;
+        if (wl.privacy_level === "friends_only" && !mutualIds.has(wl.user_id)) continue;
 
         const targetFriend = friendMap.get(wl.user_id);
         if (!targetFriend) continue;
@@ -656,6 +654,7 @@ const Events = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [monthFilter, setMonthFilter] = useState<number | 'all'>('all');
   const { data: profileBundle } = useProfileData();
+  const [allowMyWishlistSharing, setAllowMyWishlistSharing] = useState<boolean>(true);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
@@ -837,7 +836,7 @@ const Events = () => {
       const [{ data: wl, error: wlErr }, { data: items, error: itemsErr }] = await Promise.all([
         (supabase as any)
           .from("wishlists")
-          .select("id,user_id,title,description,event_date,owner:user_profiles(full_name,username,avatar_url,allow_friends_claim,show_countdown_timer)")
+          .select("id,user_id,title,description,event_date,owner:user_profiles(full_name,username,avatar_url,allow_friends_claim,show_countdown_timer,allow_wishlist_sharing,auto_approve_claims)")
           .eq("id", previewWishlistId)
           .maybeSingle(),
         supabase
@@ -1070,9 +1069,12 @@ const Events = () => {
         }
         setPreviewClaimingId(itemId);
         try {
+          const autoApprove = (previewOwner as any)?.auto_approve_claims === true;
+          const nextStatus = autoApprove ? 'approved' : 'pending';
+          const approvedAt = autoApprove ? new Date().toISOString() : null;
           const { error } = await (supabase as any)
             .from('wishlist_reservations')
-            .insert({ item_id: itemId, reserved_by_id: user.id, is_anonymous: false, status: 'pending' });
+            .insert({ item_id: itemId, reserved_by_id: user.id, is_anonymous: false, status: nextStatus, approved_at: approvedAt });
           if (error) {
             if (error.code === '23505') {
               toast.info(t('giftr.claim_already','Looks like someone already claimed this item.'));
@@ -1088,7 +1090,16 @@ const Events = () => {
                 target_id: user.id,
               } as any);
             }
-            toast.success(t('giftr.claim_success','Claim request sent — waiting for approval'));
+            if (autoApprove) {
+              await supabase.from('activities').insert({
+                user_id: user.id,
+                activity_type: 'wish_claim_approved',
+                target_id: itemId,
+              } as any);
+              toast.success(t('giftr.claim_approved_toast','Claim approved'));
+            } else {
+              toast.success(t('giftr.claim_success','Claim request sent — waiting for approval'));
+            }
           }
         } catch (err: any) {
           if (!err?.code || err.code !== '23505') {
@@ -1226,6 +1237,32 @@ const Events = () => {
     compute();
     window.addEventListener('resize', compute);
     return () => window.removeEventListener('resize', compute);
+  }, []);
+
+  // Load my share preference (used to show/hide share icon on my own wishlist cards)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const uid = auth.user?.id;
+        if (!uid) return;
+        const { data } = await (supabase as any)
+          .from('user_profiles')
+          .select('allow_wishlist_sharing')
+          .eq('id', uid)
+          .maybeSingle();
+        if (cancelled) return;
+        if (typeof (data as any)?.allow_wishlist_sharing === 'boolean') {
+          setAllowMyWishlistSharing((data as any).allow_wishlist_sharing);
+        }
+      } catch {
+        // Keep default
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -1388,11 +1425,13 @@ const Events = () => {
 
                   {/* Right: Actions */}
                   <div className="flex items-center gap-1.5 sm:gap-2" onClick={(ev) => ev.stopPropagation()}>
-                    <ShareButton
-                      url={`${window.location.origin}/w/${e.id}`}
-                      title={e.title || 'Wishlist'}
-                      size="sm"
-                    />
+                    {allowMyWishlistSharing && (
+                      <ShareButton
+                        url={`${window.location.origin}/w/${e.id}`}
+                        title={e.title || 'Wishlist'}
+                        size="sm"
+                      />
+                    )}
                     <Button 
                       variant="default" 
                       size="sm" 
@@ -1758,15 +1797,17 @@ const Events = () => {
 
                               {/* Right: Actions */}
                               <div className="flex items-center gap-1.5" onClick={(ev) => ev.stopPropagation()}>
-                                <ShareButton
-                                  url={`${window.location.origin}/w/${wl.id}`}
-                                  title={wl.title || 'Wishlist'}
-                                  size="sm"
-                                />
+                                {(wl as any)?.owner?.allow_wishlist_sharing !== false && (
+                                  <ShareButton
+                                    url={`${window.location.origin}/w/${wl.id}`}
+                                    title={wl.title || 'Wishlist'}
+                                    size="sm"
+                                  />
+                                )}
                                 <Button 
                                   variant="default" 
                                   size="sm" 
-                                onClick={(event) => {
+                                  onClick={(event) => {
                                     event.stopPropagation();
                                     navigate(`/wishlist/${wl.id}`);
                                   }}
