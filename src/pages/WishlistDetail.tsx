@@ -1815,11 +1815,11 @@ const WishlistDetail = () => {
               if (error) throw error;
               
               toast.success(t('wishlist_detail.item_updated', 'Item updated successfully'));
-              setEditOpen(false);
-              setEditingItem(null);
               await refetch();
+              return true;
             } catch (err: any) {
               toast.error(err?.message || t('wishlist_detail.update_failed', 'Failed to update item'));
+              return false;
             }
           }}
         />

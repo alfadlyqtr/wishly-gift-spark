@@ -660,7 +660,7 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
                             selectedProductLiked ? "is-liked" : ""
                           }`}
                           onClick={handleToggleLikeSelectedProduct}
-                          aria-pressed={selectedProductLiked}
+                          aria-pressed={selectedProductLiked ? "true" : "false"}
                           aria-label={
                             selectedProductLiked
                               ? t("explore.unlike_product", "Unlike product")
@@ -710,13 +710,14 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
             initialDescription={productForWishAdd.description || ""}
             initialImageUrl={productForWishAdd.image_url || null}
             onSubmit={async ({ wishlistId, title, brand: brandName, description, desire, imagePreviewUrl }) => {
+              let shouldClose = false;
               try {
                 const effectiveTitle = title || productForWishAdd.name || "";
                 const effectiveBrand = brandName || brand?.brand_name || "";
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) {
                   toast.error(t("common.login_required", "Please login to add items"));
-                  return;
+                  return false;
                 }
                 const { error } = await supabase.from("wishlist_items").insert({
                   wishlist_id: wishlistId,
@@ -735,8 +736,8 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
                         ? `${t("explore.already_in", "Already in")} ${wlName}`
                         : t("explore.already_in_wishlist", "Already in this wishlist"),
                     );
-                    setProductForWishAdd(null);
-                    return;
+                    shouldClose = true;
+                    return true;
                   }
                   throw error;
                 }
@@ -750,9 +751,13 @@ export const BrandProfileModal = ({ brandId, isOpen, onClose }: BrandProfileModa
                   next[pid] = Array.from(existing);
                   return next;
                 });
-                setProductForWishAdd(null);
+                shouldClose = true;
+                return true;
               } catch (err: any) {
                 toast.error(err.message || t("common.error", "Something went wrong"));
+                return false;
+              } finally {
+                if (shouldClose) setProductForWishAdd(null);
               }
             }}
           />

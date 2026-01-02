@@ -1216,6 +1216,7 @@ const Explore = () => {
           initialDescription={productForAdd.description || ""}
           initialImageUrl={productForAdd.image_url || null}
           onSubmit={async ({ wishlistId, title, brand, description, desire, imagePreviewUrl }) => {
+            let shouldClose = false;
             try {
               const effectiveTitle = title || productForAdd.name || "";
               const effectiveBrand = brand || productForAdd.brands?.brand_name || "";
@@ -1254,7 +1255,8 @@ const Explore = () => {
                       "This product is already in this wishlist.",
                     ),
                   );
-                  return;
+                  shouldClose = true;
+                  return true;
                 }
               }
 
@@ -1274,7 +1276,8 @@ const Explore = () => {
                     "This product is already in this wishlist.",
                   ),
                 );
-                return;
+                shouldClose = true;
+                return true;
               }
 
               // 2) Fallback: if we have a product URL, avoid duplicates by URL as well
@@ -1293,7 +1296,8 @@ const Explore = () => {
                       "This product is already in this wishlist.",
                     ),
                   );
-                  return;
+                  shouldClose = true;
+                  return true;
                 }
               }
 
@@ -1309,7 +1313,8 @@ const Explore = () => {
                       ? `${t("explore.already_in", "Already in")} ${wlName}`
                       : t("explore.already_in_wishlist", "Already in this wishlist"),
                   );
-                  return;
+                  shouldClose = true;
+                  return true;
                 }
                 console.error("❌ Error saving wishlist item:", error);
                 throw error;
@@ -1327,14 +1332,19 @@ const Explore = () => {
                 next[pid] = Array.from(existing);
                 return next;
               });
+              shouldClose = true;
+              return true;
             } catch (e: any) {
               toast.error(
                 e?.message ||
                   t("common.error_generic", "Something went wrong. Please try again."),
               );
+              return false;
             } finally {
-              setIsAddDialogOpen(false);
-              setProductForAdd(null);
+              if (shouldClose) {
+                setIsAddDialogOpen(false);
+                setProductForAdd(null);
+              }
             }
           }}
         />

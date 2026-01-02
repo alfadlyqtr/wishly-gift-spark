@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ const Notifications = () => {
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const location = useLocation();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
@@ -26,6 +27,14 @@ const Notifications = () => {
     if (!supabase) return;
     supabase.auth.getUser().then(({ data }) => setUid(data.user?.id ?? null));
   }, []);
+
+  useEffect(() => {
+    const sp = new URLSearchParams(location.search);
+    const next = sp.get("filter");
+    if (next === "all" || next === "follows" || next === "likes" || next === "comments") {
+      setFilter(next);
+    }
+  }, [location.search]);
 
   const queryClient = useQueryClient();
 

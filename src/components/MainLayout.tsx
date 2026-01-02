@@ -1,6 +1,6 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { Home, Store, Calendar, User, Plus, Bell, MessageSquare } from "lucide-react";
+import { Home, Store, Calendar, User, Plus, Bell, MessageSquare, Heart } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import wishlyLogo from "@/assets/wishly-logo.png";
@@ -258,6 +258,11 @@ export const MainLayout = () => {
           <img src={wishlyLogo} alt="Wishly" className="h-12 md:h-14" />
         </Link>
         <div className="flex items-center gap-2">
+          <Link to="/notifications?filter=likes">
+            <Button variant="ghost" size="icon">
+              <Heart className="h-5 w-5" />
+            </Button>
+          </Link>
           <Link to="/notifications">
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
@@ -438,7 +443,7 @@ export const MainLayout = () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
               toast.error("You must be signed in");
-              return;
+              return false;
             }
 
             // Optional image upload to Storage (bucket must exist)
@@ -470,8 +475,10 @@ export const MainLayout = () => {
             const { error } = await supabase.from("wishlist_items").insert([payload]);
             if (error) throw error;
             toast.success(t("success.wish_saved", "Wish saved"));
+            return true;
           } catch (e: any) {
             toast.error(e?.message || t("errors.failed_save_wish", "Failed to save wish"));
+            return false;
           }
         }}
       />

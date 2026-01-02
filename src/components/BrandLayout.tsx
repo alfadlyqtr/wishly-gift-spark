@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Store, Building2, Bell, MessageSquare, BadgeCheck } from "lucide-react";
+import { LayoutDashboard, Package, Store, Building2, Bell, MessageSquare, BadgeCheck, Heart } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import wishlyLogo from "@/assets/wishly-logo.png";
@@ -132,6 +132,15 @@ export const BrandLayout = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-slate-600"
+              onClick={() => navigate("/brand/notifications")}
+              aria-label={t("brand.header_likes", "Likes")}
+            >
+              <Heart className="h-5 w-5" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
