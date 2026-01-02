@@ -1426,7 +1426,10 @@ const WishlistDetail = () => {
             <div className="flex items-center justify-center gap-3 mb-2">
               <img src={wishlyLogo} alt="Wishly" className="h-12 w-12 rounded-full ring-1 ring-white/50 shadow-sm object-cover" />
               <div className="text-center">
-                <div className="text-white text-lg sm:text-xl font-extrabold drop-shadow-[0_3px_12px_rgba(0,0,0,0.45)] tracking-tight">
+                <div
+                  className="text-lg sm:text-xl font-extrabold tracking-tight bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]"
+                  style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
+                >
                   {t('giftr.cta_head','Wishlist in Style')}
                 </div>
                 <div className="text-xs opacity-95 -mt-0.5 text-black/80">
@@ -1442,6 +1445,26 @@ const WishlistDetail = () => {
                 {t('giftr.cta_signup','Sign up')}
               </Link>
               <Link to="/login" className="w-full sm:w-auto px-5 py-2 rounded-full text-sm font-semibold ring-1 ring-black/10 bg-white/80">{t('giftr.cta_login','Log in')}</Link>
+            </div>
+
+            <div className="mt-3 flex items-center justify-center">
+              <a
+                href="https://apps.apple.com/us/app/wishly-social-wishing/id6756578687"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 bg-black text-white shadow-[0_10px_24px_rgba(0,0,0,0.20)] ring-1 ring-white/20 hover:brightness-110 active:scale-[0.99] transition"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M16.73 13.11c.03 3.3 2.9 4.4 2.93 4.41-.02.08-.46 1.57-1.52 3.1-.92 1.33-1.88 2.66-3.38 2.69-1.48.03-1.96-.88-3.66-.88-1.7 0-2.23.85-3.64.91-1.45.06-2.55-1.45-3.48-2.77-1.9-2.74-3.35-7.74-1.4-11.12.97-1.68 2.7-2.75 4.59-2.78 1.43-.03 2.79.97 3.66.97.87 0 2.51-1.2 4.23-1.02.72.03 2.75.29 4.06 2.2-.11.07-2.42 1.41-2.39 4.2ZM14.11 3.66c.77-.93 1.29-2.23 1.15-3.52-1.11.04-2.46.74-3.26 1.67-.72.83-1.35 2.16-1.18 3.43 1.24.1 2.52-.63 3.29-1.58Z"
+                    fill="currentColor"
+                  />
+                </svg>
+                <span className="flex flex-col leading-none">
+                  <span className="text-[10px] opacity-90">Download on the</span>
+                  <span className="text-sm font-extrabold tracking-tight">App Store</span>
+                </span>
+              </a>
             </div>
           </div>
         </div>

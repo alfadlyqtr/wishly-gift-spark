@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Share2, X, MessageCircle, Mail, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -55,18 +56,14 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
   const shareUrl = url || (typeof window !== 'undefined' ? window.location.href : '');
   const shareText = text || title;
 
-  // Close when clicking outside
+  // Close on Escape (works with the portaled menu)
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false);
     };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
   }, [isOpen]);
 
   const sizeClasses = {
@@ -146,40 +143,17 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
       ref={containerRef}
       className={`relative inline-flex items-center justify-center ${className}`}
     >
-      {/* Overlay share menu */}
-      {isOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 backdrop-blur-sm" onClick={() => setIsOpen(false)}>
-          <div
-            className="relative w-[260px] h-[260px] max-w-[90vw] max-h-[90vh] select-none"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {socialButtons.map((social, idx) => {
-              const Icon = social.icon;
-              const posClass = radialPositions[idx % radialPositions.length];
-              return (
-                <button
-                  key={social.id}
-                  type="button"
-                  onClick={() => handleShare(social.id)}
-                  className={`absolute left-1/2 top-1/2 share-orb ${posClass} ${socialSizeClasses[size]} rounded-full text-sm font-semibold shadow-xl transition active:scale-95 ${social.color} ${social.textClass || 'text-white'} flex items-center justify-center`}
-                  aria-label={`Share on ${social.id}`}
-                >
-                  <Icon className="w-5 h-5" />
-                </button>
-              );
-            })}
-
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${sizeClasses[size]} rounded-full bg-gradient-to-br from-purple-600 to-purple-800 text-white shadow-2xl border border-white/40 flex items-center justify-center transition hover:from-purple-500 hover:to-purple-700 active:scale-95`}
-              aria-label={t('common.close', 'Close')}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      )}
+      <ShareMenu
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        socialButtons={socialButtons}
+        radialPositions={radialPositions}
+        socialSizeClasses={socialSizeClasses}
+        size={size}
+        sizeClasses={sizeClasses}
+        handleShare={handleShare}
+        t={t}
+      />
 
       {/* Main share button */}
       <button
@@ -197,6 +171,77 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
         )}
       </button>
     </div>
+  );
+};
+
+// Separate Menu component to be portaled
+const ShareMenu: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  socialButtons: any[];
+  radialPositions: string[];
+  socialSizeClasses: any;
+  size: 'sm' | 'md' | 'lg';
+  sizeClasses: any;
+  handleShare: (id: string) => void;
+  t: any;
+}> = ({
+  isOpen,
+  onClose,
+  socialButtons,
+  radialPositions,
+  socialSizeClasses,
+  size,
+  sizeClasses,
+  handleShare,
+  t,
+}) => {
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/55 backdrop-blur-sm" 
+      onClick={onClose}
+    >
+      <div
+        className="relative w-[260px] h-[260px] max-w-[90vw] max-h-[90vh] select-none"
+        onClick={(e) => e.stopPropagation()}
+      >
+            {socialButtons.map((social, idx) => {
+          const Icon = social.icon;
+          const posClass = radialPositions[idx % radialPositions.length];
+          return (
+            <button
+              key={social.id}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleShare(social.id);
+              }}
+              className={`absolute left-1/2 top-1/2 share-orb ${posClass} ${socialSizeClasses[size]} rounded-full text-sm font-semibold shadow-xl transition active:scale-95 ${social.color} ${social.textClass || 'text-white'} flex items-center justify-center z-[100000] pointer-events-auto`}
+              aria-label={`Share on ${social.id}`}
+            >
+              <Icon className="w-5 h-5" />
+            </button>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onClose();
+          }}
+          className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${sizeClasses[size]} rounded-full bg-gradient-to-br from-purple-600 to-purple-800 text-white shadow-2xl border border-white/40 flex items-center justify-center transition hover:from-purple-500 hover:to-purple-700 active:scale-95 z-[100001] pointer-events-auto`}
+          aria-label={t('common.close', 'Close')}
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+    </div>,
+    document.body
   );
 };
 

@@ -1346,12 +1346,12 @@ const Events = () => {
                       )}
                     </div>
                   ) : (
-          <div className="space-y-3 pt-4 px-1">
+          <div className="space-y-3 pt-4 px-1 relative z-0">
             {(myEvents || []).map((e) => (
               <div 
                 key={e.id}
                 onClick={() => navigate(`/wishlist/${e.id}`)}
-                className="relative group p-[1px] rounded-2xl bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer"
+                className="relative group p-[1px] rounded-2xl bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer hover:z-10"
               >
                 <div className="flex items-center gap-2 sm:gap-4 p-2 sm:p-3 rounded-[15px] bg-white/90 backdrop-blur-sm transition-colors group-hover:bg-white/95">
                   {/* Left: Icon/Initial */}
