@@ -14,6 +14,7 @@ export type FriendEventsListFriend = {
     title: string | null;
     event_date: string | null;
     description: string | null;
+    privacy_level: string | null;
   }[];
 };
 

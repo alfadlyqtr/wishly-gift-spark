@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Pencil, Trash2, Loader2, Hourglass, Check, Users, Globe2 } from "lucide-react";
+import { Calendar, Pencil, Trash2, Loader2, Hourglass, Check, Users, Globe2, LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, type CarouselApi } from "@/components/ui/carousel";
 import { toast } from "sonner";
 import { approveReservation, declineReservation, requestUnclaim, approveUnclaim, declineUnclaim } from "@/lib/reservations";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ShareButton } from "@/components/ui/ShareButton";
+
 // General events will be filtered by user's country and is_public_holiday
 
 type MyEvent = {
@@ -60,6 +63,7 @@ type FriendWishlistPreviewPayload = {
     title: string | null;
     event_date: string | null;
     description: string | null;
+    privacy_level: string | null;
     owner?: {
       full_name?: string | null;
       username?: string | null;
@@ -403,6 +407,7 @@ function useFriendsEvents() {
           title: wl.title,
           event_date: wl.event_date,
           description: wl.description,
+          privacy_level: wl.privacy_level,
         });
       }
 
@@ -619,11 +624,14 @@ function usePublicEvents() {
           return [];
         }
 
+        const currentYear = new Date().getFullYear();
         const { data, error } = await (supabase as any)
           .from("events")
           .select("*")
           .eq("is_public_holiday", true)
           .eq("country_code", targetCountry)
+          .gte("date", `${currentYear}-01-01`)
+          .lte("date", `${currentYear}-12-31`)
           .order("date", { ascending: true });
 
         if (error) return [];
@@ -674,6 +682,13 @@ const Events = () => {
   const [previewAllReservations, setPreviewAllReservations] = useState<Map<string, { id: string; status: string; claimer_name: string; claimer_id: string }>>(new Map());
   const [previewUnclaimingId, setPreviewUnclaimingId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'stack' | 'list'>(() => {
+    return (localStorage.getItem('events_view_mode') as 'stack' | 'list') || 'stack';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('events_view_mode', viewMode);
+  }, [viewMode]);
   useEffect(() => {
     if (!friendsEvents || friendsEvents.length === 0) return;
     if (friendParam) {
@@ -1275,7 +1290,7 @@ const Events = () => {
         <TabsContent value="mine" className="pt-4">
           <Card className="border-0 rounded-2xl ring-0 shadow-none bg-transparent sm:ring-1 sm:bg-gradient-to-br sm:from-[hsl(var(--brand-cool-start))]/10 sm:via-[hsl(var(--brand-cool-end))]/10 sm:to-[hsl(var(--brand-warm-end))]/10 sm:shadow-[0_18px_40px_rgba(0,0,0,0.20)] overflow-visible">
             <CardHeader className="pb-2 sm:pb-3">
-              <div className="relative flex items-center justify-center">
+              <div className="relative flex items-center justify-center py-2">
                 <div className="absolute left-0">
                   <CreateWishlistModal>
                     <AddButton ariaLabel="Add Wishlist" />
@@ -1287,31 +1302,113 @@ const Events = () => {
                 >
                   {t('events.tab_my', 'My Events')}
                 </CardTitle>
+                <div className="absolute right-0">
+                  <ToggleGroup 
+                    type="single" 
+                    value={viewMode} 
+                    onValueChange={(v) => v && setViewMode(v as 'stack' | 'list')}
+                    className="bg-muted/50 p-1 rounded-lg"
+                  >
+                    <ToggleGroupItem value="stack" className="h-8 w-8 p-0 rounded-md" aria-label="Stack View">
+                      <LayoutGrid className="h-4 w-4" />
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="list" className="h-8 w-8 p-0 rounded-md" aria-label="List View">
+                      <List className="h-4 w-4" />
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="pt-2">
               {myEventsCount > 0 && (
                 <>
-                  <div className="w-full flex justify-center pt-16 pb-4 sm:pt-16 sm:pb-6 relative">
-                    <WishlistStack
-                      randomRotation={true}
-                      sensitivity={180}
-                      sendToBackOnClick={false}
-                      cardDimensions={{ width: cardSize.width, height: cardSize.height }}
-                      cards={(myEvents || []).map((e) => ({ id: e.id, title: e.title || 'Untitled' }))}
-                      disableBirthdayOpen={!profileBundle?.profile?.dob}
-                      className="-translate-x-4 sm:-translate-x-6"
-                    />
-                    {!profileBundle?.profile?.dob && (
-                      <div className="pointer-events-none absolute -bottom-2 left-1/2 -translate-x-1/2 text-[11px] sm:text-xs text-muted-foreground/90">
-                        <span className="inline-flex items-center gap-1 px-3 py-[3px] rounded-full bg-white/85 border border-white/80 shadow-sm">
-                          <span>🎂</span>
-                          <span>{t('events.birthday_overlay_chip', 'Add your birthday in Settings so we can keep this wishlist in sync.')}</span>
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  {(myEvents?.length ?? 0) > 1 && (
+                  {viewMode === 'stack' ? (
+                    <div className="w-full flex justify-center pt-16 pb-4 sm:pt-16 sm:pb-6 relative">
+                      <WishlistStack
+                        randomRotation={true}
+                        sensitivity={180}
+                        sendToBackOnClick={false}
+                        cardDimensions={{ width: cardSize.width, height: cardSize.height }}
+                        cards={(myEvents || []).map((e) => ({ id: e.id, title: e.title || 'Untitled' }))}
+                        disableBirthdayOpen={!profileBundle?.profile?.dob}
+                        className="-translate-x-4 sm:-translate-x-6"
+                        onCardOpen={(id) => navigate(`/wishlist/${id}`)}
+                      />
+                      {!profileBundle?.profile?.dob && (
+                        <div className="pointer-events-none absolute -bottom-2 left-1/2 -translate-x-1/2 text-[11px] sm:text-xs text-muted-foreground/90">
+                          <span className="inline-flex items-center gap-1 px-3 py-[3px] rounded-full bg-white/85 border border-white/80 shadow-sm">
+                            <span>🎂</span>
+                            <span>{t('events.birthday_overlay_chip', 'Add your birthday in Settings so we can keep this wishlist in sync.')}</span>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-3 pt-4 px-1">
+                      {(myEvents || []).map((e) => (
+                        <div 
+                          key={e.id}
+                          onClick={() => navigate(`/wishlist/${e.id}`)}
+                          className="relative group p-[1px] rounded-xl bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3 p-3 rounded-[11px] bg-white/90 backdrop-blur-sm transition-colors group-hover:bg-white/95">
+                            {/* Left: Icon/Initial */}
+                            <div className="shrink-0">
+                              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                                {e.title?.[0] || 'W'}
+                              </div>
+                            </div>
+
+                            {/* Center: Info */}
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-extrabold text-sm bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.1)] truncate">
+                                {e.title || 'Untitled Wishlist'}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-1">
+                                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white text-[9px] font-extrabold uppercase tracking-wider text-[hsl(var(--brand-cool-end))] border border-[hsl(var(--brand-cool-end))]/30 shadow-sm">
+                                    <Calendar className="h-2.5 w-2.5" />
+                                    {e.event_date ? new Date(e.event_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date'}
+                                  </span>
+                                {e.privacy_level && (
+                                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider shadow-sm border ${
+                                    e.privacy_level === 'private' 
+                                      ? 'bg-amber-50 text-amber-600 border-amber-200' 
+                                      : e.privacy_level === 'friends_only'
+                                      ? 'bg-blue-50 text-blue-600 border-blue-200'
+                                      : 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                                  }`}>
+                                    {e.privacy_level === 'private' ? <Hourglass className="h-2.5 w-2.5" /> : <Globe2 className="h-2.5 w-2.5" />}
+                                    {e.privacy_level.replace('_', ' ')}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Right: Actions */}
+                            <div className="flex items-center gap-1.5" onClick={(ev) => ev.stopPropagation()}>
+                              <ShareButton
+                                url={`${window.location.origin}/w/${e.id}`}
+                                title={e.title || 'Wishlist'}
+                                size="sm"
+                              />
+                              <Button 
+                                variant="default" 
+                                size="sm" 
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  navigate(`/wishlist/${e.id}`);
+                                }}
+                                className="h-8 px-4 rounded-full bg-gradient-to-b from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-cool-end))] text-white text-[10px] font-extrabold uppercase tracking-tight shadow-[0_3px_0_rgba(0,0,0,0.2)] hover:brightness-110 active:shadow-none active:translate-y-[2px] transition-all border-none"
+                              >
+                                {t('common.open', 'Open')}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {viewMode === 'stack' && (myEvents?.length ?? 0) > 1 && (
                     <div className="absolute bottom-[-2.5rem] left-1/2 -translate-x-1/2 text-center text-[11px] text-muted-foreground z-10">
                       <span className="inline-flex items-center justify-center gap-1 px-4 py-[3px] rounded-full bg-muted/40 border border-border/60 shadow-sm">
                         <span className="tracking-wide text-[10px]">{"<"} Swipe cards {">"}</span>
@@ -1510,7 +1607,21 @@ const Events = () => {
                   {t('events.tab_friends', "Friends' Events")}
                 </CardTitle>
               )}
-
+              <div className="flex items-center gap-2">
+                <ToggleGroup 
+                  type="single" 
+                  value={viewMode} 
+                  onValueChange={(v) => v && setViewMode(v as 'stack' | 'list')}
+                  className="bg-muted/50 p-1 rounded-lg"
+                >
+                  <ToggleGroupItem value="stack" className="h-8 w-8 p-0 rounded-md" aria-label="Stack View">
+                    <LayoutGrid className="h-4 w-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="list" className="h-8 w-8 p-0 rounded-md" aria-label="List View">
+                    <List className="h-4 w-4" />
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
             </CardHeader>
             <CardContent>
               {loadingFriends ? (
@@ -1519,48 +1630,154 @@ const Events = () => {
                 <p className="text-sm text-muted-foreground">{t('events.empty_friends', "No friends' events.")}</p>
               ) : selectedFriend ? (
                 <div className="space-y-4">
-                  <BackButton onClick={handleFriendBack}>{t('common.back', 'Back')}</BackButton>
-                  {selectedFriend.wishlists.length > 0 ? (
-                    <div className="w-full flex flex-col items-center py-2 space-y-2 relative">
-                      <WishlistStack
-                        viewerMode
-                        cardDimensions={{ width: cardSize.width, height: cardSize.height }}
-                        cards={selectedFriend.wishlists.map((wl) => ({ id: wl.id, title: wl.title || 'Wishlist' }))}
-                        className="-translate-x-2"
-                        onCardOpen={handleWishlistPreview}
-                      />
-                      {selectedFriend.wishlists.length > 1 && (
-                        <div className="absolute bottom-[-2.5rem] left-1/2 -translate-x-1/2 text-center text-[11px] text-muted-foreground z-10">
-                          <span className="inline-flex items-center justify-center gap-1 px-4 py-[3px] rounded-full bg-muted/40 border border-border/60 shadow-sm">
-                            <span className="tracking-wide text-[10px]">{"<"} Swipe cards {">"}</span>
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 16 16"
-                              aria-hidden="true"
-                              className="overflow-visible"
-                            >
-                              <g>
-                                <animateTransform
-                                  attributeName="transform"
-                                  type="translate"
-                                  dur="1.1s"
-                                  values="0 0; 3 0; 0 0"
-                                  repeatCount="indefinite"
-                                />
-                                <text
-                                  x="2"
-                                  y="11"
-                                  fontSize="10"
-                                >
-                                  🤚
-                                </text>
-                              </g>
-                            </svg>
+                  <div className="relative flex items-center justify-center py-2">
+                    <div className="flex items-center justify-center w-full">
+                      <div className="absolute left-0">
+                        <BackButton onClick={handleFriendBack}>{t('common.back', 'Back')}</BackButton>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10 ring-2 ring-white/50 shadow-sm">
+                          <AvatarImage src={selectedFriend.avatarUrl ?? undefined} />
+                          <AvatarFallback className="bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-white font-bold">
+                            {selectedFriend.displayName?.[0]?.toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col items-start leading-none">
+                          <span className="text-sm font-extrabold text-foreground">
+                            {selectedFriend.displayName}
+                          </span>
+                          <span 
+                            className="text-[10px] font-bold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                            style={{ WebkitTextStroke: '0.2px rgba(0,0,0,0.45)' }}
+                          >
+                            {selectedFriend.handle}
                           </span>
                         </div>
-                      )}
+                      </div>
+                      <div className="absolute right-0">
+                        <ToggleGroup 
+                          type="single" 
+                          value={viewMode} 
+                          onValueChange={(v) => v && setViewMode(v as 'stack' | 'list')}
+                          className="bg-muted/50 p-1 rounded-lg"
+                        >
+                          <ToggleGroupItem value="stack" className="h-8 w-8 p-0 rounded-md" aria-label="Stack View">
+                            <LayoutGrid className="h-4 w-4" />
+                          </ToggleGroupItem>
+                          <ToggleGroupItem value="list" className="h-8 w-8 p-0 rounded-md" aria-label="List View">
+                            <List className="h-4 w-4" />
+                          </ToggleGroupItem>
+                        </ToggleGroup>
+                      </div>
                     </div>
+                  </div>
+                  {selectedFriend.wishlists.length > 0 ? (
+                    viewMode === 'stack' ? (
+                      <div className="w-full flex flex-col items-center py-2 space-y-2 relative">
+                        <WishlistStack
+                          viewerMode
+                          cardDimensions={{ width: cardSize.width, height: cardSize.height }}
+                          cards={selectedFriend.wishlists.map((wl) => ({ id: wl.id, title: wl.title || 'Wishlist' }))}
+                          className="-translate-x-2"
+                          onCardOpen={handleWishlistPreview}
+                        />
+                        {selectedFriend.wishlists.length > 1 && (
+                          <div className="absolute bottom-[-2.5rem] left-1/2 -translate-x-1/2 text-center text-[11px] text-muted-foreground z-10">
+                            <span className="inline-flex items-center justify-center gap-1 px-4 py-[3px] rounded-full bg-muted/40 border border-border/60 shadow-sm">
+                              <span className="tracking-wide text-[10px]">{"<"} Swipe cards {">"}</span>
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 16 16"
+                                aria-hidden="true"
+                                className="overflow-visible"
+                              >
+                                <g>
+                                  <animateTransform
+                                    attributeName="transform"
+                                    type="translate"
+                                    dur="1.1s"
+                                    values="0 0; 3 0; 0 0"
+                                    repeatCount="indefinite"
+                                  />
+                                  <text
+                                    x="2"
+                                    y="11"
+                                    fontSize="10"
+                                  >
+                                    🤚
+                                  </text>
+                                </g>
+                              </svg>
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3 pt-2 px-1">
+                        {selectedFriend.wishlists.map((wl) => (
+                          <div 
+                            key={wl.id}
+                            onClick={() => handleWishlistPreview(wl.id)}
+                            className="relative group p-[1px] rounded-xl bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3 p-3 rounded-[11px] bg-white/90 backdrop-blur-sm transition-colors group-hover:bg-white/95">
+                              {/* Left: Icon/Initial */}
+                              <div className="shrink-0">
+                                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                                  {wl.title?.[0] || 'W'}
+                                </div>
+                              </div>
+
+                              {/* Center: Info */}
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-extrabold text-sm bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.1)] truncate">
+                                  {wl.title || 'Untitled Wishlist'}
+                                </h4>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white text-[9px] font-extrabold uppercase tracking-wider text-[hsl(var(--brand-cool-end))] border border-[hsl(var(--brand-cool-end))]/30 shadow-sm">
+                                    <Calendar className="h-2.5 w-2.5" />
+                                    {wl.event_date ? new Date(wl.event_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date'}
+                                  </span>
+                                  {wl.privacy_level && (
+                                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider shadow-sm border ${
+                                      wl.privacy_level === 'private' 
+                                        ? 'bg-amber-50 text-amber-600 border-amber-200' 
+                                        : wl.privacy_level === 'friends_only'
+                                        ? 'bg-blue-50 text-blue-600 border-blue-200'
+                                        : 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                                    }`}>
+                                      {wl.privacy_level === 'private' ? <Hourglass className="h-2.5 w-2.5" /> : <Globe2 className="h-2.5 w-2.5" />}
+                                      {wl.privacy_level.replace('_', ' ')}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Right: Actions */}
+                              <div className="flex items-center gap-1.5" onClick={(ev) => ev.stopPropagation()}>
+                                <ShareButton
+                                  url={`${window.location.origin}/w/${wl.id}`}
+                                  title={wl.title || 'Wishlist'}
+                                  size="sm"
+                                />
+                                <Button 
+                                  variant="default" 
+                                  size="sm" 
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    navigate(`/wishlist/${wl.id}`);
+                                  }}
+                                  className="h-8 px-4 rounded-full bg-gradient-to-b from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-cool-end))] text-white text-[10px] font-extrabold uppercase tracking-tight shadow-[0_3px_0_rgba(0,0,0,0.2)] hover:brightness-110 active:shadow-none active:translate-y-[2px] transition-all border-none"
+                                >
+                                  {t('common.open', 'Open')}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
                   ) : (
                     <p className="text-sm text-muted-foreground text-center">
                       {t('events.friend_no_wishlists', 'This friend has no upcoming wishlists yet.')}
@@ -1709,11 +1926,26 @@ const Events = () => {
                     const end = sorted[sorted.length - 1];
                     return { id: `${g.country_tag}-${g.name}-${start}-${end}`, name: g.name, country_code: g.country_tag, date_start: start, date_end: end };
                   });
-                  // Merge and sort by start date
+                  // Merge and sort
                   let merged: Row[] = [...passthrough, ...grouped].sort((a, b) => {
-                    const da = new Date(a.date_start || a.date || a.event_date || 0).getTime();
-                    const db = new Date(b.date_start || b.date || b.event_date || 0).getTime();
-                    return da - db;
+                    const daRef = a.date_start || a.date || a.event_date || 0;
+                    const dbRef = b.date_start || b.date || b.event_date || 0;
+                    const da = new Date(daRef);
+                    const db = new Date(dbRef);
+                    
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    // Check if passed
+                    const aEnd = a.date_end || daRef;
+                    const bEnd = b.date_end || dbRef;
+                    const aPassed = new Date(aEnd) < today;
+                    const bPassed = new Date(bEnd) < today;
+
+                    if (aPassed && !bPassed) return 1;
+                    if (!aPassed && bPassed) return -1;
+                    
+                    return da.getTime() - db.getTime();
                   });
                   if (monthFilter !== 'all') {
                     const m = Number(monthFilter) - 1; // JS months are 0-based

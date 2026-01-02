@@ -85,7 +85,7 @@ const WishlistDetail = () => {
   const isMobile = useIsMobile();
   const [privacyLevel, setPrivacyLevel] = useState<string | null>(null);
   const [privacyUpdating, setPrivacyUpdating] = useState(false);
-  const [viewerId, setViewerId] = useState<string | null>(null);
+  const [viewerId, setViewerId] = useState<string | null | undefined>(undefined); // undefined = loading, null = not logged in, string = user id
   const [visibilityPrefs, setVisibilityPrefs] = useState<{ allowFollowersView: boolean; enforceWishlistPrivacy: boolean } | null>(null);
   const [activeTab, setActiveTab] = useState<"items" | "activity">("items");
 
@@ -615,6 +615,7 @@ const WishlistDetail = () => {
     setPrivacyLevel(data?.wishlist?.privacy_level ?? null);
   }, [data?.wishlist?.privacy_level]);
 
+  // Fetch auth immediately on mount (no dependency on wishlist data)
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -623,24 +624,45 @@ const WishlistDetail = () => {
         if (cancelled) return;
         const uid = auth.user?.id ?? null;
         setViewerId(uid);
-        if (uid && data?.wishlist?.user_id === uid) {
-          const { data: prefs } = await supabase
-            .from('user_profiles' as any)
-            .select('allow_followers_view, enforce_wishlist_privacy')
-            .eq('id', uid)
-            .maybeSingle();
-          if (!cancelled) {
-            setVisibilityPrefs({
-              allowFollowersView: Boolean((prefs as any)?.allow_followers_view),
-              enforceWishlistPrivacy: (prefs as any)?.enforce_wishlist_privacy !== false,
-            });
-          }
-        } else if (!cancelled) {
-          setVisibilityPrefs(null);
-        }
       } catch {
         if (!cancelled) {
           setViewerId(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Fetch visibility prefs when we know both viewerId and wishlist owner
+  useEffect(() => {
+    if (viewerId === undefined) return; // Still loading auth
+    if (!viewerId || !data?.wishlist?.user_id) {
+      setVisibilityPrefs(null);
+      return;
+    }
+    if (viewerId !== data.wishlist.user_id) {
+      setVisibilityPrefs(null);
+      return;
+    }
+    // User is owner, fetch their prefs
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: prefs } = await supabase
+          .from('user_profiles' as any)
+          .select('allow_followers_view, enforce_wishlist_privacy')
+          .eq('id', viewerId)
+          .maybeSingle();
+        if (!cancelled) {
+          setVisibilityPrefs({
+            allowFollowersView: Boolean((prefs as any)?.allow_followers_view),
+            enforceWishlistPrivacy: (prefs as any)?.enforce_wishlist_privacy !== false,
+          });
+        }
+      } catch {
+        if (!cancelled) {
           setVisibilityPrefs(null);
         }
       }
@@ -648,7 +670,7 @@ const WishlistDetail = () => {
     return () => {
       cancelled = true;
     };
-  }, [data?.wishlist?.user_id]);
+  }, [viewerId, data?.wishlist?.user_id]);
 
   const isOwner = !isGifterMode && viewerId && data?.wishlist?.user_id === viewerId;
   const perWishlistRespected = visibilityPrefs ? (!visibilityPrefs.allowFollowersView && visibilityPrefs.enforceWishlistPrivacy) : true;
@@ -798,7 +820,11 @@ const WishlistDetail = () => {
     };
   }, [carouselApi]);
 
-  if (isLoading) {
+  // Wait for both data loading AND auth check to complete before rendering
+  // This prevents the "viewer mode flash" where the page briefly shows as non-owner
+  const isAuthLoading = viewerId === undefined;
+  
+  if (isLoading || isAuthLoading) {
     return (
       <div className="container max-w-2xl mx-auto px-4 py-6">
         <p className="text-sm text-muted-foreground">Loading...</p>

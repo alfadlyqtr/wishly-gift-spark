@@ -247,6 +247,12 @@ export default function WishlistStack({
                   return;
                 }
                 
+                // If onCardOpen is provided, always use it (for both owner and viewer modes)
+                if (onCardOpen) {
+                  handleOpen(card.id);
+                  return;
+                }
+                
                 if (viewerMode) {
                   handleOpen(card.id);
                   return;
