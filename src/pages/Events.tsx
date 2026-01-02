@@ -1229,14 +1229,14 @@ const Events = () => {
   }, []);
 
   return (
-    <div className="container mx-auto max-w-md px-3 py-4 space-y-4 sm:max-w-2xl sm:px-4 sm:py-6 sm:space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="relative inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_12px_30px_rgba(200,80,192,0.45)] ring-1 ring-white/40">
-          <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-white drop-shadow" />
+    <div className="container mx-auto max-w-md px-3 py-4 space-y-4 sm:max-w-2xl sm:px-4 sm:py-6 sm:space-y-8">
+      <div className="flex items-center gap-6 sm:gap-8">
+        <div className="relative inline-flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_12px_30px_rgba(200,80,192,0.45)] ring-1 ring-white/40">
+          <Calendar className="h-4 w-4 sm:h-6 sm:w-6 text-white drop-shadow" />
           <span className="absolute -inset-1 rounded-[14px] blur-md bg-gradient-to-br from-[hsl(var(--brand-warm-end))]/20 to-[hsl(var(--brand-cool-end))]/10" aria-hidden="true" />
         </div>
         <h2 
-          className="text-xl sm:text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+          className="text-xl sm:text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
           style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
         >
           {t('events.title', 'Events')}
@@ -1290,19 +1290,19 @@ const Events = () => {
         <TabsContent value="mine" className="pt-4">
           <Card className="border-0 rounded-2xl ring-0 shadow-none bg-transparent sm:ring-1 sm:bg-gradient-to-br sm:from-[hsl(var(--brand-cool-start))]/10 sm:via-[hsl(var(--brand-cool-end))]/10 sm:to-[hsl(var(--brand-warm-end))]/10 sm:shadow-[0_18px_40px_rgba(0,0,0,0.20)] overflow-visible">
             <CardHeader className="pb-2 sm:pb-3">
-              <div className="relative flex items-center justify-center py-2">
-                <div className="absolute left-0">
+              <div className="relative flex items-center justify-between py-2 sm:py-4">
+                <div className="flex items-center gap-3">
                   <CreateWishlistModal>
                     <AddButton ariaLabel="Add Wishlist" />
                   </CreateWishlistModal>
+                  <CardTitle 
+                    className="text-base sm:text-lg font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                    style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
+                  >
+                    {t('events.tab_my', 'My Events')}
+                  </CardTitle>
                 </div>
-                <CardTitle 
-                  className="text-base sm:text-lg font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                  style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
-                >
-                  {t('events.tab_my', 'My Events')}
-                </CardTitle>
-                <div className="absolute right-0">
+                <div>
                   <ToggleGroup 
                     type="single" 
                     value={viewMode} 
@@ -1323,17 +1323,19 @@ const Events = () => {
               {myEventsCount > 0 && (
                 <>
                   {viewMode === 'stack' ? (
-                    <div className="w-full flex justify-center pt-16 pb-4 sm:pt-16 sm:pb-6 relative">
-                      <WishlistStack
-                        randomRotation={true}
-                        sensitivity={180}
-                        sendToBackOnClick={false}
-                        cardDimensions={{ width: cardSize.width, height: cardSize.height }}
-                        cards={(myEvents || []).map((e) => ({ id: e.id, title: e.title || 'Untitled' }))}
-                        disableBirthdayOpen={!profileBundle?.profile?.dob}
-                        className="-translate-x-4 sm:-translate-x-6"
-                        onCardOpen={(id) => navigate(`/wishlist/${id}`)}
-                      />
+                    <div className="w-full flex justify-center pt-8 pb-4 sm:pt-16 sm:pb-6 relative overflow-visible">
+                      <div className="scale-[0.85] sm:scale-100 origin-center">
+                        <WishlistStack
+                          randomRotation={true}
+                          sensitivity={180}
+                          sendToBackOnClick={false}
+                          cardDimensions={{ width: cardSize.width, height: cardSize.height }}
+                          cards={(myEvents || []).map((e) => ({ id: e.id, title: e.title || 'Untitled' }))}
+                          disableBirthdayOpen={!profileBundle?.profile?.dob}
+                          className="-translate-x-4 sm:-translate-x-6"
+                          onCardOpen={(id) => navigate(`/wishlist/${id}`)}
+                        />
+                      </div>
                       {!profileBundle?.profile?.dob && (
                         <div className="pointer-events-none absolute -bottom-2 left-1/2 -translate-x-1/2 text-[11px] sm:text-xs text-muted-foreground/90">
                           <span className="inline-flex items-center gap-1 px-3 py-[3px] rounded-full bg-white/85 border border-white/80 shadow-sm">
@@ -1344,69 +1346,69 @@ const Events = () => {
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-3 pt-4 px-1">
-                      {(myEvents || []).map((e) => (
-                        <div 
-                          key={e.id}
-                          onClick={() => navigate(`/wishlist/${e.id}`)}
-                          className="relative group p-[1px] rounded-xl bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3 p-3 rounded-[11px] bg-white/90 backdrop-blur-sm transition-colors group-hover:bg-white/95">
-                            {/* Left: Icon/Initial */}
-                            <div className="shrink-0">
-                              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] flex items-center justify-center text-white font-bold text-lg shadow-sm">
-                                {e.title?.[0] || 'W'}
-                              </div>
-                            </div>
-
-                            {/* Center: Info */}
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-extrabold text-sm bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.1)] truncate">
-                                {e.title || 'Untitled Wishlist'}
-                              </h4>
-                              <div className="flex items-center gap-2 mt-1">
-                                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white text-[9px] font-extrabold uppercase tracking-wider text-[hsl(var(--brand-cool-end))] border border-[hsl(var(--brand-cool-end))]/30 shadow-sm">
-                                    <Calendar className="h-2.5 w-2.5" />
-                                    {e.event_date ? new Date(e.event_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date'}
-                                  </span>
-                                {e.privacy_level && (
-                                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider shadow-sm border ${
-                                    e.privacy_level === 'private' 
-                                      ? 'bg-amber-50 text-amber-600 border-amber-200' 
-                                      : e.privacy_level === 'friends_only'
-                                      ? 'bg-blue-50 text-blue-600 border-blue-200'
-                                      : 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                                  }`}>
-                                    {e.privacy_level === 'private' ? <Hourglass className="h-2.5 w-2.5" /> : <Globe2 className="h-2.5 w-2.5" />}
-                                    {e.privacy_level.replace('_', ' ')}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Right: Actions */}
-                            <div className="flex items-center gap-1.5" onClick={(ev) => ev.stopPropagation()}>
-                              <ShareButton
-                                url={`${window.location.origin}/w/${e.id}`}
-                                title={e.title || 'Wishlist'}
-                                size="sm"
-                              />
-                              <Button 
-                                variant="default" 
-                                size="sm" 
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  navigate(`/wishlist/${e.id}`);
-                                }}
-                                className="h-8 px-4 rounded-full bg-gradient-to-b from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-cool-end))] text-white text-[10px] font-extrabold uppercase tracking-tight shadow-[0_3px_0_rgba(0,0,0,0.2)] hover:brightness-110 active:shadow-none active:translate-y-[2px] transition-all border-none"
-                              >
-                                {t('common.open', 'Open')}
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+          <div className="space-y-3 pt-4 px-1">
+            {(myEvents || []).map((e) => (
+              <div 
+                key={e.id}
+                onClick={() => navigate(`/wishlist/${e.id}`)}
+                className="relative group p-[1px] rounded-2xl bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer"
+              >
+                <div className="flex items-center gap-2 sm:gap-4 p-2 sm:p-3 rounded-[15px] bg-white/90 backdrop-blur-sm transition-colors group-hover:bg-white/95">
+                  {/* Left: Icon/Initial */}
+                  <div className="shrink-0">
+                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] flex items-center justify-center text-white font-bold text-lg sm:text-xl shadow-sm">
+                      {e.title?.[0] || 'W'}
                     </div>
+                  </div>
+
+                  {/* Center: Info */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-extrabold text-[13px] sm:text-base bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.1)] truncate leading-tight">
+                      {e.title || 'Untitled Wishlist'}
+                    </h4>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white text-[8px] sm:text-[10px] font-extrabold uppercase tracking-wider text-[hsl(var(--brand-cool-end))] border border-[hsl(var(--brand-cool-end))]/30 shadow-sm whitespace-nowrap">
+                          <Calendar className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
+                          {e.event_date ? new Date(e.event_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date'}
+                        </span>
+                      {e.privacy_level && (
+                        <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] sm:text-[10px] font-extrabold uppercase tracking-wider shadow-sm border whitespace-nowrap ${
+                          e.privacy_level === 'private' 
+                            ? 'bg-amber-50 text-amber-600 border-amber-200' 
+                            : e.privacy_level === 'friends_only'
+                            ? 'bg-blue-50 text-blue-600 border-blue-200'
+                            : 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                        }`}>
+                          {e.privacy_level === 'private' ? <Hourglass className="h-2 w-2 sm:h-2.5 sm:w-2.5" /> : <Globe2 className="h-2 w-2 sm:h-2.5 sm:w-2.5" />}
+                          {e.privacy_level.replace('_', ' ')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: Actions */}
+                  <div className="flex items-center gap-1.5 sm:gap-2" onClick={(ev) => ev.stopPropagation()}>
+                    <ShareButton
+                      url={`${window.location.origin}/w/${e.id}`}
+                      title={e.title || 'Wishlist'}
+                      size="sm"
+                    />
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        navigate(`/wishlist/${e.id}`);
+                      }}
+                      className="h-7 sm:h-9 px-3 sm:px-5 rounded-full bg-gradient-to-b from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-cool-end))] text-white text-[9px] sm:text-[11px] font-extrabold uppercase tracking-tight shadow-[0_3px_0_rgba(0,0,0,0.2)] hover:brightness-110 active:shadow-none active:translate-y-[2px] transition-all border-none"
+                    >
+                      {t('common.open', 'Open')}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
                   )}
                   {viewMode === 'stack' && (myEvents?.length ?? 0) > 1 && (
                     <div className="absolute bottom-[-2.5rem] left-1/2 -translate-x-1/2 text-center text-[11px] text-muted-foreground z-10">

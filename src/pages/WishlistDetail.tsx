@@ -904,16 +904,20 @@ const WishlistDetail = () => {
             fontSize={28}
             padding={2}
             gap={6}
-            textColor="white"
+            textColor="hsl(var(--brand-cool-end))"
             fontWeight={900}
             gradientHeight={12}
-            gradientFrom="rgba(0,0,0,0.35)"
+            gradientFrom="rgba(0,0,0,0.1)"
             gradientTo="transparent"
-            counterStyle={{ background: 'rgba(255,255,255,0.08)' }}
+            counterStyle={{ 
+              background: 'rgba(255,255,255,0.9)', 
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              border: '1px solid rgba(255,255,255,0.8)'
+            }}
             borderRadius={8}
             horizontalPadding={6}
           />
-          <span className="mt-1 text-xs text-white drop-shadow-sm">{t('giftr.days_left','days left')}</span>
+          <span className="mt-1 text-[10px] font-extrabold uppercase tracking-widest text-[hsl(var(--brand-cool-end))] drop-shadow-sm">{t('giftr.days_left','days left')}</span>
         </div>
       )}
 
