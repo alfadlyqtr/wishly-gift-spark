@@ -162,6 +162,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
             },
             body: JSON.stringify({
               mode: "rewrite-description",
+              context: "brand_product",
               tone,
               name: finalTitle,
               description: finalDescription,
@@ -274,13 +275,14 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
   };
 
   const handleWishlyAi = async () => {
-    // Prefer using the image if we have one (uploaded or scraped), otherwise use URL fetch.
-    if (photoFile || imageUrl) {
-      await handleExtractFromPhoto();
-      return;
-    }
+    // Priority 1: URL fetch (best for product catalogs)
     if (url) {
       await handleScrape(selectedTone || undefined);
+      return;
+    }
+    // Priority 2: Image extraction (if no URL provided)
+    if (photoFile || imageUrl) {
+      await handleExtractFromPhoto();
       return;
     }
     toast.error(t("brand.product.paste_url_first", "Please paste a URL first."));
@@ -335,16 +337,23 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
       
       toast.success(t("brand.product.added_successfully", "Product added successfully"));
       // Reset fields on success
-      setUrl("");
-      setTitle("");
-      setDescription("");
-      setImageUrl("");
+      handleClear();
       setOpen(false);
     } catch (e: any) {
       toast.error(e?.message || t("errors.failed_save_product", "Failed to save product"));
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleClear = () => {
+    setUrl("");
+    setTitle("");
+    setDescription("");
+    setImageUrl("");
+    setPhotoFile(null);
+    setUploadError(null);
+    setSelectedTone("");
   };
 
   return (
@@ -527,13 +536,27 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ children }) =>
                     </div>
               </div>
 
-              <DialogFooter className="mt-4">
-                <Button variant="secondary" onClick={() => setOpen(false)} disabled={saving}>
-                  {t("common.cancel", "Cancel")}
+              <DialogFooter className="mt-4 flex flex-row items-center justify-between sm:justify-between w-full">
+                <Button 
+                  variant="outline" 
+                  onClick={handleClear} 
+                  disabled={saving || loadingScrape || extractingFromImage}
+                  className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50"
+                >
+                  {t("common.clear", "Clear")}
                 </Button>
-                <Button onClick={handleSave} disabled={saving || !title}>
-                  {saving ? t("common.saving", "Saving...") : t("brand.product.save_button", "Save Product")}
-                </Button>
+                <div className="flex flex-row gap-2">
+                  <Button variant="secondary" onClick={() => setOpen(false)} disabled={saving} className="rounded-xl">
+                    {t("common.cancel", "Cancel")}
+                  </Button>
+                  <Button 
+                    onClick={handleSave} 
+                    disabled={saving || !title}
+                    className="rounded-xl bg-indigo-900 hover:bg-indigo-800 text-white"
+                  >
+                    {saving ? t("common.saving", "Saving...") : t("brand.product.save_button", "Save Product")}
+                  </Button>
+                </div>
               </DialogFooter>
             </div>
           </div>

@@ -17,7 +17,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { url, mode, tone, name, description, product_url, locale, claimer_name, claimer_handle } = body ?? {};
+    const { url, mode, context, tone, name, description, product_url, locale, claimer_name, claimer_handle } = body ?? {};
 
     // If mode is generate-thank-you, generate a thank you message and return early
     if (mode === 'generate-thank-you') {
@@ -97,7 +97,12 @@ claimer mention (must include if present): ${mention}`;
         throw new Error('DeepSeek API key is not set in project secrets.');
       }
 
-      const systemPrompt = `You are a copywriter helping a brand edit a product description inside a dashboard.
+      const isBrandContext = context === 'brand_product';
+      const persona = isBrandContext 
+        ? 'You are a professional marketing copywriter writing for a brand\'s official product catalog.' 
+        : 'You are a copywriter helping a user describe an item they want on their personal wishlist.';
+
+      const systemPrompt = `${persona}
 You must respond ONLY with valid JSON, no explanations or markdown.
 
 Return a JSON object with this shape:
@@ -118,6 +123,8 @@ Tone options and rules:
 - pro: more technical/spec driven, less marketing, but readable.
 - sales: friendly, persuasive, focused on benefits.
 - aggressive: high-energy sales copy with urgency, but do not invent fake discounts.
+
+${isBrandContext ? 'Special Brand Rules:\n- Write from the perspective of the BRAND selling the product.\n- Focus on value propositions, quality, and official specifications.\n- DO NOT use first-person personal language like "I love this" or "I want this".\n- Use professional, objective, or persuasive business language.' : 'Special Wishlist Rules:\n- Write from the perspective of a user who wants this gift.\n- It is okay to use enthusiastic personal language.'}
 
 Always keep product facts accurate and do not change currency or numbers.
 Language: ${locale || 'en'}.
