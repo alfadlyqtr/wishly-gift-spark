@@ -251,41 +251,38 @@ export const MainLayout = () => {
 
   return (
     <div dir="ltr" className="flex min-h-screen flex-col bg-background">
-      {/* Top Bar (hidden on shared gifter view) */}
-      {!isGifterShared && (
-      <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-card px-4 shadow-sm">
+      {/* Top Bar (always sticky) */}
+      <header className="fixed top-0 left-0 right-0 z-[100] flex h-16 items-center justify-between border-b bg-card px-4 shadow-sm">
         <Link to="/" className="flex items-center">
           <img src={wishlyLogo} alt="Wishly" className="h-12 md:h-14" />
         </Link>
         <div className="flex items-center gap-2">
-          <Link to="/notifications?filter=likes">
-            <Button variant="ghost" size="icon">
-              <Heart className="h-5 w-5" />
-            </Button>
-          </Link>
-          <Link to="/notifications">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              {pendingCount > 0 && (
-                <span className="absolute -right-1 -top-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-[10px] leading-[18px] text-white text-center ring-1 ring-white/70 shadow-[0_6px_14px_rgba(0,0,0,0.15)]">
-                  {Math.min(pendingCount, 9)}{pendingCount > 9 ? "+" : ""}
-                </span>
-              )}
-            </Button>
-          </Link>
-          <Link to="/messages">
-            <Button variant="ghost" size="icon">
-              <MessageSquare className="h-5 w-5" />
-            </Button>
-          </Link>
+          {!isGifterShared && (
+            <>
+              <Link to="/notifications">
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  {pendingCount > 0 && (
+                    <span className="absolute -right-1 -top-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-[10px] leading-[18px] text-white text-center ring-1 ring-white/70 shadow-[0_6px_14px_rgba(0,0,0,0.15)]">
+                      {Math.min(pendingCount, 9)}{pendingCount > 9 ? "+" : ""}
+                    </span>
+                  )}
+                </Button>
+              </Link>
+              <Link to="/messages">
+                <Button variant="ghost" size="icon">
+                  <MessageSquare className="h-5 w-5" />
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </header>
-      )}
 
       {/* Main Content */}
       <main
-        className={`flex-1 overflow-y-auto ${
-          isGifterShared ? '' : 'pb-[calc(env(safe-area-inset-bottom,0px)+6rem)]'
+        className={`flex-1 pt-16 ${
+          isGifterShared ? '' : 'pb-[calc(env(safe-area-inset-bottom,0px)+6.5rem)]'
         }`}
       >
         <Suspense

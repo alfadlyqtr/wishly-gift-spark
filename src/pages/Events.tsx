@@ -1192,12 +1192,12 @@ const Events = () => {
       const mm = String(nextBirthday.getMonth() + 1).padStart(2, '0');
       const dd = String(nextBirthday.getDate()).padStart(2, '0');
       const nextBirthdayIso = `${yyyy}-${mm}-${dd}`;
-      const title = 'My Birthday Wishlist';
+      const title = t('wishlist.my_birthday_wishlist', 'My Birthday Wishlist');
       const { data: exists, error: selErr } = await (supabase as any)
         .from('wishlists')
         .select('id, event_date, privacy_level')
         .eq('user_id', user.id)
-        .eq('title', title)
+        .eq('title', 'My Birthday Wishlist')
         .limit(1);
       if (selErr) return;
       if (exists && exists.length > 0) {
@@ -1207,7 +1207,7 @@ const Events = () => {
         if (needsDateUpdate || needsPrivacyUpdate) {
           await (supabase as any)
             .from('wishlists')
-            .update({ event_date: nextBirthdayIso, description: 'My Birthday Wishlist', privacy_level: 'friends_only' })
+            .update({ event_date: nextBirthdayIso, description: title, privacy_level: 'friends_only' })
             .eq('id', (current as any).id);
         }
       } else {
@@ -1216,7 +1216,7 @@ const Events = () => {
           .insert({
             user_id: user.id,
             title,
-            description: 'My Birthday Wishlist',
+            description: title,
             event_date: nextBirthdayIso,
             privacy_level: 'friends_only'
           });
@@ -1274,7 +1274,7 @@ const Events = () => {
         </div>
         <h2 
           className="text-xl sm:text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-          style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
+          style={{ WebkitTextStroke: i18n.language === 'ar' ? '0' : '0.5px rgba(0,0,0,0.85)' }}
         >
           {t('events.title', 'Events')}
         </h2>
@@ -1328,13 +1328,13 @@ const Events = () => {
           <Card className="border-0 rounded-2xl ring-0 shadow-none bg-transparent sm:ring-1 sm:bg-gradient-to-br sm:from-[hsl(var(--brand-cool-start))]/10 sm:via-[hsl(var(--brand-cool-end))]/10 sm:to-[hsl(var(--brand-warm-end))]/10 sm:shadow-[0_18px_40px_rgba(0,0,0,0.20)] overflow-visible">
             <CardHeader className="pb-2 sm:pb-3">
               <div className="relative flex items-center justify-between py-2 sm:py-4">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <CreateWishlistModal>
-                    <AddButton ariaLabel="Add Wishlist" />
+                    <AddButton ariaLabel={t('wishlist.add_button_aria', 'Add Wishlist')} />
                   </CreateWishlistModal>
                   <CardTitle 
-                    className="text-base sm:text-lg font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                    style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
+                    className="text-base sm:text-lg font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] truncate"
+                    style={{ WebkitTextStroke: i18n.language === 'ar' ? '0' : '0.5px rgba(0,0,0,0.85)' }}
                   >
                     {t('events.tab_my', 'My Events')}
                   </CardTitle>
@@ -1367,7 +1367,10 @@ const Events = () => {
                           sensitivity={180}
                           sendToBackOnClick={false}
                           cardDimensions={{ width: cardSize.width, height: cardSize.height }}
-                          cards={(myEvents || []).map((e) => ({ id: e.id, title: e.title || 'Untitled' }))}
+                          cards={(myEvents || []).map((e) => ({ 
+                            id: e.id, 
+                            title: e.title === 'My Birthday Wishlist' ? t('wishlist.my_birthday_wishlist', 'My Birthday Wishlist') : (e.title || t('events.untitled', 'Untitled')) 
+                          }))}
                           disableBirthdayOpen={!profileBundle?.profile?.dob}
                           className="-translate-x-4 sm:-translate-x-6"
                           onCardOpen={(id) => navigate(`/wishlist/${id}`)}
@@ -1401,15 +1404,15 @@ const Events = () => {
                   {/* Center: Info */}
                   <div className="flex-1 min-w-0">
                     <h4 className="font-extrabold text-[13px] sm:text-base bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.1)] truncate leading-tight">
-                      {e.title || 'Untitled Wishlist'}
+                      {e.title === 'My Birthday Wishlist' ? t('wishlist.my_birthday_wishlist', 'My Birthday Wishlist') : (e.title || t('events.untitled', 'Untitled Wishlist'))}
                     </h4>
                     <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white text-[8px] sm:text-[10px] font-extrabold uppercase tracking-wider text-[hsl(var(--brand-cool-end))] border border-[hsl(var(--brand-cool-end))]/30 shadow-sm whitespace-nowrap">
-                          <Calendar className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
-                          {e.event_date ? new Date(e.event_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date'}
-                        </span>
+                                  <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white text-[8px] sm:text-[10px] font-extrabold tracking-wider text-[hsl(var(--brand-cool-end))] border border-[hsl(var(--brand-cool-end))]/30 shadow-sm whitespace-nowrap">
+                                    <Calendar className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
+                                    {e.event_date ? new Date(e.event_date).toLocaleDateString(i18n.language === 'ar' ? 'ar-EG' : 'en-GB', { month: 'short', day: 'numeric' }) : t('common.not_set', 'No date')}
+                                  </span>
                       {e.privacy_level && (
-                        <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] sm:text-[10px] font-extrabold uppercase tracking-wider shadow-sm border whitespace-nowrap ${
+                        <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] sm:text-[10px] font-extrabold tracking-wider shadow-sm border whitespace-nowrap ${
                           e.privacy_level === 'private' 
                             ? 'bg-amber-50 text-amber-600 border-amber-200' 
                             : e.privacy_level === 'friends_only'
@@ -1417,7 +1420,7 @@ const Events = () => {
                             : 'bg-emerald-50 text-emerald-600 border-emerald-200'
                         }`}>
                           {e.privacy_level === 'private' ? <Hourglass className="h-2 w-2 sm:h-2.5 sm:w-2.5" /> : <Globe2 className="h-2 w-2 sm:h-2.5 sm:w-2.5" />}
-                          {e.privacy_level.replace('_', ' ')}
+                          {e.privacy_level === 'private' ? t('settings.private', 'Private') : e.privacy_level === 'friends_only' ? t('wishlist_detail.privacy_label_shared', 'Friends Only') : t('settings.public', 'Public')}
                         </span>
                       )}
                     </div>
@@ -1441,7 +1444,7 @@ const Events = () => {
                       }}
                       className="h-7 sm:h-9 px-3 sm:px-5 rounded-full bg-gradient-to-b from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-cool-end))] text-white text-[9px] sm:text-[11px] font-extrabold uppercase tracking-tight shadow-[0_3px_0_rgba(0,0,0,0.2)] hover:brightness-110 active:shadow-none active:translate-y-[2px] transition-all border-none"
                     >
-                      {t('common.open', 'Open')}
+                      {t('wishlist.open', 'Open')}
                     </Button>
                   </div>
                 </div>
@@ -1504,7 +1507,7 @@ const Events = () => {
                           </div>
                           <div className="flex-1 flex items-center">
                             <h3 className="text-xl sm:text-2xl font-extrabold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
-                              {t('events.default_birthday_title', 'My Birthday Wishlist')}
+                              {t('wishlist.my_birthday_wishlist', 'My Birthday Wishlist')}
                             </h3>
                           </div>
                           <div className="flex items-center justify-between text-xs text-white/90">
@@ -1628,7 +1631,7 @@ const Events = () => {
                   <div className="flex items-center gap-3 flex-wrap">
                     <CardTitle
                       className="text-lg font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                      style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.9)' }}
+                      style={{ WebkitTextStroke: i18n.language === 'ar' ? '0' : '0.6px rgba(0,0,0,0.9)' }}
                     >
                       {selectedFriend.displayName}
                     </CardTitle>
@@ -1643,7 +1646,7 @@ const Events = () => {
               ) : (
                 <CardTitle 
                   className="text-base sm:text-lg font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                  style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
+                  style={{ WebkitTextStroke: i18n.language === 'ar' ? '0' : '0.5px rgba(0,0,0,0.85)' }}
                 >
                   {t('events.tab_friends', "Friends' Events")}
                 </CardTitle>
@@ -1778,10 +1781,10 @@ const Events = () => {
                                 <div className="flex items-center gap-2 mt-1">
                                   <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white text-[9px] font-extrabold uppercase tracking-wider text-[hsl(var(--brand-cool-end))] border border-[hsl(var(--brand-cool-end))]/30 shadow-sm">
                                     <Calendar className="h-2.5 w-2.5" />
-                                    {wl.event_date ? new Date(wl.event_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date'}
+                                    {wl.event_date ? new Date(wl.event_date).toLocaleDateString(i18n.language === 'ar' ? 'ar-EG' : 'en-GB', { month: 'short', day: 'numeric' }) : t('common.not_set', 'No date')}
                                   </span>
                                   {wl.privacy_level && (
-                                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider shadow-sm border ${
+                                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider shadow-sm border ${
                                       wl.privacy_level === 'private' 
                                         ? 'bg-amber-50 text-amber-600 border-amber-200' 
                                         : wl.privacy_level === 'friends_only'
@@ -1789,7 +1792,7 @@ const Events = () => {
                                         : 'bg-emerald-50 text-emerald-600 border-emerald-200'
                                     }`}>
                                       {wl.privacy_level === 'private' ? <Hourglass className="h-2.5 w-2.5" /> : <Globe2 className="h-2.5 w-2.5" />}
-                                      {wl.privacy_level.replace('_', ' ')}
+                                      {wl.privacy_level === 'private' ? t('settings.private', 'Private') : wl.privacy_level === 'friends_only' ? t('wishlist_detail.privacy_label_shared', 'Friends Only') : t('settings.public', 'Public')}
                                     </span>
                                   )}
                                 </div>
@@ -1813,7 +1816,7 @@ const Events = () => {
                                   }}
                                   className="h-8 px-4 rounded-full bg-gradient-to-b from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-cool-end))] text-white text-[10px] font-extrabold uppercase tracking-tight shadow-[0_3px_0_rgba(0,0,0,0.2)] hover:brightness-110 active:shadow-none active:translate-y-[2px] transition-all border-none"
                                 >
-                                  {t('common.open', 'Open')}
+                                  {t('wishlist.open', 'Open')}
                                 </Button>
                               </div>
                             </div>
@@ -1845,7 +1848,7 @@ const Events = () => {
                 <div className="flex items-center gap-2">
                   <CardTitle 
                     className="text-base sm:text-lg font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                    style={{ WebkitTextStroke: '0.5px rgba(0,0,0,0.85)' }}
+                    style={{ WebkitTextStroke: i18n.language === 'ar' ? '0' : '0.5px rgba(0,0,0,0.85)' }}
                   >
                     {t('events.tab_general', 'General Events')}
                   </CardTitle>
@@ -2161,7 +2164,7 @@ const Events = () => {
                           >
                             <Hourglass className="h-3.5 w-3.5 text-white/85" aria-hidden />
                             <span>{previewCountdown}</span>
-                            <span className="text-[10px] text-white/80 uppercase tracking-[0.12em]">
+                            <span className="text-[10px] text-white/80 tracking-[0.12em]">
                               {t('giftr.days_left','days left')}
                             </span>
                           </span>

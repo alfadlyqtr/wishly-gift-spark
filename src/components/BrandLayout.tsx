@@ -92,18 +92,18 @@ export const BrandLayout = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-white to-slate-100">
       {/* Top header bar */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
+      <header className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             {/* Combined brand avatar + Wishly logo for verified, or just Wishly logo */}
             {isVerified && logoUrl ? (
               <div className="relative flex items-center">
-                {/* Brand avatar with ring */}
-                <div className="verified-avatar-sm">
+                {/* Brand avatar with golden ring */}
+                <div className="relative p-[2px] rounded-full bg-gradient-to-tr from-[#FFD700] via-[#FDB931] to-[#FFD700] shadow-[0_0_15px_rgba(253,185,49,0.4)] ring-1 ring-[#FDB931]/50">
                   <img 
                     src={logoUrl} 
                     alt={brandName} 
-                    className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-md" 
+                    className="h-10 w-10 rounded-full object-cover border-2 border-white" 
                   />
                 </div>
                 {/* Wishly logo overlapping */}
@@ -120,9 +120,9 @@ export const BrandLayout = () => {
               <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                 {brandName || t("brand.header_title", "Brand Portal")}
                 {isVerified && (
-                  <span className="verified-chip">
-                    <BadgeCheck className="h-3 w-3" />
-                    Verified
+                  <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-50 text-[10px] font-bold text-amber-600 border border-amber-200 shadow-sm animate-in fade-in zoom-in duration-300">
+                    <BadgeCheck className="h-3 w-3 fill-amber-500 text-white" />
+                    {t("brand.verified", "Verified")}
                   </span>
                 )}
               </span>
@@ -132,15 +132,6 @@ export const BrandLayout = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-slate-600"
-              onClick={() => navigate("/brand/notifications")}
-              aria-label={t("brand.header_likes", "Likes")}
-            >
-              <Heart className="h-5 w-5" />
-            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -162,7 +153,7 @@ export const BrandLayout = () => {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 pb-24">
+      <main className="flex-1 pt-16 pb-[calc(env(safe-area-inset-bottom,0px)+6.5rem)]">
         <Outlet />
       </main>
 
@@ -257,11 +248,11 @@ export const BrandLayout = () => {
                 }`}
               >
                 {logoUrl ? (
-                  <div className={isVerified ? "verified-avatar-sm" : ""}>
+                  <div className={isVerified ? "relative p-[1.5px] rounded-full bg-gradient-to-tr from-[#FFD700] via-[#FDB931] to-[#FFD700] shadow-[0_0_10px_rgba(253,185,49,0.3)]" : ""}>
                     <img 
                       src={logoUrl} 
                       alt={brandName} 
-                      className="h-11 w-11 rounded-full object-cover ring-2 ring-white/25" 
+                      className={`h-11 w-11 rounded-full object-cover ring-2 ring-white/25 ${isVerified ? "border-2 border-white" : ""}`} 
                     />
                   </div>
                 ) : (

@@ -2,8 +2,9 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, ExternalLink, Eye, CirclePlus, Heart, Pencil } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Eye, CirclePlus, Heart, Pencil, BarChart } from "lucide-react";
 import { AddProductModal } from "@/components/brands/AddProductModal";
+import { EngagementList } from "@/components/brands/EngagementList";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -31,6 +32,7 @@ const BrandProducts = () => {
   const [editForm, setEditForm] = useState<{ name: string; description: string; product_url: string } | null>(null);
   const [selectedTone, setSelectedTone] = useState<"tidy" | "confident" | "pro" | "sales" | "aggressive" | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [showEngagement, setShowEngagement] = useState(false);
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
@@ -40,8 +42,43 @@ const BrandProducts = () => {
     return `${supabaseUrl}/functions/v1/ai-gateway`;
   }, [supabaseUrl]);
 
+  // Fetch engagement details for selected product
+  const { data: engagementDetails, isLoading: engagementLoading } = useQuery({
+    queryKey: ["product-engagement", selectedProduct?.id],
+    queryFn: async () => {
+      if (!selectedProduct?.id) return null;
+      const { data, error } = await (supabase as any).rpc("get_product_engagement_details", {
+        product_uuid: selectedProduct.id,
+      });
+      if (error) throw error;
+
+      const result = {
+        views: [] as any[],
+        likes: [] as any[],
+        adds: [] as any[],
+      };
+
+      (data as any[] || []).forEach((row) => {
+        const user = {
+          id: row.user_id,
+          name: row.full_name || row.username || "User",
+          username: row.username,
+          avatar_url: row.avatar_url,
+        };
+
+        if (row.interaction_type === "view") result.views.push(user);
+        else if (row.interaction_type === "like") result.likes.push(user);
+        else if (row.interaction_type === "add") result.adds.push(user);
+      });
+
+      return result;
+    },
+    enabled: !!selectedProduct?.id && showEngagement,
+  });
+
   const handleCloseModal = () => {
     setSelectedProduct(null);
+    setShowEngagement(false);
 
     // Remove productId from query params so the modal doesn’t auto-reopen
     const params = new URLSearchParams(location.search);
@@ -712,33 +749,73 @@ const BrandProducts = () => {
               </div>
 
               {/* Product visibility settings */}
-              <div className="mt-1 flex items-center justify-between gap-3 border rounded-lg px-3 py-2 bg-muted/40">
-                <div className="flex flex-col gap-2 text-[11px] sm:text-xs text-muted-foreground w-full">
-                  <div className="flex items-center justify-between gap-2">
-                    <span>{t('brand.product_findable', 'Findable')}</span>
-                    <Switch
-                      checked={modalFlags?.is_findable ?? true}
-                      disabled={updateProductFlags.isPending}
-                      onCheckedChange={(checked) => {
-                        setModalFlags((prev) =>
-                          prev ? { ...prev, is_findable: checked } : { is_findable: checked, allow_add_as_item: modalFlags?.allow_add_as_item ?? true }
-                        );
-                        updateProductFlags.mutate({ id: selectedProduct.id, is_findable: checked });
-                      }}
-                    />
+              <div className="mt-1 flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full flex items-center justify-center gap-2 text-xs h-9 border-slate-200 hover:bg-slate-50"
+                  onClick={() => setShowEngagement(!showEngagement)}
+                >
+                  <BarChart className="h-3.5 w-3.5" />
+                  {showEngagement ? t("brand.hide_engagement", "Hide Engagement Details") : t("brand.show_engagement", "Show Who Viewed, Liked or Added")}
+                </Button>
+
+                {showEngagement && (
+                  <div className="space-y-4 p-3 rounded-xl border bg-slate-50/30 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {engagementLoading ? (
+                      <p className="text-xs text-center text-muted-foreground animate-pulse py-4">
+                        {t("brand.loading_engagement", "Loading engagement details...")}
+                      </p>
+                    ) : (
+                      <>
+                        <EngagementList
+                          users={engagementDetails?.views || []}
+                          label={t("brand.metrics_views", "Views")}
+                          emptyMessage={t("brand.no_views_yet", "No one has viewed this yet")}
+                        />
+                        <EngagementList
+                          users={engagementDetails?.likes || []}
+                          label={t("brand.metrics_likes", "Likes")}
+                          emptyMessage={t("brand.no_likes_yet", "No likes yet")}
+                        />
+                        <EngagementList
+                          users={engagementDetails?.adds || []}
+                          label={t("brand.metrics_adds", "Wishlist Adds")}
+                          emptyMessage={t("brand.no_adds_yet", "No one added this to a wishlist yet")}
+                        />
+                      </>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span>{t('brand.product_addable', 'Add as item')}</span>
-                    <Switch
-                      checked={modalFlags?.allow_add_as_item ?? true}
-                      disabled={updateProductFlags.isPending}
-                      onCheckedChange={(checked) => {
-                        setModalFlags((prev) =>
-                          prev ? { ...prev, allow_add_as_item: checked } : { allow_add_as_item: checked, is_findable: modalFlags?.is_findable ?? true }
-                        );
-                        updateProductFlags.mutate({ id: selectedProduct.id, allow_add_as_item: checked });
-                      }}
-                    />
+                )}
+
+                <div className="flex items-center justify-between gap-3 border rounded-lg px-3 py-2 bg-muted/40">
+                  <div className="flex flex-col gap-2 text-[11px] sm:text-xs text-muted-foreground w-full">
+                    <div className="flex items-center justify-between gap-2">
+                      <span>{t('brand.product_findable', 'Findable')}</span>
+                      <Switch
+                        checked={modalFlags?.is_findable ?? true}
+                        disabled={updateProductFlags.isPending}
+                        onCheckedChange={(checked) => {
+                          setModalFlags((prev) =>
+                            prev ? { ...prev, is_findable: checked } : { is_findable: checked, allow_add_as_item: modalFlags?.allow_add_as_item ?? true }
+                          );
+                          updateProductFlags.mutate({ id: selectedProduct.id, is_findable: checked });
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span>{t('brand.product_addable', 'Add as item')}</span>
+                      <Switch
+                        checked={modalFlags?.allow_add_as_item ?? true}
+                        disabled={updateProductFlags.isPending}
+                        onCheckedChange={(checked) => {
+                          setModalFlags((prev) =>
+                            prev ? { ...prev, allow_add_as_item: checked } : { allow_add_as_item: checked, is_findable: modalFlags?.is_findable ?? true }
+                          );
+                          updateProductFlags.mutate({ id: selectedProduct.id, allow_add_as_item: checked });
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

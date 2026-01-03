@@ -14,7 +14,7 @@ import { openOrCreateDirectThread } from "@/lib/messages";
 import "./ExploreProductsCard.css";
 
 const Explore = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"brands" | "products" | "users">("brands");
   const [q, setQ] = useState("");
