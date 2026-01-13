@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "456A4R8J4V.qa.wishly.app155998",
+        "paths": [
+          "/w/*",
+          "/wishlist/*",
+          "/*"
+        ]
+      }
+    ]
+  }
+}
