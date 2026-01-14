@@ -162,86 +162,15 @@ async function getItemOwnerAndTitle(jwt: string, itemId: string): Promise<{ owne
   };
 }
 
-async function sendPushToUserByPlayerId(playerIds: string[], title: string, message: string, data?: Record<string, unknown>) {
+/**
+ * Send push notification to a user via OneSignal
+ * Uses external_id targeting (matching Wakti pattern)
+ * The external_id is the Supabase user ID, set via notificationsBridge.setNotificationUser()
+ */
+async function sendPushToUser(_jwt: string, userId: string, title: string, message: string, data?: Record<string, unknown>) {
   if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) throw new Error("Missing OneSignal env");
 
-  const payload: Record<string, unknown> = {
-    app_id: ONESIGNAL_APP_ID,
-    include_player_ids: playerIds,
-    headings: { en: title },
-    contents: { en: message },
-  };
-
-  if (data && typeof data === "object") {
-    payload.data = data;
-  }
-
-  const res = await fetch("https://onesignal.com/api/v1/notifications", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Basic ${ONESIGNAL_REST_API_KEY}`,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const text = await res.text();
-  let json: unknown = null;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    json = null;
-  }
-
-  const result = {
-    ok: res.ok,
-    status: res.status,
-    playerIds,
-    text,
-    json,
-    recipients: (json as any)?.recipients ?? null,
-  };
-  console.log(
-    JSON.stringify({
-      at: "sendPushToUserByPlayerId",
-      ...result,
-    }),
-  );
-  if (!res.ok) {
-    throw new Error(`OneSignal error: ${text}`);
-  }
-
-  return result;
-}
-
-async function sendPushToUser(jwt: string, userId: string, title: string, message: string, data?: Record<string, unknown>) {
-  if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) throw new Error("Missing OneSignal env");
-
-  // First try to get player IDs from our database (Natively recommended approach)
-  try {
-    const devices = SUPABASE_SERVICE_ROLE_KEY
-      ? await sbGetService<PushDeviceRow>("user_push_devices", {
-          select: "onesignal_device_id",
-          user_id: `eq.${userId}`,
-          enabled: "eq.true",
-        })
-      : await sbGet<PushDeviceRow>(jwt, "user_push_devices", {
-          select: "onesignal_device_id",
-          user_id: `eq.${userId}`,
-          enabled: "eq.true",
-        });
-
-    if (devices.length > 0) {
-      const playerIds = devices.map(d => d.onesignal_device_id);
-      console.log(JSON.stringify({ at: "sendPushToUser", method: "player_ids", userId, playerIds }));
-      return await sendPushToUserByPlayerId(playerIds, title, message, data);
-    }
-  } catch (e) {
-    console.log(JSON.stringify({ at: "sendPushToUser", error: "device_lookup_failed", userId }));
-  }
-
-  // Fallback to external ID targeting
-  console.log(JSON.stringify({ at: "sendPushToUser", method: "external_id_fallback", userId }));
+  console.log(JSON.stringify({ at: "sendPushToUser", userId, title, message }));
   const payload: Record<string, unknown> = {
     app_id: ONESIGNAL_APP_ID,
     include_aliases: { external_id: [userId] },

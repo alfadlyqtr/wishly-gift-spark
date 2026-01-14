@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Home, Store, Calendar, User, Plus, Bell, MessageSquare, Heart } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePresence } from "@/hooks/usePresence";
 import { useNativelyContext } from "@/hooks/use-natively";
+import { 
+  initializePushNotifications, 
+  cleanupPushNotifications,
+  setupNotificationClickHandler,
+  isNativeApp as checkIsNativeApp
+} from "@/integrations/natively/notificationsBridge";
 
 export const MainLayout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [addOpen, setAddOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -23,6 +30,13 @@ export const MainLayout = () => {
   
   // Track user presence for real-time online status
   usePresence(userId);
+  
+  // Set up notification click handler (matching Wakti pattern)
+  useEffect(() => {
+    if (checkIsNativeApp()) {
+      setupNotificationClickHandler(navigate);
+    }
+  }, [navigate]);
 
   const isActive = (path: string) => location.pathname === path;
   const isGifterShared = new URLSearchParams(location.search).get('mode')?.toLowerCase() === 'gifter';
@@ -161,103 +175,10 @@ export const MainLayout = () => {
       
       // Set userId for presence tracking
       setUserId(uid);
-      if (isNativeApp) {
-        const tryLink = async (attempt: number) => {
-          try {
-            const runtime = (natively as any) || (window as any).natively;
-            const notifications = runtime?.notifications;
-            
-            console.log(`[Push] Attempt ${attempt}: Starting registration for user ${uid}`);
-            
-            if (!notifications) {
-              console.warn('[Push] Notifications object not available');
-              if (attempt < 8 && mounted) {
-                window.setTimeout(() => void tryLink(attempt + 1), 500);
-              }
-              return;
-            }
-
-            await notifications.requestPermissionIOS?.();
-            console.log('[Push] Permission requested');
-
-            // Set External ID using Natively's correct method signature
-            if (notifications.setExternalId) {
-              notifications.setExternalId({ externalId: uid }, (resp: any) => {
-                if (resp && resp.externalId) {
-                  console.log('[Push] External ID set successfully:', resp.externalId);
-                } else {
-                  const errorMessage = (resp && resp.error) || (resp && resp.message) || "Failed to set external ID";
-                  console.error('[Push] External ID error:', errorMessage);
-                }
-              });
-            } else {
-              console.warn('[Push] setExternalId method not available');
-            }
-
-            // Get device ID using Natively callback pattern
-            if (notifications.getOneSignalId) {
-              notifications.getOneSignalId((response: any) => {
-                console.log('[Push] Raw OneSignal ID response:', response);
-                
-                // Natively returns { playerId: "..." } or just the string
-                const oneSignalId =
-                  typeof response === "string"
-                    ? response
-                    : response?.playerId
-                      ? String(response.playerId)
-                      : response?.id
-                        ? String(response.id)
-                        : null;
-
-                console.log('[Push] Parsed OneSignal device ID:', oneSignalId);
-
-                if (oneSignalId && oneSignalId !== "null" && oneSignalId !== "undefined") {
-                  const browserInfo = (natively as any)?.browserInfo?.() || {};
-                  const platform = browserInfo.isIOSApp 
-                    ? 'ios' 
-                    : browserInfo.isAndroidApp 
-                      ? 'android' 
-                      : 'web';
-
-                  console.log('[Push] Detected platform:', platform);
-                  console.log('[Push] Calling register-device endpoint...');
-
-                  supabase.functions.invoke('register-device', {
-                    body: {
-                      onesignalDeviceId: oneSignalId,
-                      platform,
-                    },
-                  }).then(({ data, error: registerError }) => {
-                    if (registerError) {
-                      console.error("[Push] Device registration FAILED:", registerError);
-                    } else {
-                      console.log("[Push] Device registration SUCCESS:", data);
-                    }
-                  }).catch((e) => {
-                    console.error("[Push] Device registration error:", e);
-                  });
-                } else {
-                  console.warn(`[Push] No device ID yet, attempt ${attempt}/8`);
-                  if (attempt < 8 && mounted) {
-                    window.setTimeout(() => void tryLink(attempt + 1), 500);
-                  }
-                }
-              });
-            } else {
-              console.warn('[Push] getOneSignalId method not available');
-              if (attempt < 8 && mounted) {
-                window.setTimeout(() => void tryLink(attempt + 1), 500);
-              }
-            }
-          } catch (err) {
-            console.error(`[Push] Registration attempt ${attempt} failed:`, err);
-            if (attempt < 8 && mounted) {
-              window.setTimeout(() => void tryLink(attempt + 1), 500);
-            }
-          }
-        };
-
-        void tryLink(0);
+      
+      // Initialize push notifications using the bridge (matching Wakti pattern)
+      if (checkIsNativeApp()) {
+        void initializePushNotifications(uid);
       }
 
       await fetchPendingCount(uid);
