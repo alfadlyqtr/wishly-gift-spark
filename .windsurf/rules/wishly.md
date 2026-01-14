@@ -6,9 +6,9 @@ Supabase Project ID: oefwopmeejfhzwojczqq
 
 App Name: Wishly
 
-Purpose of Wakti
+Purpose of wishly
 
-Wakti exists to empower individuals  to create wishlist for events and share them with family anf friends and for brands and stores to display their imtems so users can add to thier wishlist 
+wishly exists to empower individuals  to create wishlist for events and share them with family anf friends and for brands and stores to display their imtems so users can add to thier wishlist 
 
 
 
