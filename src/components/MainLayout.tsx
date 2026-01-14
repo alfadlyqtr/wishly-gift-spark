@@ -194,53 +194,57 @@ export const MainLayout = () => {
               console.warn('[Push] setExternalId method not available');
             }
 
-            // Get device ID
-            try {
-              const raw = await notifications.getOneSignalId?.();
-              console.log('[Push] Raw OneSignal ID response:', raw);
-              
-              const oneSignalId =
-                typeof raw === "string"
-                  ? raw
-                  : (raw && typeof raw === "object" && (raw as any).playerId)
-                    ? String((raw as any).playerId)
-                    : (raw && typeof raw === "object" && (raw as any).id)
-                      ? String((raw as any).id)
-                      : null;
+            // Get device ID using Natively callback pattern
+            if (notifications.getOneSignalId) {
+              notifications.getOneSignalId((response: any) => {
+                console.log('[Push] Raw OneSignal ID response:', response);
+                
+                // Natively returns { playerId: "..." } or just the string
+                const oneSignalId =
+                  typeof response === "string"
+                    ? response
+                    : response?.playerId
+                      ? String(response.playerId)
+                      : response?.id
+                        ? String(response.id)
+                        : null;
 
-              console.log('[Push] Parsed OneSignal device ID:', oneSignalId);
+                console.log('[Push] Parsed OneSignal device ID:', oneSignalId);
 
-              if (oneSignalId) {
-                const browserInfo = (natively as any)?.browserInfo?.() || {};
-                const platform = browserInfo.isIOSApp 
-                  ? 'ios' 
-                  : browserInfo.isAndroidApp 
-                    ? 'android' 
-                    : 'web';
+                if (oneSignalId && oneSignalId !== "null" && oneSignalId !== "undefined") {
+                  const browserInfo = (natively as any)?.browserInfo?.() || {};
+                  const platform = browserInfo.isIOSApp 
+                    ? 'ios' 
+                    : browserInfo.isAndroidApp 
+                      ? 'android' 
+                      : 'web';
 
-                console.log('[Push] Detected platform:', platform);
-                console.log('[Push] Calling register-device endpoint...');
+                  console.log('[Push] Detected platform:', platform);
+                  console.log('[Push] Calling register-device endpoint...');
 
-                const { data, error: registerError } = await supabase.functions.invoke('register-device', {
-                  body: {
-                    onesignalDeviceId: oneSignalId,
-                    platform,
-                  },
-                });
-
-                if (registerError) {
-                  console.error("[Push] Device registration FAILED:", registerError);
+                  supabase.functions.invoke('register-device', {
+                    body: {
+                      onesignalDeviceId: oneSignalId,
+                      platform,
+                    },
+                  }).then(({ data, error: registerError }) => {
+                    if (registerError) {
+                      console.error("[Push] Device registration FAILED:", registerError);
+                    } else {
+                      console.log("[Push] Device registration SUCCESS:", data);
+                    }
+                  }).catch((e) => {
+                    console.error("[Push] Device registration error:", e);
+                  });
                 } else {
-                  console.log("[Push] Device registration SUCCESS:", data);
+                  console.warn(`[Push] No device ID yet, attempt ${attempt}/8`);
+                  if (attempt < 8 && mounted) {
+                    window.setTimeout(() => void tryLink(attempt + 1), 500);
+                  }
                 }
-              } else {
-                console.warn(`[Push] No device ID yet, attempt ${attempt}/8`);
-                if (attempt < 8 && mounted) {
-                  window.setTimeout(() => void tryLink(attempt + 1), 500);
-                }
-              }
-            } catch (e) {
-              console.error("[Push] Failed to get/register device ID:", e);
+              });
+            } else {
+              console.warn('[Push] getOneSignalId method not available');
               if (attempt < 8 && mounted) {
                 window.setTimeout(() => void tryLink(attempt + 1), 500);
               }
