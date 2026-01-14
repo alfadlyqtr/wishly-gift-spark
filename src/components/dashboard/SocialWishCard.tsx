@@ -364,11 +364,29 @@ export const SocialWishCard = () => {
           if (!supabase || !thankYouPost?.id) return [] as any[];
           const { data, error } = await (supabase as any)
             .from("thank_you_comments")
-            .select("id, content, created_at, user_id, profile:user_profiles(id, username, full_name, avatar_url)")
+            .select("id, content, created_at, user_id")
             .eq("post_id", thankYouPost.id)
             .order("created_at", { ascending: true });
           if (error) throw error;
-          return data || [];
+
+          const rows = (data || []) as any[];
+          const userIds = Array.from(new Set(rows.map((r: any) => r.user_id).filter(Boolean)));
+          if (userIds.length === 0) return rows;
+
+          const { data: profiles } = await supabase
+            .from("user_profiles" as any)
+            .select("id, username, full_name, avatar_url")
+            .in("id", userIds as any);
+
+          const byId = new Map<string, any>();
+          (profiles || []).forEach((p: any) => {
+            if (p?.id) byId.set(p.id, p);
+          });
+
+          return rows.map((r: any) => ({
+            ...r,
+            profile: byId.get(r.user_id) || null,
+          }));
         },
       });
     }
@@ -379,11 +397,29 @@ export const SocialWishCard = () => {
         if (!supabase || !wishlistId) return [] as any[];
         const { data, error } = await supabase
           .from("wishlist_comments" as any)
-          .select("id, content, created_at, user_id, profile:user_profiles(id, username, full_name, avatar_url)")
+          .select("id, content, created_at, user_id")
           .eq("wishlist_id", wishlistId)
           .order("created_at", { ascending: true });
         if (error) throw error;
-        return data || [];
+
+        const rows = (data || []) as any[];
+        const userIds = Array.from(new Set(rows.map((r: any) => r.user_id).filter(Boolean)));
+        if (userIds.length === 0) return rows;
+
+        const { data: profiles } = await supabase
+          .from("user_profiles" as any)
+          .select("id, username, full_name, avatar_url")
+          .in("id", userIds as any);
+
+        const byId = new Map<string, any>();
+        (profiles || []).forEach((p: any) => {
+          if (p?.id) byId.set(p.id, p);
+        });
+
+        return rows.map((r: any) => ({
+          ...r,
+          profile: byId.get(r.user_id) || null,
+        }));
       },
     });
   };

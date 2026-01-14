@@ -166,21 +166,90 @@ export const MainLayout = () => {
           try {
             const runtime = (natively as any) || (window as any).natively;
             const notifications = runtime?.notifications;
-            if (notifications) {
-              await notifications.requestPermissionIOS?.();
-              await notifications.setExternalUserId?.(uid);
-              if (import.meta.env.DEV) {
-                console.log('[Push] External user ID set:', uid);
+            
+            console.log(`[Push] Attempt ${attempt}: Starting registration for user ${uid}`);
+            
+            if (!notifications) {
+              console.warn('[Push] Notifications object not available');
+              if (attempt < 8 && mounted) {
+                window.setTimeout(() => void tryLink(attempt + 1), 500);
+              }
+              return;
+            }
+
+            await notifications.requestPermissionIOS?.();
+            console.log('[Push] Permission requested');
+
+            // Try new OneSignal.login method first (v5+), fallback to setExternalUserId (legacy)
+            try {
+              if (notifications.login) {
+                await notifications.login(uid);
+                console.log('[Push] OneSignal.login called with:', uid);
+              } else if (notifications.setExternalUserId) {
+                await notifications.setExternalUserId(uid);
+                console.log('[Push] setExternalUserId called with:', uid);
+              } else {
+                console.warn('[Push] Neither login nor setExternalUserId available');
+              }
+            } catch (loginErr) {
+              console.error('[Push] Failed to set external user ID:', loginErr);
+            }
+
+            // Get device ID
+            try {
+              const raw = await notifications.getOneSignalId?.();
+              console.log('[Push] Raw OneSignal ID response:', raw);
+              
+              const oneSignalId =
+                typeof raw === "string"
+                  ? raw
+                  : (raw && typeof raw === "object" && (raw as any).playerId)
+                    ? String((raw as any).playerId)
+                    : (raw && typeof raw === "object" && (raw as any).id)
+                      ? String((raw as any).id)
+                      : null;
+
+              console.log('[Push] Parsed OneSignal device ID:', oneSignalId);
+
+              if (oneSignalId) {
+                const browserInfo = (natively as any)?.browserInfo?.() || {};
+                const platform = browserInfo.isIOSApp 
+                  ? 'ios' 
+                  : browserInfo.isAndroidApp 
+                    ? 'android' 
+                    : 'web';
+
+                console.log('[Push] Detected platform:', platform);
+                console.log('[Push] Calling register-device endpoint...');
+
+                const { data, error: registerError } = await supabase.functions.invoke('register-device', {
+                  body: {
+                    onesignalDeviceId: oneSignalId,
+                    platform,
+                  },
+                });
+
+                if (registerError) {
+                  console.error("[Push] Device registration FAILED:", registerError);
+                } else {
+                  console.log("[Push] Device registration SUCCESS:", data);
+                }
+              } else {
+                console.warn(`[Push] No device ID yet, attempt ${attempt}/8`);
+                if (attempt < 8 && mounted) {
+                  window.setTimeout(() => void tryLink(attempt + 1), 500);
+                }
+              }
+            } catch (e) {
+              console.error("[Push] Failed to get/register device ID:", e);
+              if (attempt < 8 && mounted) {
+                window.setTimeout(() => void tryLink(attempt + 1), 500);
               }
             }
           } catch (err) {
-            if (import.meta.env.DEV) {
-              console.warn('[Push] Failed to set external user ID, attempt', attempt, err);
-            }
+            console.error(`[Push] Registration attempt ${attempt} failed:`, err);
             if (attempt < 8 && mounted) {
-              window.setTimeout(() => {
-                void tryLink(attempt + 1);
-              }, 500);
+              window.setTimeout(() => void tryLink(attempt + 1), 500);
             }
           }
         };

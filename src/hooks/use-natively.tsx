@@ -38,7 +38,7 @@ export const NativelyProvider = ({ children }: { children: ReactNode }) => {
       const info = new NativelyInfo();
       const result = info.browserInfo();
       setBrowserInfo({
-        isNativeApp: result.isNativeApp ?? false,
+        isNativeApp: (result.isNativeApp ?? result.isIOSApp ?? result.isAndroidApp) ?? false,
         isAndroid: result.isAndroidApp ?? false,
         isIOS: result.isIOSApp ?? false,
         appVersion: undefined,

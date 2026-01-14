@@ -315,6 +315,8 @@ const Chat = () => {
         const pushResult = await supabase.functions.invoke("push-dispatch", { body: { type: "message_sent", threadId: id } });
         if (import.meta.env.DEV) {
           console.log("[Push] message_sent dispatch result:", pushResult);
+          console.log("[Push] message_sent dispatch data:", (pushResult as any)?.data);
+          console.log("[Push] message_sent dispatch error:", (pushResult as any)?.error);
         }
       } catch (pushErr) {
         if (import.meta.env.DEV) {
