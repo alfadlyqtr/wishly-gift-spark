@@ -194,6 +194,10 @@ export const RecentActivityCard = () => {
         .from("wishlist_comments" as any)
         .insert({ wishlist_id: activeWishlist.id, user_id: uid, content: text });
       if (error) throw error;
+
+      try {
+        await supabase.functions.invoke("push-dispatch", { body: { type: "comment_added", wishlistId: activeWishlist.id } });
+      } catch {}
     },
     onSuccess: () => {
       setCommentText("");
@@ -289,7 +293,7 @@ export const RecentActivityCard = () => {
                   ) : (
                     (commentsData as any[]).map((c: any) => {
                       const displayName =
-                        c.profile?.full_name || c.profile?.username || c.user_id || "User";
+                        c.profile?.full_name || c.profile?.username || t("common.someone", "Someone");
                       const created = c.created_at
                         ? formatDistanceToNow(new Date(c.created_at), {
                             addSuffix: true,

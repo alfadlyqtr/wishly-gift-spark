@@ -588,6 +588,10 @@ const WishlistDetail = () => {
         .insert({ wishlist_id: id, user_id: uid, content: text });
       if (error) throw error;
 
+      try {
+        await supabase.functions.invoke("push-dispatch", { body: { type: "comment_added", wishlistId: id } });
+      } catch {}
+
       setWishlistCommentDraft('');
       await queryClient.invalidateQueries({ queryKey: ['wishlist-detail', id, 'comments'] });
     } catch (e: any) {
@@ -917,6 +921,10 @@ const WishlistDetail = () => {
       } else {
         toast.success(t('giftr.claim_success','Claim request sent — waiting for approval'));
       }
+
+      try {
+        await supabase.functions.invoke("push-dispatch", { body: { type: "claim_created", itemId } });
+      } catch {}
 
       await queryClient.invalidateQueries({ queryKey: ['wishlist-detail', id, 'reservations', reservationKeyDeps] });
     } catch (err: any) {

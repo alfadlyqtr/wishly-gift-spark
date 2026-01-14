@@ -305,12 +305,22 @@ const Chat = () => {
         content,
       });
       if (error) throw error;
-      // Emit activity for notifications/feed
       await supabase.from("activities").insert({
         user_id: uid,
         activity_type: "message_sent",
         target_id: id,
       });
+
+      try {
+        const pushResult = await supabase.functions.invoke("push-dispatch", { body: { type: "message_sent", threadId: id } });
+        if (import.meta.env.DEV) {
+          console.log("[Push] message_sent dispatch result:", pushResult);
+        }
+      } catch (pushErr) {
+        if (import.meta.env.DEV) {
+          console.error("[Push] message_sent dispatch error:", pushErr);
+        }
+      }
     },
     onSuccess: () => {
       setText("");
@@ -415,6 +425,10 @@ const Chat = () => {
       attachment_size_bytes: size,
     });
     if (insertError) throw insertError;
+
+    try {
+      await supabase.functions.invoke("push-dispatch", { body: { type: "message_sent", threadId: id } });
+    } catch {}
 
     qc.invalidateQueries({ queryKey: ["messages", id] });
   };

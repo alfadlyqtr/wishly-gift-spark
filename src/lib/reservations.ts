@@ -1,5 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 
+async function dispatchPush(body: Record<string, unknown>) {
+  try {
+    await supabase.functions.invoke("push-dispatch", { body });
+  } catch {
+  }
+}
+
 export type ReservationStatus = "pending" | "approved" | "declined" | "unclaim_requested";
 
 type ReservationRow = {
@@ -77,6 +84,9 @@ export async function approveReservation(reservationId: string) {
   );
 
   await emitClaimerActivity(reservation, "wish_claim_approved");
+
+  void dispatchPush({ type: "claim_decision", reservationId, decision: "approved" });
+
   return reservation;
 }
 
@@ -91,6 +101,9 @@ export async function declineReservation(reservationId: string) {
   );
 
   await emitClaimerActivity(reservation, "wish_claim_declined");
+
+  void dispatchPush({ type: "claim_decision", reservationId, decision: "declined" });
+
   return reservation;
 }
 
@@ -187,7 +200,9 @@ export async function requestUnclaim(reservationId: string) {
       target_id: userId,
     } as any);
   }
-  
+
+  void dispatchPush({ type: "unclaim_requested", reservationId });
+
   return { autoApproved: false };
 }
 
@@ -214,6 +229,8 @@ export async function declineUnclaim(reservationId: string) {
     },
     ["unclaim_requested"]
   );
-  
+
+  void dispatchPush({ type: "unclaim_declined", reservationId });
+
   return reservation;
 }

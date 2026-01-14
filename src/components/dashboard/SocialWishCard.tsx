@@ -364,7 +364,7 @@ export const SocialWishCard = () => {
           if (!supabase || !thankYouPost?.id) return [] as any[];
           const { data, error } = await (supabase as any)
             .from("thank_you_comments")
-            .select("id, content, created_at, user_id")
+            .select("id, content, created_at, user_id, profile:user_profiles(id, username, full_name, avatar_url)")
             .eq("post_id", thankYouPost.id)
             .order("created_at", { ascending: true });
           if (error) throw error;
@@ -379,7 +379,7 @@ export const SocialWishCard = () => {
         if (!supabase || !wishlistId) return [] as any[];
         const { data, error } = await supabase
           .from("wishlist_comments" as any)
-          .select("id, content, created_at, user_id")
+          .select("id, content, created_at, user_id, profile:user_profiles(id, username, full_name, avatar_url)")
           .eq("wishlist_id", wishlistId)
           .order("created_at", { ascending: true });
         if (error) throw error;
@@ -412,6 +412,10 @@ export const SocialWishCard = () => {
           .from("wishlist_comments" as any)
           .insert({ wishlist_id: wishlistId, user_id: uid, content: text });
         if (error) throw error;
+
+        try {
+          await supabase.functions.invoke("push-dispatch", { body: { type: "comment_added", wishlistId } });
+        } catch {}
       }
     },
     onSuccess: () => {
@@ -866,7 +870,7 @@ export const SocialWishCard = () => {
                   </Avatar>
                   <div className="flex-1">
                     <div className="font-semibold leading-tight">
-                      {c.profile?.full_name || c.profile?.username || 'User'}
+                      {c.profile?.full_name || c.profile?.username || t("common.someone", "Someone")}
                     </div>
                     <div className="leading-snug text-foreground">
                       {c.content}

@@ -9,6 +9,7 @@ import { useWishlists } from "@/hooks/use-wishlists";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePresence } from "@/hooks/usePresence";
+import { useNativelyContext } from "@/hooks/use-natively";
 
 export const MainLayout = () => {
   const location = useLocation();
@@ -18,6 +19,7 @@ export const MainLayout = () => {
   const [userId, setUserId] = useState<string | undefined>(undefined);
   const { data: wishlistsData } = useWishlists();
   const { t } = useTranslation();
+  const { natively, isNativeApp } = useNativelyContext();
   
   // Track user presence for real-time online status
   usePresence(userId);
@@ -159,6 +161,32 @@ export const MainLayout = () => {
       
       // Set userId for presence tracking
       setUserId(uid);
+      if (isNativeApp) {
+        const tryLink = async (attempt: number) => {
+          try {
+            const runtime = (natively as any) || (window as any).natively;
+            const notifications = runtime?.notifications;
+            if (notifications) {
+              await notifications.requestPermissionIOS?.();
+              await notifications.setExternalUserId?.(uid);
+              if (import.meta.env.DEV) {
+                console.log('[Push] External user ID set:', uid);
+              }
+            }
+          } catch (err) {
+            if (import.meta.env.DEV) {
+              console.warn('[Push] Failed to set external user ID, attempt', attempt, err);
+            }
+            if (attempt < 8 && mounted) {
+              window.setTimeout(() => {
+                void tryLink(attempt + 1);
+              }, 500);
+            }
+          }
+        };
+
+        void tryLink(0);
+      }
 
       await fetchPendingCount(uid);
       await fetchAvatar(uid);
@@ -204,7 +232,7 @@ export const MainLayout = () => {
       if (followersChannel) supabase.removeChannel(followersChannel);
       if (activitiesChannel) supabase.removeChannel(activitiesChannel);
     };
-  }, [t]);
+  }, [isNativeApp, natively, t]);
 
   // Real-time listener for admin control changes (LiveSync with admin panel)
   useEffect(() => {
