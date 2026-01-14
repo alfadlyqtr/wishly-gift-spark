@@ -162,13 +162,90 @@ async function getItemOwnerAndTitle(jwt: string, itemId: string): Promise<{ owne
   };
 }
 
-async function sendPushToUser(userId: string, title: string, message: string, data?: Record<string, unknown>) {
+async function sendPushToUserByPlayerId(playerIds: string[], title: string, message: string, data?: Record<string, unknown>) {
   if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) throw new Error("Missing OneSignal env");
 
   const payload: Record<string, unknown> = {
     app_id: ONESIGNAL_APP_ID,
-    include_external_user_ids: [userId],
-    channel_for_external_user_ids: "push",
+    include_player_ids: playerIds,
+    headings: { en: title },
+    contents: { en: message },
+  };
+
+  if (data && typeof data === "object") {
+    payload.data = data;
+  }
+
+  const res = await fetch("https://onesignal.com/api/v1/notifications", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Basic ${ONESIGNAL_REST_API_KEY}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  let json: unknown = null;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    json = null;
+  }
+
+  const result = {
+    ok: res.ok,
+    status: res.status,
+    playerIds,
+    text,
+    json,
+    recipients: (json as any)?.recipients ?? null,
+  };
+  console.log(
+    JSON.stringify({
+      at: "sendPushToUserByPlayerId",
+      ...result,
+    }),
+  );
+  if (!res.ok) {
+    throw new Error(`OneSignal error: ${text}`);
+  }
+
+  return result;
+}
+
+async function sendPushToUser(jwt: string, userId: string, title: string, message: string, data?: Record<string, unknown>) {
+  if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) throw new Error("Missing OneSignal env");
+
+  // First try to get player IDs from our database (Natively recommended approach)
+  try {
+    const devices = SUPABASE_SERVICE_ROLE_KEY
+      ? await sbGetService<PushDeviceRow>("user_push_devices", {
+          select: "onesignal_device_id",
+          user_id: `eq.${userId}`,
+          enabled: "eq.true",
+        })
+      : await sbGet<PushDeviceRow>(jwt, "user_push_devices", {
+          select: "onesignal_device_id",
+          user_id: `eq.${userId}`,
+          enabled: "eq.true",
+        });
+
+    if (devices.length > 0) {
+      const playerIds = devices.map(d => d.onesignal_device_id);
+      console.log(JSON.stringify({ at: "sendPushToUser", method: "player_ids", userId, playerIds }));
+      return await sendPushToUserByPlayerId(playerIds, title, message, data);
+    }
+  } catch (e) {
+    console.log(JSON.stringify({ at: "sendPushToUser", error: "device_lookup_failed", userId }));
+  }
+
+  // Fallback to external ID targeting
+  console.log(JSON.stringify({ at: "sendPushToUser", method: "external_id_fallback", userId }));
+  const payload: Record<string, unknown> = {
+    app_id: ONESIGNAL_APP_ID,
+    include_aliases: { external_id: [userId] },
+    target_channel: "push",
     headings: { en: title },
     contents: { en: message },
   };
@@ -198,6 +275,7 @@ async function sendPushToUser(userId: string, title: string, message: string, da
     ok: res.ok,
     status: res.status,
     userId,
+    method: "external_id",
     text,
     json,
     recipients: (json as any)?.recipients ?? null,
@@ -355,9 +433,9 @@ serve(async (req: Request) => {
       const name = await getDisplayName(jwt, requester.id);
 
       if (status === "pending") {
-        await sendPushToUser(body.targetUserId, title, `${name} requested to follow you`, { type: "follow_request" });
+        await sendPushToUser(jwt, body.targetUserId, title, `${name} requested to follow you`, { type: "follow_request" });
       } else if (status === "accepted") {
-        await sendPushToUser(body.targetUserId, title, `${name} started following you`, { type: "new_follower" });
+        await sendPushToUser(jwt, body.targetUserId, title, `${name} started following you`, { type: "new_follower" });
       }
 
       return jsonResponse({ ok: true });
@@ -377,7 +455,7 @@ serve(async (req: Request) => {
       }
 
       const name = await getDisplayName(jwt, requester.id);
-      await sendPushToUser(body.fromUserId, title, `${name} accepted your follow request`, { type: "follow_accepted" });
+      await sendPushToUser(jwt, body.fromUserId, title, `${name} accepted your follow request`, { type: "follow_accepted" });
       return jsonResponse({ ok: true });
     }
 
@@ -404,12 +482,12 @@ serve(async (req: Request) => {
       const status = String(reservation.status || "");
 
       if (status === "pending") {
-        await sendPushToUser(ownerId, title, `${claimerName} requested to claim “${itemTitle}”`, {
+        await sendPushToUser(jwt, ownerId, title, `${claimerName} requested to claim “${itemTitle}”`, {
           type: "claim_requested",
           itemId: body.itemId,
         });
       } else if (status === "approved") {
-        await sendPushToUser(ownerId, title, `${claimerName} claimed “${itemTitle}”`, {
+        await sendPushToUser(jwt, ownerId, title, `${claimerName} claimed “${itemTitle}”`, {
           type: "claim_approved",
           itemId: body.itemId,
         });
@@ -437,12 +515,12 @@ serve(async (req: Request) => {
 
       const ownerName = await getDisplayName(jwt, requester.id);
       if (body.decision === "approved") {
-        await sendPushToUser(reservation.reserved_by_id, title, `${ownerName} approved your claim for “${itemTitle}”`, {
+        await sendPushToUser(jwt, reservation.reserved_by_id, title, `${ownerName} approved your claim for “${itemTitle}”`, {
           type: "claim_approved",
           itemId: reservation.item_id,
         });
       } else {
-        await sendPushToUser(reservation.reserved_by_id, title, `${ownerName} declined your claim for “${itemTitle}”`, {
+        await sendPushToUser(jwt, reservation.reserved_by_id, title, `${ownerName} declined your claim for “${itemTitle}”`, {
           type: "claim_declined",
           itemId: reservation.item_id,
         });
@@ -473,7 +551,7 @@ serve(async (req: Request) => {
       }
 
       const name = await getDisplayName(jwt, requester.id);
-      await sendPushToUser(ownerId, title, `${name} requested to unclaim “${itemTitle}”`, {
+      await sendPushToUser(jwt, ownerId, title, `${name} requested to unclaim “${itemTitle}”`, {
         type: "unclaim_requested",
         itemId: reservation.item_id,
       });
@@ -488,7 +566,7 @@ serve(async (req: Request) => {
       }
 
       const ownerName = await getDisplayName(jwt, requester.id);
-      await sendPushToUser(body.claimerId, title, `${ownerName} approved your unclaim for “${itemTitle}”`, {
+      await sendPushToUser(jwt, body.claimerId, title, `${ownerName} approved your unclaim for “${itemTitle}”`, {
         type: "unclaim_approved",
         itemId: body.itemId,
       });
@@ -514,7 +592,7 @@ serve(async (req: Request) => {
       }
 
       const ownerName = await getDisplayName(jwt, requester.id);
-      await sendPushToUser(reservation.reserved_by_id, title, `${ownerName} declined your unclaim request for “${itemTitle}”`, {
+      await sendPushToUser(jwt, reservation.reserved_by_id, title, `${ownerName} declined your unclaim request for “${itemTitle}”`, {
         type: "unclaim_declined",
         itemId: reservation.item_id,
       });
@@ -538,7 +616,7 @@ serve(async (req: Request) => {
       const results: unknown[] = [];
 
       for (const uid of deduped) {
-        const r = await sendPushToUser(uid, title, `${senderName} sent a message`, {
+        const r = await sendPushToUser(jwt, uid, title, `${senderName} sent a message`, {
           type: "message",
           threadId: body.threadId,
         });
@@ -597,7 +675,7 @@ serve(async (req: Request) => {
       const commenterName = await getDisplayName(jwt, requester.id);
       const wishlistTitle = wishlist.title || "your wishlist";
 
-      const r = await sendPushToUser(wishlist.user_id, title, `${commenterName} commented on "${wishlistTitle}"`, {
+      const r = await sendPushToUser(jwt, wishlist.user_id, title, `${commenterName} commented on "${wishlistTitle}"`, {
         type: "comment",
         wishlistId: body.wishlistId,
       });

@@ -180,19 +180,18 @@ export const MainLayout = () => {
             await notifications.requestPermissionIOS?.();
             console.log('[Push] Permission requested');
 
-            // Try new OneSignal.login method first (v5+), fallback to setExternalUserId (legacy)
-            try {
-              if (notifications.login) {
-                await notifications.login(uid);
-                console.log('[Push] OneSignal.login called with:', uid);
-              } else if (notifications.setExternalUserId) {
-                await notifications.setExternalUserId(uid);
-                console.log('[Push] setExternalUserId called with:', uid);
-              } else {
-                console.warn('[Push] Neither login nor setExternalUserId available');
-              }
-            } catch (loginErr) {
-              console.error('[Push] Failed to set external user ID:', loginErr);
+            // Set External ID using Natively's correct method signature
+            if (notifications.setExternalId) {
+              notifications.setExternalId({ externalId: uid }, (resp: any) => {
+                if (resp && resp.externalId) {
+                  console.log('[Push] External ID set successfully:', resp.externalId);
+                } else {
+                  const errorMessage = (resp && resp.error) || (resp && resp.message) || "Failed to set external ID";
+                  console.error('[Push] External ID error:', errorMessage);
+                }
+              });
+            } else {
+              console.warn('[Push] setExternalId method not available');
             }
 
             // Get device ID
