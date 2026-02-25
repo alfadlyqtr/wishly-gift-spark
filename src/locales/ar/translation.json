@@ -204,8 +204,7 @@
     "country_placeholder": "مثال: قطر",
     "country_help": "تُستخدم لعرض العطلات الرسمية والتجارب الخاصة بمنطقتك.",
     "disabled_by_admin": "معطّل من قبل المسؤول"
-  }
-  ,
+  },
   "common": {
     "title": "العنوان",
     "description": "الوصف",
@@ -272,8 +271,7 @@
     "share_failed": "فشلت المشاركة",
     "birthday_cannot_delete": "لا يمكن حذف قائمة أمنيات عيد ميلادي",
     "my_birthday_wishlist": "قائمة أمنيات عيد ميلادي"
-  }
-  ,
+  },
   "events": {
     "title": "الفعاليات",
     "tab_my": "فعالياتي",
@@ -318,8 +316,7 @@
     "edit_event_title": "تعديل الفعالية",
     "event_title_placeholder": "عنوان الفعالية",
     "delete_event_title": "حذف هذه الفعالية؟"
-  }
-  ,
+  },
   "explore": {
     "title": "استكشف",
     "subtitle": "اكتشف الهدايا الرائجة، وقوائم الأمنيات الشائعة، والمنتجات الرائعة المختارة لك.",
@@ -358,8 +355,7 @@
     "added_to_count_few": "مُضاف إلى {{count}} قوائم أمنيات",
     "added_to_count_many": "مُضاف إلى {{count}} قائمة أمنيات",
     "added_to_count_other": "مُضاف إلى {{count}} قائمة أمنيات"
-  }
-  ,
+  },
   "dashboard": {
     "title": "لوحة التحكم",
     "subtitle": "ابقَ على اطلاع بأمنيات أصدقائك والفعاليات القادمة",
@@ -391,16 +387,14 @@
     "countdown_full": "{{days}} يوم {{hours}} ساعة {{minutes}} دقيقة متبقية",
     "countdown_full_left": "{{days}} يوم {{hours}} ساعة {{minutes}} دقيقة متبقية",
     "action_like_count": "{{count}} إعجاب"
-  }
-  ,
+  },
   "messages": {
     "title": "الرسائل",
     "new_conversation": "محادثة جديدة",
     "search_placeholder": "ابحث بالاسم أو اسم المستخدم أو البريد الإلكتروني",
     "search_aria": "بحث",
     "empty_state": "لا توجد محادثات بعد."
-  }
-  ,
+  },
   "chat": {
     "new_message_title": "رسالة جديدة",
     "conversation_title": "محادثة",
@@ -412,8 +406,7 @@
     "send": "إرسال",
     "direct_message": "رسالة خاصة",
     "autodelete_notice": "سيتم حذف الرسائل تلقائيًا بعد ٧ أيام ما لم تقم بتثبيتها."
-  }
-  ,
+  },
   "nav": {
     "dash": "الرئيسية",
     "explore": "استكشف",
@@ -427,8 +420,7 @@
     "title": "الحساب موقوف",
     "expires_in": "ينتهي التعليق خلال:",
     "contact_hint": "إذا كنت تعتقد أن هذا خطأ، يرجى التواصل مع الدعم."
-  }
-  ,
+  },
   "wish_item": {
     "add_hidden": "إضافة أمنية",
     "add_wish_title": "أضف أمنية",
@@ -483,8 +475,7 @@
     "double_check_hint": "✨ مراجعة سريعة! تأكد أن كل شيء صحيح قبل الحفظ",
     "save_button": "حفظ العنصر",
     "update_button": "تحديث العنصر"
-  }
-  ,
+  },
   "wishlist_detail": {
     "contains": "تحتوي هذه القائمة على ({{count}}/10)",
     "items_title": "العناصر",
@@ -517,8 +508,7 @@
     "description": "الوصف",
     "brand": "العلامة التجارية",
     "link": "الرابط"
-  }
-  ,
+  },
   "notifications": {
     "title": "الإشعارات",
     "follow_requests_title": "طلبات المتابعة",
@@ -537,16 +527,14 @@
     "commented_on_your_wishlist": "علق على قائمة أمنياتك",
     "ok": "حسناً 👍",
     "no_thanks": "لا، شكراً"
-  }
-  ,
+  },
   "footer": {
-    "copyright": "© 2025 Wishly. جميع الحقوق محفوظة.",
+    "copyright": "© 2026 Wishly. جميع الحقوق محفوظة.",
     "contact": "تواصل معنا",
     "privacy_terms": "الخصوصية والشروط",
     "made_by": "تم التطوير بواسطة",
-    "made_by_name": "TMW"
-  }
-  ,
+    "made_by_name": "wakti LLC"
+  },
   "dashboard_countdown": {
     "countdown_today": "اليوم",
     "countdown_full": "متبقي {{days}} يوم {{hours}} ساعة {{minutes}} دقيقة"

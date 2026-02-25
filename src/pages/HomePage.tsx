@@ -434,7 +434,7 @@ const HomePage = () => {
       <footer className="border-t py-6 mt-20 text-sm">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-3 text-muted-foreground">
           <p className="text-center md:text-left">
-            {t('footer.copyright', '© 2025 Wishly. All rights reserved.')}
+            {t('footer.copyright', '© 2026 Wishly. All rights reserved.')}
           </p>
           <div className="flex flex-wrap items-center justify-center md:justify-end gap-4">
             <a href="/contact" className="hover:text-primary transition-colors">
@@ -446,12 +446,12 @@ const HomePage = () => {
             <span className="inline-flex items-center gap-1">
               <span>{t('footer.made_by', 'Made by')}</span>
               <a
-                href="https://tmw.qa/"
+                href="https://wakti.xyz/"
                 target="_blank"
                 rel="noreferrer noopener"
                 className="font-semibold text-primary hover:underline"
               >
-                {t('footer.made_by_name', 'TMW')}
+                {t('footer.made_by_name', 'wakti LLC')}
               </a>
             </span>
           </div>

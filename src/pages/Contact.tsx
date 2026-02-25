@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 const Contact = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language && i18n.language.startsWith('ar');
-  
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [topic, setTopic] = useState('');
@@ -26,7 +26,7 @@ const Contact = () => {
       toast.error(t('contact.fill_required', 'Please fill in all required fields'));
       return;
     }
-    
+
     setSubmitting(true);
     try {
       // Get current user if logged in
@@ -61,7 +61,7 @@ const Contact = () => {
         setSubmitting(false);
         return;
       }
-      
+
       const { error } = await (supabase as any)
         .from('contact_messages')
         .insert({
@@ -72,9 +72,9 @@ const Contact = () => {
           message,
           status: 'new',
         });
-      
+
       if (error) throw error;
-      
+
       setSubmitted(true);
       toast.success(t('contact.success', 'Your message has been sent successfully!'));
       if (typeof window !== 'undefined') {
@@ -138,10 +138,9 @@ const Contact = () => {
       <main className="relative z-10 container mx-auto px-4 py-10 md:py-16">
         <div className="max-w-4xl mx-auto grid gap-10 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] items-start">
           {/* Form side */}
-          <section className={`space-y-6 bg-card/80 backdrop-blur rounded-3xl border border-border/50 p-6 md:p-8 shadow-xl ${
-            isAr ? 'text-right' : ''
-          }`}
-          dir={isAr ? 'rtl' : 'ltr'}
+          <section className={`space-y-6 bg-card/80 backdrop-blur rounded-3xl border border-border/50 p-6 md:p-8 shadow-xl ${isAr ? 'text-right' : ''
+            }`}
+            dir={isAr ? 'rtl' : 'ltr'}
           >
             <div className="space-y-2">
               <h2 className="text-2xl font-bold text-primary">
@@ -245,10 +244,10 @@ const Contact = () => {
                 ) : (
                   <Send className="w-4 h-4 mr-2" />
                 )}
-                {submitting 
-                  ? (isAr ? 'جاري الإرسال...' : 'Sending...') 
-                  : submitted 
-                    ? (isAr ? 'تم الإرسال' : 'Sent!') 
+                {submitting
+                  ? (isAr ? 'جاري الإرسال...' : 'Sending...')
+                  : submitted
+                    ? (isAr ? 'تم الإرسال' : 'Sent!')
                     : (isAr ? 'إرسال الرسالة' : 'Send message')}
               </Button>
             </form>
@@ -312,7 +311,7 @@ const Contact = () => {
       <footer className="border-t py-6 mt-20 text-sm">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-3 text-muted-foreground">
           <p className="text-center md:text-left">
-            {t('footer.copyright', '© 2025 Wishly. All rights reserved.')}
+            {t('footer.copyright', '© 2026 Wishly. All rights reserved.')}
           </p>
           <div className="flex flex-wrap items-center justify-center md:justify-end gap-4">
             <a href="/contact" className="hover:text-primary transition-colors">
@@ -324,12 +323,12 @@ const Contact = () => {
             <span className="inline-flex items-center gap-1">
               <span>{t('footer.made_by', 'Made by')}</span>
               <a
-                href="https://tmw.qa/"
+                href="https://wakti.xyz/"
                 target="_blank"
                 rel="noreferrer noopener"
                 className="font-semibold text-primary hover:underline"
               >
-                {t('footer.made_by_name', 'TMW')}
+                {t('footer.made_by_name', 'wakti LLC')}
               </a>
             </span>
           </div>

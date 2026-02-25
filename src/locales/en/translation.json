@@ -174,8 +174,7 @@
     "share_failed": "Failed to share",
     "birthday_cannot_delete": "Birthday wishlist cannot be deleted",
     "my_birthday_wishlist": "My Birthday Wishlist"
-  }
-  ,
+  },
   "events": {
     "title": "Events",
     "tab_my": "My Events",
@@ -216,8 +215,7 @@
     "helper_seasonal_balance": "Seasonal balance",
     "pending_claims_title": "Pending claim requests",
     "pending_claims_caption": "Approve or decline to let friends know their claim status."
-  }
-  ,
+  },
   "explore": {
     "title": "Explore",
     "subtitle": "Discover trending gifts, popular wishlists, and amazing products curated just for you.",
@@ -242,8 +240,7 @@
     "added_to_name": "Added to: {{name}}",
     "added_to_count_one": "Added to {{count}} wishlist",
     "added_to_count_other": "Added to {{count}} wishlists"
-  }
-  ,
+  },
   "dashboard": {
     "title": "Dashboard",
     "subtitle": "Stay updated with your friends' wishes and upcoming events",
@@ -282,8 +279,7 @@
     "search_placeholder": "Search by name, username, or email",
     "search_aria": "Search",
     "empty_state": "No conversations yet."
-  }
-  ,
+  },
   "chat": {
     "new_message_title": "New Message",
     "conversation_title": "Conversation",
@@ -295,16 +291,14 @@
     "send": "Send",
     "direct_message": "Direct message",
     "autodelete_notice": "Messages auto-delete after 7 days unless you pin them."
-  }
-  ,
+  },
   "nav": {
     "dash": "Dash",
     "explore": "Explore",
     "add_wish": "Add Wish",
     "events": "Events",
     "profile": "Profile"
-  }
-  ,
+  },
   "wish_item": {
     "add_hidden": "Add Wish",
     "edit_hidden": "Edit Wish",
@@ -341,8 +335,7 @@
     "desire_label": "How badly do you want it?",
     "update_button": "Update Wish",
     "save_button": "Save to Wishlist"
-  }
-  ,
+  },
   "wishlist_detail": {
     "contains": "This wishlist contains ({{count}}/10)",
     "items_title": "Items",
@@ -367,8 +360,7 @@
     "description": "Description",
     "brand": "Brand",
     "link": "Link"
-  }
-  ,
+  },
   "notifications": {
     "title": "Notifications",
     "follow_requests_title": "Follow Requests",
@@ -388,8 +380,7 @@
     "commented_on_your_wishlist": "commented on your wishlist",
     "ok": "OK 👍",
     "no_thanks": "No thanks"
-  }
-  ,
+  },
   "brand": {
     "header_title": "Brand Portal",
     "header_subtitle": "Business Dashboard",
@@ -586,11 +577,11 @@
     "return_home": "Return to Home"
   },
   "footer": {
-    "copyright": "© 2025 Wishly. All rights reserved.",
+    "copyright": "© 2026 Wishly. All rights reserved.",
     "contact": "Contact us",
     "privacy_terms": "Privacy & Terms",
     "made_by": "Made by",
-    "made_by_name": "TMW"
+    "made_by_name": "wakti LLC"
   },
   "zodiac": {
     "aries": "Aries",
