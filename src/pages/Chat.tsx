@@ -9,6 +9,9 @@ import { openOrCreateDirectThread } from "@/lib/messages";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import wishlyLogo from "@/assets/wishly-logo.png";
+
+const WISHLY_SUPPORT_THREAD_TITLE = "Wishly Support";
 
 const Chat = () => {
   const { id } = useParams<{ id: string }>();
@@ -111,6 +114,21 @@ const Chat = () => {
     queryKey: ["chat-header", id, uid],
     enabled: !!supabase && !!id && id !== "new" && !!uid,
     queryFn: async () => {
+      const { data: threadRow, error: threadError } = await supabase
+        .from("threads")
+        .select("title")
+        .eq("id", id as string)
+        .maybeSingle();
+      if (threadError) throw threadError;
+
+      if (threadRow?.title === WISHLY_SUPPORT_THREAD_TITLE) {
+        return {
+          full_name: "Wishly",
+          username: "wishly",
+          avatar_url: wishlyLogo,
+        };
+      }
+
       // 1) Try to find the other participant from thread_participants
       const { data, error } = await supabase
         .from("thread_participants")

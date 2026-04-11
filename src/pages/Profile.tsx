@@ -22,6 +22,8 @@ const Profile = () => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [editedDob, setEditedDob] = useState("");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState("");
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -102,8 +104,40 @@ const Profile = () => {
   useEffect(() => {
     if (data?.profile) {
       setEditedDob(data.profile.dob || "");
+      setEditedName(data.profile.full_name || "");
     }
   }, [data?.profile]);
+
+  const handleSaveName = async () => {
+    const trimmedName = editedName.trim();
+    if (!trimmedName) {
+      toast.error(t("profile.error_empty_name", "Name cannot be empty"));
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("user_profiles")
+        .update({ full_name: trimmedName })
+        .eq("id", user.id);
+
+      if (error) {
+        toast.error(t("profile.error_updating_name", "Error updating name"));
+        console.error(error);
+      } else {
+        toast.success(t("profile.name_updated", "Name updated"));
+        await queryClient.invalidateQueries({ queryKey: ["profile"] });
+        setIsEditingName(false);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error(t("profile.error_updating", "Error updating profile"));
+    }
+  };
 
   const handleSaveDob = async () => {
     try {
@@ -244,14 +278,60 @@ const Profile = () => {
                     type="file"
                     accept="image/*"
                     className="hidden"
+                    aria-label={t("profile.upload_avatar", "Upload profile photo")}
                     onChange={handleAvatarChange}
                   />
                   <div className="leading-tight">
-                    <div 
-                      className="text-xl sm:text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]"
-                      style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.85)' }}
-                    >
-                      {data?.profile?.full_name || data?.profile?.username || "Profile"}
+                    <div className="flex items-center gap-2">
+                      {isEditingName ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={editedName}
+                            onChange={(e) => setEditedName(e.target.value)}
+                            className="h-9 w-[180px] sm:w-[240px] border-white/60 bg-black/30 text-white placeholder:text-white/70"
+                            placeholder={t("profile.full_name", "Full name")}
+                          />
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={handleSaveName}
+                            className="h-9 w-9 text-white hover:bg-white/20"
+                          >
+                            <Save className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditedName(data?.profile?.full_name || "");
+                              setIsEditingName(false);
+                            }}
+                            className="h-9 w-9 text-white hover:bg-white/20"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div 
+                            className="text-xl sm:text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]"
+                            style={{ WebkitTextStroke: '0.6px rgba(0,0,0,0.85)' }}
+                          >
+                            {data?.profile?.full_name || data?.profile?.username || "Profile"}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingName(true)}
+                            title={t("profile.edit_name", "Edit name")}
+                            aria-label={t("profile.edit_name", "Edit name")}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/20 text-white ring-1 ring-white/50 transition hover:bg-black/30"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                     <div 
                       className="text-base sm:text-lg md:text-xl font-extrabold bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] bg-clip-text text-transparent drop-shadow-[0_2px_3px_rgba(0,0,0,0.85)]"

@@ -6,32 +6,35 @@ import AddButton from "@/components/AddButton";
 import { MessageSquare, Search, Trash } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import wishlyLogo from "@/assets/wishly-logo.png";
 
- const formatThreadPreview = (raw: unknown) => {
-   const text = (raw == null ? "" : String(raw)).trim();
-   if (!text) return "";
+const formatThreadPreview = (raw: unknown) => {
+  const text = (raw == null ? "" : String(raw)).trim();
+  if (!text) return "";
 
-   // Avoid dumping JSON blobs into the conversation list; show a compact summary.
-   if (text.startsWith("{") && text.endsWith("}")) {
-     try {
-       const parsed = JSON.parse(text);
-       if (parsed && typeof parsed === "object") {
-         const type = (parsed as any).type;
-         if (type === "thank_you_card") {
-           const message = typeof (parsed as any).message === "string" ? (parsed as any).message.trim() : "";
-           const itemTitle = (parsed as any)?.item?.title;
-           const itemLabel = typeof itemTitle === "string" && itemTitle.trim() ? itemTitle.trim() : "";
-           const prefix = itemLabel ? `Thank you card: ${itemLabel}` : "Thank you card";
-           return message ? `${prefix} — ${message}` : prefix;
-         }
-       }
-     } catch {
-       // If it looks like JSON but isn't valid, fall back to plain text.
-     }
-   }
+  // Avoid dumping JSON blobs into the conversation list; show a compact summary.
+  if (text.startsWith("{") && text.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === "object") {
+        const type = (parsed as any).type;
+        if (type === "thank_you_card") {
+          const message = typeof (parsed as any).message === "string" ? (parsed as any).message.trim() : "";
+          const itemTitle = (parsed as any)?.item?.title;
+          const itemLabel = typeof itemTitle === "string" && itemTitle.trim() ? itemTitle.trim() : "";
+          const prefix = itemLabel ? `Thank you card: ${itemLabel}` : "Thank you card";
+          return message ? `${prefix} — ${message}` : prefix;
+        }
+      }
+    } catch {
+      // If it looks like JSON but isn't valid, fall back to plain text.
+    }
+  }
 
-   return text;
- };
+  return text;
+};
+
+const WISHLY_SUPPORT_THREAD_TITLE = "Wishly Support";
 
 const Messages = () => {
   const [q, setQ] = useState("");
@@ -68,6 +71,7 @@ const Messages = () => {
       }
 
       return await Promise.all((rows || []).map(async (row: any) => {
+        const isWishlySupportThread = row.title === WISHLY_SUPPORT_THREAD_TITLE;
         const participants = (row.thread_participants || [])
           .map((p: any) => p.user_profiles)
           .filter(Boolean);
@@ -143,7 +147,10 @@ const Messages = () => {
         let name = "Conversation";
         let avatar_url: string | null = null;
 
-        if (other) {
+        if (isWishlySupportThread) {
+          name = "Wishly";
+          avatar_url = wishlyLogo;
+        } else if (other) {
           name = other.full_name || other.username || t('messages.unknown_user', 'Unknown User');
           avatar_url = other.avatar_url ?? null;
         } else {
@@ -155,7 +162,7 @@ const Messages = () => {
         const last = (row.messages && row.messages[0]) || null;
         return {
           id: row.id,
-          name: name || row.title || "Conversation",
+          name: isWishlySupportThread ? "Wishly" : (name || row.title || "Conversation"),
           avatar_url,
           last: formatThreadPreview(last?.content || ""),
           time: last?.created_at
