@@ -22,6 +22,7 @@ export const MainLayout = () => {
   const navigate = useNavigate();
   const [addOpen, setAddOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState<number>(0);
+  const [messageUnreadCount, setMessageUnreadCount] = useState<number>(0);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | undefined>(undefined);
   const { data: wishlistsData } = useWishlists();
@@ -40,6 +41,7 @@ export const MainLayout = () => {
 
   const isActive = (path: string) => location.pathname === path;
   const isGifterShared = new URLSearchParams(location.search).get('mode')?.toLowerCase() === 'gifter';
+  const isMessagesRoute = location.pathname === "/messages" || location.pathname.startsWith("/chat/");
 
   const prefetchRoute = useCallback((path: string) => {
     if (typeof window === "undefined") return;
@@ -113,6 +115,7 @@ export const MainLayout = () => {
     let mounted = true;
     let followersChannel: ReturnType<typeof supabase.channel> | null = null;
     let activitiesChannel: ReturnType<typeof supabase.channel> | null = null;
+    let messagesChannel: ReturnType<typeof supabase.channel> | null = null;
 
     const fetchPendingCount = async (uid: string) => {
       try {
@@ -134,6 +137,80 @@ export const MainLayout = () => {
         .eq("id", uid)
         .maybeSingle();
       if (mounted) setAvatarUrl((profile as any)?.avatar_url || null);
+    };
+
+    const getMessageSeenStorageKey = (uid: string) => `wishly:lastSeenMessageAt:${uid}`;
+
+    const fetchUnreadMessageCount = async (uid: string) => {
+      try {
+        const seenAt = localStorage.getItem(getMessageSeenStorageKey(uid));
+        const { data: participationRows, error: participationError } = await supabase
+          .from("thread_participants")
+          .select("thread_id")
+          .eq("user_id", uid);
+        if (participationError) throw participationError;
+
+        const threadIds = (participationRows || []).map((row: any) => row.thread_id).filter(Boolean);
+        if (threadIds.length === 0) {
+          if (mounted) setMessageUnreadCount(0);
+          return;
+        }
+
+        let query = supabase
+          .from("messages")
+          .select("id", { count: "exact", head: true })
+          .in("thread_id", threadIds)
+          .neq("user_id", uid);
+
+        if (seenAt) query = query.gt("created_at", seenAt);
+
+        const { count, error: countError } = await query;
+        if (countError) throw countError;
+        if (mounted) setMessageUnreadCount((count as number | null) ?? 0);
+      } catch {
+        if (mounted) setMessageUnreadCount(0);
+      }
+    };
+
+    const ensureMessageSeenInitialized = async (uid: string) => {
+      const storageKey = getMessageSeenStorageKey(uid);
+      if (localStorage.getItem(storageKey)) return;
+      const { data } = await supabase
+        .from("messages")
+        .select("created_at")
+        .neq("user_id", uid)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (data && data[0]?.created_at) {
+        localStorage.setItem(storageKey, data[0].created_at as string);
+      }
+    };
+
+    const markMessagesSeen = async (uid: string) => {
+      const storageKey = getMessageSeenStorageKey(uid);
+      const { data: participationRows, error: participationError } = await supabase
+        .from("thread_participants")
+        .select("thread_id")
+        .eq("user_id", uid);
+      if (participationError) throw participationError;
+
+      const threadIds = (participationRows || []).map((row: any) => row.thread_id).filter(Boolean);
+      let data: any[] | null = null;
+      if (threadIds.length > 0) {
+        const latest = await supabase
+          .from("messages")
+          .select("created_at")
+          .in("thread_id", threadIds)
+          .neq("user_id", uid)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (latest.error) throw latest.error;
+        data = latest.data;
+      }
+      if (data && data[0]?.created_at) {
+        localStorage.setItem(storageKey, data[0].created_at as string);
+      }
+      if (mounted) setMessageUnreadCount(0);
     };
 
     const formatToastMessage = (type: string, name: string | null) => {
@@ -184,6 +261,12 @@ export const MainLayout = () => {
       await fetchPendingCount(uid);
       await fetchAvatar(uid);
       await ensureLastSeenInitialized(uid);
+      await ensureMessageSeenInitialized(uid);
+      if (isMessagesRoute) {
+        await markMessagesSeen(uid);
+      } else {
+        await fetchUnreadMessageCount(uid);
+      }
 
       followersChannel = supabase
         .channel(`followers-pending-${uid}`)
@@ -216,6 +299,29 @@ export const MainLayout = () => {
           }
         })
         .subscribe();
+
+      messagesChannel = supabase
+        .channel(`messages-badge-${uid}`)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async (payload) => {
+          const message = payload.new as any;
+          if (!message?.thread_id || message?.user_id === uid) return;
+
+          const { data: participant } = await supabase
+            .from("thread_participants")
+            .select("thread_id")
+            .eq("thread_id", message.thread_id)
+            .eq("user_id", uid)
+            .maybeSingle();
+          if (!participant) return;
+
+          if (isMessagesRoute) {
+            localStorage.setItem(getMessageSeenStorageKey(uid), String(message.created_at || new Date().toISOString()));
+            if (mounted) setMessageUnreadCount(0);
+          } else if (mounted) {
+            setMessageUnreadCount((current) => current + 1);
+          }
+        })
+        .subscribe();
     };
 
     subscribe();
@@ -224,8 +330,9 @@ export const MainLayout = () => {
       mounted = false;
       if (followersChannel) supabase.removeChannel(followersChannel);
       if (activitiesChannel) supabase.removeChannel(activitiesChannel);
+      if (messagesChannel) supabase.removeChannel(messagesChannel);
     };
-  }, [isNativeApp, natively, t]);
+  }, [isMessagesRoute, isNativeApp, natively, t]);
 
   // Real-time listener for admin control changes (LiveSync with admin panel)
   useEffect(() => {
@@ -291,8 +398,13 @@ export const MainLayout = () => {
                 </Button>
               </Link>
               <Link to="/messages">
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="relative">
                   <MessageSquare className="h-5 w-5" />
+                  {messageUnreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-br from-[hsl(var(--brand-cool-start))] to-[hsl(var(--brand-warm-end))] text-[10px] leading-[18px] text-white text-center ring-1 ring-white/70 shadow-[0_6px_14px_rgba(0,0,0,0.15)]">
+                      {Math.min(messageUnreadCount, 9)}{messageUnreadCount > 9 ? "+" : ""}
+                    </span>
+                  )}
                 </Button>
               </Link>
             </>

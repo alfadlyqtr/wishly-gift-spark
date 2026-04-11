@@ -186,6 +186,15 @@ const AdminContactInbox = () => {
           });
         if (inboxMessageError) throw inboxMessageError;
 
+        const { error: activityError } = await (supabase as any)
+          .from("activities")
+          .insert({
+            user_id: message.user_id,
+            activity_type: "message_sent",
+            target_id: inboxThreadId,
+          });
+        if (activityError) throw activityError;
+
         try {
           await supabase.functions.invoke("push-dispatch", {
             body: { type: "message_sent", threadId: inboxThreadId },

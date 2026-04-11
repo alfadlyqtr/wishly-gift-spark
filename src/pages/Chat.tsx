@@ -196,6 +196,40 @@ const Chat = () => {
     },
   });
 
+  const { data: supportThreadState } = useQuery({
+    queryKey: ["support-thread-state", id],
+    enabled: !!supabase && !!id && id !== "new",
+    queryFn: async () => {
+      const { data: threadRow, error: threadError } = await (supabase as any)
+        .from("threads")
+        .select("title")
+        .eq("id", id as string)
+        .maybeSingle();
+      if (threadError) throw threadError;
+
+      const isWishlySupport = threadRow?.title === WISHLY_SUPPORT_THREAD_TITLE;
+      if (!isWishlySupport) {
+        return { isWishlySupport: false, isClosed: false };
+      }
+
+      const { data: contactMessage, error: contactError } = await (supabase as any)
+        .from("contact_messages")
+        .select("status")
+        .eq("inbox_thread_id", id as string)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (contactError) throw contactError;
+
+      return {
+        isWishlySupport: true,
+        isClosed: contactMessage?.status === "done",
+      };
+    },
+  });
+
+  const isClosedWishlySupportThread = Boolean(supportThreadState?.isWishlySupport && supportThreadState?.isClosed);
+
   const handleTogglePlay = (messageId: string) => {
     const current = audioRefs.current[messageId];
     if (!current) return;
@@ -354,6 +388,7 @@ const Chat = () => {
 
   const send = () => {
     if (!id || id === "new") return; // can't send until a thread exists
+    if (isClosedWishlySupportThread) return;
 
     // 1) If an image is staged, send it first
     if (pendingImage) {
@@ -1036,117 +1071,122 @@ const Chat = () => {
             )}
           </div>
 
-          {/* Composer — Explore-like framed input with Send button */}
-          <div className="mx-auto w-full max-w-md shrink-0 mt-1">
-            <div className="rounded-[14px] p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_12px_28px_rgba(200,80,192,0.18)]">
-              <div className="relative flex items-center gap-2 rounded-[12px] bg-white shadow-sm px-2 py-1">
-                <textarea
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder={t('chat.type_message', 'Type a message')}
-                  className="flex-1 rounded-[10px] border-0 px-3 py-2 text-sm focus:outline-none resize-none min-h-[40px] max-h-[64px] overflow-y-auto pr-10"
-                  rows={1}
-                  maxLength={200}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      send();
-                    }
-                  }}
-                />
-                <span className="pointer-events-none absolute bottom-1 right-3 text-[10px] text-muted-foreground/70">
-                  {text.length}/200
-                </span>
-                {pendingImagePreview && (
-                  <div className="mr-1 flex items-center gap-1">
-                    <img
-                      src={pendingImagePreview}
-                      alt={t('chat.image_preview', 'Image preview')}
-                      className="h-9 w-9 rounded-lg object-cover border border-[hsl(var(--brand-cool-start))]/30"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPendingImage(null);
-                        if (pendingImagePreview) {
-                          URL.revokeObjectURL(pendingImagePreview);
-                        }
-                        setPendingImagePreview(null);
-                      }}
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-red-200 text-red-500 bg-white hover:bg-red-50 text-[11px]"
-                      aria-label={t('chat.remove_image', 'Remove image')}
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
-                {pendingAudio && (
-                  <div className="mr-1 flex items-center gap-1 rounded-full bg-[rgba(200,80,192,0.04)] px-2 py-1 border border-[hsl(var(--brand-cool-start))]/30">
-                    <Mic className="h-3 w-3 text-[hsl(var(--brand-cool-start))]" />
-                    <span className="text-[11px] text-muted-foreground">
-                      {pendingAudioDuration ? `${pendingAudioDuration}s` : t('chat.voice_note_ready', 'Voice note ready')}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPendingAudio(null);
-                        setPendingAudioDuration(null);
-                      }}
-                      className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-red-200 text-red-500 bg-white hover:bg-red-50 text-[10px]"
-                      aria-label={t('chat.remove_voice', 'Remove voice note')}
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  aria-label={t('chat.attach_image', 'Attach image')}
-                  title={t('chat.attach_image', 'Attach image')}
-                  className="hidden"
-                  onChange={handleImageChange}
-                />
-                <button
-                  type="button"
-                  onClick={handlePickImage}
-                  disabled={isUploading || !id || id === 'new'}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[hsl(var(--brand-cool-start))]/30 text-[hsl(var(--brand-cool-start))] bg-white/90 hover:bg-[rgba(200,80,192,0.06)] disabled:opacity-50"
-                  aria-label={t('chat.attach_image', 'Attach image')}
-                >
-                  <Paperclip className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={toggleRecording}
-                  disabled={isUploading || !id || id === 'new'}
-                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full border ${
-                    isRecording
-                      ? 'border-red-400 bg-red-50 text-red-500'
-                      : 'border-[hsl(var(--brand-cool-start))]/30 text-[hsl(var(--brand-cool-start))] bg-white/90 hover:bg-[rgba(200,80,192,0.06)]'
-                  } disabled:opacity-50`}
-                  aria-label={isRecording ? t('chat.stop_recording', 'Stop recording') : t('chat.start_recording', 'Start recording')}
-                >
-                  <Mic className="h-4 w-4" />
-                </button>
-                {isRecording && (
-                  <span className="text-[11px] text-red-500 font-medium mr-1">
-                    {Math.max(0, 60 - recordingSeconds)}s
+          {isClosedWishlySupportThread ? (
+            <div className="mx-auto w-full max-w-md shrink-0 mt-1 rounded-[14px] border border-[hsl(var(--brand-cool-start))]/20 bg-white/80 px-4 py-3 text-center text-sm text-muted-foreground shadow-sm">
+              {t('chat.support_thread_closed', 'This support conversation has been closed by Wishly. You can read messages here, but replies are disabled.')}
+            </div>
+          ) : (
+            <div className="mx-auto w-full max-w-md shrink-0 mt-1">
+              <div className="rounded-[14px] p-[2px] bg-gradient-to-r from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_12px_28px_rgba(200,80,192,0.18)]">
+                <div className="relative flex items-center gap-2 rounded-[12px] bg-white shadow-sm px-2 py-1">
+                  <textarea
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    placeholder={t('chat.type_message', 'Type a message')}
+                    className="flex-1 rounded-[10px] border-0 px-3 py-2 text-sm focus:outline-none resize-none min-h-[40px] max-h-[64px] overflow-y-auto pr-10"
+                    rows={1}
+                    maxLength={200}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        send();
+                      }
+                    }}
+                  />
+                  <span className="pointer-events-none absolute bottom-1 right-3 text-[10px] text-muted-foreground/70">
+                    {text.length}/200
                   </span>
-                )}
-                <button
-                  type="button"
-                  onClick={send}
-                  disabled={(!text.trim() && !pendingImage && !pendingAudio) || sendMutation.isPending || isUploading}
-                  className="inline-flex h-9 px-3 items-center justify-center gap-1 rounded-xl text-white bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_8px_18px_rgba(200,80,192,0.28)] disabled:opacity-60"
-                >
-                  <Send className="h-4 w-4" />
-                  <span>{t('chat.send', 'Send')}</span>
-                </button>
+                  {pendingImagePreview && (
+                    <div className="mr-1 flex items-center gap-1">
+                      <img
+                        src={pendingImagePreview}
+                        alt={t('chat.image_preview', 'Image preview')}
+                        className="h-9 w-9 rounded-lg object-cover border border-[hsl(var(--brand-cool-start))]/30"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPendingImage(null);
+                          if (pendingImagePreview) {
+                            URL.revokeObjectURL(pendingImagePreview);
+                          }
+                          setPendingImagePreview(null);
+                        }}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-red-200 text-red-500 bg-white hover:bg-red-50 text-[11px]"
+                        aria-label={t('chat.remove_image', 'Remove image')}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  {pendingAudio && (
+                    <div className="mr-1 flex items-center gap-1 rounded-full bg-[rgba(200,80,192,0.04)] px-2 py-1 border border-[hsl(var(--brand-cool-start))]/30">
+                      <Mic className="h-3 w-3 text-[hsl(var(--brand-cool-start))]" />
+                      <span className="text-[11px] text-muted-foreground">
+                        {pendingAudioDuration ? `${pendingAudioDuration}s` : t('chat.voice_note_ready', 'Voice note ready')}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPendingAudio(null);
+                          setPendingAudioDuration(null);
+                        }}
+                        className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-red-200 text-red-500 bg-white hover:bg-red-50 text-[10px]"
+                        aria-label={t('chat.remove_voice', 'Remove voice note')}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    aria-label={t('chat.attach_image', 'Attach image')}
+                    title={t('chat.attach_image', 'Attach image')}
+                    className="hidden"
+                    onChange={handleImageChange}
+                  />
+                  <button
+                    type="button"
+                    onClick={handlePickImage}
+                    disabled={isUploading || !id || id === 'new'}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[hsl(var(--brand-cool-start))]/30 text-[hsl(var(--brand-cool-start))] bg-white/90 hover:bg-[rgba(200,80,192,0.06)] disabled:opacity-50"
+                    aria-label={t('chat.attach_image', 'Attach image')}
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleRecording}
+                    disabled={isUploading || !id || id === 'new'}
+                    className={`inline-flex h-9 w-9 items-center justify-center rounded-full border ${
+                      isRecording
+                        ? 'border-red-400 bg-red-50 text-red-500'
+                        : 'border-[hsl(var(--brand-cool-start))]/30 text-[hsl(var(--brand-cool-start))] bg-white/90 hover:bg-[rgba(200,80,192,0.06)]'
+                    } disabled:opacity-50`}
+                    aria-label={isRecording ? t('chat.stop_recording', 'Stop recording') : t('chat.start_recording', 'Start recording')}
+                  >
+                    <Mic className="h-4 w-4" />
+                  </button>
+                  {isRecording && (
+                    <span className="text-[11px] text-red-500 font-medium mr-1">
+                      {Math.max(0, 60 - recordingSeconds)}s
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={send}
+                    disabled={(!text.trim() && !pendingImage && !pendingAudio) || sendMutation.isPending || isUploading}
+                    className="inline-flex h-9 px-3 items-center justify-center gap-1 rounded-xl text-white bg-gradient-to-br from-[hsl(var(--brand-cool-start))] via-[hsl(var(--brand-cool-end))] to-[hsl(var(--brand-warm-end))] shadow-[0_8px_18px_rgba(200,80,192,0.28)] disabled:opacity-60"
+                  >
+                    <Send className="h-4 w-4" />
+                    <span>{t('chat.send', 'Send')}</span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
       )}
